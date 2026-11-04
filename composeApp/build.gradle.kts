@@ -12,12 +12,13 @@ kotlin {
     sourceSets { commonMain.dependencies {
         implementation(compose.runtime); implementation(compose.foundation); implementation(compose.material3); implementation(compose.ui)
         implementation(libs.kotlinx.coroutines); implementation(libs.kotlinx.serialization.json)
+        implementation(libs.ktor.client.core); implementation(libs.ktor.client.negotiation); implementation(libs.ktor.client.serialization)
     }
-      androidMain.dependencies { implementation("androidx.activity:activity-compose:1.11.0"); implementation(libs.sqldelight.android.driver) }
+      androidMain.dependencies { implementation("androidx.activity:activity-compose:1.11.0"); implementation(libs.sqldelight.android.driver); implementation(libs.ktor.client.okhttp) }
       iosMain.dependencies { implementation(libs.sqldelight.native.driver) }
-      jvmMain.dependencies { implementation(libs.sqldelight.sqlite.driver) }
-      jvmTest.dependencies { implementation(libs.sqldelight.sqlite.driver) }
-      commonTest.dependencies { implementation(kotlin("test")) }
+      jvmMain.dependencies { implementation(libs.sqldelight.sqlite.driver); implementation(libs.ktor.client.okhttp) }
+      jvmTest.dependencies { implementation(libs.sqldelight.sqlite.driver); implementation(libs.kotlinx.coroutines.test) }
+      commonTest.dependencies { implementation(kotlin("test")); implementation(libs.ktor.client.mock) }
     }
 }
 android { namespace = "app.habitlab"; compileSdk = 36; defaultConfig { applicationId = "app.habitlab"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "0.1" } }
