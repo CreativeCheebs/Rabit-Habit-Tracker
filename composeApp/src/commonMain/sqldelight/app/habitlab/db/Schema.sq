@@ -1,0 +1,40 @@
+CREATE TABLE habit (uid TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, group_name TEXT NOT NULL DEFAULT 'General', iteration INTEGER NOT NULL DEFAULT 1, impact_points INTEGER NOT NULL DEFAULT 1, recurrence_type TEXT NOT NULL, recurrence_value INTEGER NOT NULL, archived INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE run (uid TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, start_date TEXT NOT NULL, duration_days INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'active', copied_from_uid TEXT);
+CREATE TABLE run_habit (uid TEXT NOT NULL PRIMARY KEY, run_uid TEXT NOT NULL REFERENCES run(uid), habit_uid TEXT NOT NULL REFERENCES habit(uid));
+CREATE TABLE check_in (uid TEXT NOT NULL PRIMARY KEY, habit_uid TEXT NOT NULL REFERENCES habit(uid), day TEXT NOT NULL, state TEXT NOT NULL CHECK (state IN ('done', 'partial', 'skipped')), comment TEXT, UNIQUE(habit_uid, day));
+CREATE TABLE goal (uid TEXT NOT NULL PRIMARY KEY, description TEXT NOT NULL, start_date TEXT NOT NULL, target_date TEXT, progress REAL NOT NULL DEFAULT 0);
+CREATE TABLE tracker (uid TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, unit TEXT NOT NULL, cadence TEXT NOT NULL);
+CREATE TABLE tracker_entry (uid TEXT NOT NULL PRIMARY KEY, tracker_uid TEXT NOT NULL REFERENCES tracker(uid), recorded_at TEXT NOT NULL, value REAL NOT NULL, note TEXT);
+CREATE TABLE sync_meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE sync_field (table_name TEXT NOT NULL, uid TEXT NOT NULL, field_name TEXT NOT NULL, clock INTEGER NOT NULL, device TEXT NOT NULL, seq INTEGER NOT NULL, PRIMARY KEY (table_name, uid, field_name));
+INSERT OR IGNORE INTO sync_meta VALUES ('device', lower(hex(randomblob(16))));
+INSERT OR IGNORE INTO sync_meta VALUES ('clock', '0');
+INSERT OR IGNORE INTO sync_meta VALUES ('seq', '0');
+INSERT OR IGNORE INTO sync_meta VALUES ('token', '0');
+INSERT OR IGNORE INTO sync_meta VALUES ('pushed', '0');
+INSERT OR IGNORE INTO sync_meta VALUES ('applying', '0');
+PRAGMA temp_store = MEMORY;
+selectHabits:
+SELECT * FROM habit WHERE archived = 0 ORDER BY group_name, title;
+selectHabitsForRun:
+SELECT habit.* FROM habit INNER JOIN run_habit ON run_habit.habit_uid = habit.uid WHERE run_habit.run_uid = ? ORDER BY habit.group_name, habit.title;
+selectRuns:
+SELECT * FROM run ORDER BY start_date DESC;
+insertHabit:
+INSERT OR IGNORE INTO habit(uid, title, group_name, iteration, impact_points, recurrence_type, recurrence_value)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+insertRun:
+INSERT OR IGNORE INTO run(uid, name, start_date, duration_days, status)
+VALUES (?, ?, ?, ?, 'active');
+attachHabitToRun:
+INSERT OR IGNORE INTO run_habit(uid, run_uid, habit_uid) VALUES (?, ?, ?);
+insertCheckIn:
+INSERT OR REPLACE INTO check_in(uid, habit_uid, day, state, comment) VALUES (?, ?, ?, ?, ?);
+selectCheckInsForDay:
+SELECT * FROM check_in WHERE day = ?;
+selectCheckInsForHabit:
+SELECT * FROM check_in WHERE habit_uid = ? ORDER BY day DESC;
+selectMetaValue:
+SELECT value FROM sync_meta WHERE key = ?;
+upsertMetaValue:
+INSERT OR REPLACE INTO sync_meta(key, value) VALUES (?, ?);
