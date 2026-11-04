@@ -287,10 +287,15 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     fun commitSwipe(state: Int) {
                         val day = selectedDay.coerceIn(0, days.lastIndex)
                         if (days[day] >= 0) {
+                            val firstLog = days[day] == 0
                             days[day] = state
                             val date = addIsoDays(runStart, week * 7 + day)
                             val dbState = when (state) { 1 -> "done"; 2 -> "partial"; else -> "skipped" }
-                            database.schemaQueries.insertCheckIn("${h.uid()}:$date", h.uid(), date, dbState, null)
+                            if (firstLog) {
+                                database.schemaQueries.insertCheckIn("${h.uid()}:$date", h.uid(), date, dbState, null)
+                            } else {
+                                database.schemaQueries.updateCheckIn(dbState, null, h.uid(), date)
+                            }
                         }
                     }
                     Box(Modifier.fillMaxWidth().padding(top = 11.dp, bottom = 7.dp)) {
@@ -628,7 +633,12 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
     }
     fun record(state: String, habit: Habit) {
         val uid = habit.uid()
-        database.schemaQueries.insertCheckIn("$uid:$today", uid, today, state, comment.takeIf { it.isNotBlank() })
+        val note = comment.takeIf { it.isNotBlank() }
+        if (database.schemaQueries.selectCheckInByUid("$uid:$today").executeAsOneOrNull() == null) {
+            database.schemaQueries.insertCheckIn("$uid:$today", uid, today, state, note)
+        } else {
+            database.schemaQueries.updateCheckIn(state, note, uid, today)
+        }
         when (state) { "done" -> done++; "partial" -> partial++; "skipped" -> skipped++ }
         index++; comment = ""; commentOpen = false
     }

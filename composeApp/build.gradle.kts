@@ -7,6 +7,7 @@ plugins {
 }
 kotlin {
     androidTarget()
+    jvm()
     listOf(iosArm64(), iosSimulatorArm64(), iosX64()).forEach { ios -> ios.binaries.framework { baseName = "ComposeApp"; isStatic = true } }
     sourceSets { commonMain.dependencies {
         implementation(compose.runtime); implementation(compose.foundation); implementation(compose.material3); implementation(compose.ui)
@@ -14,6 +15,8 @@ kotlin {
     }
       androidMain.dependencies { implementation("androidx.activity:activity-compose:1.11.0"); implementation(libs.sqldelight.android.driver) }
       iosMain.dependencies { implementation(libs.sqldelight.native.driver) }
+      jvmMain.dependencies { implementation(libs.sqldelight.sqlite.driver) }
+      jvmTest.dependencies { implementation(libs.sqldelight.sqlite.driver) }
       commonTest.dependencies { implementation(kotlin("test")) }
     }
 }

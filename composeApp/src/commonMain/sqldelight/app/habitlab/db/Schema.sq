@@ -29,11 +29,61 @@ VALUES (?, ?, ?, ?, 'active');
 attachHabitToRun:
 INSERT OR IGNORE INTO run_habit(uid, run_uid, habit_uid) VALUES (?, ?, ?);
 insertCheckIn:
-INSERT OR REPLACE INTO check_in(uid, habit_uid, day, state, comment) VALUES (?, ?, ?, ?, ?);
+INSERT OR IGNORE INTO check_in(uid, habit_uid, day, state, comment) VALUES (?, ?, ?, ?, ?);
+updateCheckIn:
+UPDATE check_in SET state = ?, comment = ? WHERE habit_uid = ? AND day = ?;
 selectCheckInsForDay:
 SELECT * FROM check_in WHERE day = ?;
 selectCheckInsForHabit:
 SELECT * FROM check_in WHERE habit_uid = ? ORDER BY day DESC;
+selectChangedFields:
+SELECT table_name, uid, field_name, clock, device, seq FROM sync_field WHERE seq > ? AND device = ? ORDER BY seq;
+selectFieldStamps:
+SELECT field_name, clock, device FROM sync_field WHERE table_name = ? AND uid = ?;
+upsertFieldStamp:
+INSERT OR REPLACE INTO sync_field(table_name, uid, field_name, clock, device, seq) VALUES (?, ?, ?, ?, ?, ?);
+selectHabitByUid:
+SELECT * FROM habit WHERE uid = ?;
+selectRunByUid:
+SELECT * FROM run WHERE uid = ?;
+selectRunHabitByUid:
+SELECT * FROM run_habit WHERE uid = ?;
+selectCheckInByUid:
+SELECT * FROM check_in WHERE uid = ?;
+selectGoalByUid:
+SELECT * FROM goal WHERE uid = ?;
+selectTrackerByUid:
+SELECT * FROM tracker WHERE uid = ?;
+selectTrackerEntryByUid:
+SELECT * FROM tracker_entry WHERE uid = ?;
+upsertHabitRow:
+INSERT OR REPLACE INTO habit(uid, title, group_name, iteration, impact_points, recurrence_type, recurrence_value, archived) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+upsertRunRow:
+INSERT OR REPLACE INTO run(uid, name, start_date, duration_days, status, copied_from_uid) VALUES (?, ?, ?, ?, ?, ?);
+upsertRunHabitRow:
+INSERT OR REPLACE INTO run_habit(uid, run_uid, habit_uid) VALUES (?, ?, ?);
+upsertCheckInRow:
+INSERT OR REPLACE INTO check_in(uid, habit_uid, day, state, comment) VALUES (?, ?, ?, ?, ?);
+upsertGoalRow:
+INSERT OR REPLACE INTO goal(uid, description, start_date, target_date, progress) VALUES (?, ?, ?, ?, ?);
+upsertTrackerRow:
+INSERT OR REPLACE INTO tracker(uid, name, unit, cadence) VALUES (?, ?, ?, ?);
+upsertTrackerEntryRow:
+INSERT OR REPLACE INTO tracker_entry(uid, tracker_uid, recorded_at, value, note) VALUES (?, ?, ?, ?, ?);
+deleteHabitRow:
+DELETE FROM habit WHERE uid = ?;
+deleteRunRow:
+DELETE FROM run WHERE uid = ?;
+deleteRunHabitRow:
+DELETE FROM run_habit WHERE uid = ?;
+deleteCheckInRow:
+DELETE FROM check_in WHERE uid = ?;
+deleteGoalRow:
+DELETE FROM goal WHERE uid = ?;
+deleteTrackerRow:
+DELETE FROM tracker WHERE uid = ?;
+deleteTrackerEntryRow:
+DELETE FROM tracker_entry WHERE uid = ?;
 selectMetaValue:
 SELECT value FROM sync_meta WHERE key = ?;
 upsertMetaValue:

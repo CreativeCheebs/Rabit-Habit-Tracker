@@ -128,7 +128,8 @@ private fun Application.syncModule() {
                           while (rs.next()) {
                             val key=rs.getString(1) to rs.getString(2); val field=rs.getString(3); val raw=rs.getString(4)
                             val item=grouped.getOrPut(key) { Triple(linkedMapOf(),linkedMapOf(),rs.getString(6)) }
-                            if (field != "_deleted" && raw != null) item.first[field]=wireJson.parseToJsonElement(raw)
+                            if (field == "_deleted") item.first[field]=JsonPrimitive(raw == "true")
+                            else if (raw != null) item.first[field]=wireJson.parseToJsonElement(raw)
                             item.second[field]=Stamp(rs.getLong(5),rs.getString(6))
                           }
                           grouped.map { (key,value) -> SyncRow(key.first,key.second,JsonObject(value.first),value.second) }
