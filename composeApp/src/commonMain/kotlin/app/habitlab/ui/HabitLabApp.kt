@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
@@ -42,6 +43,12 @@ import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 import app.habitlab.db.HabitDatabase
+import app.habitlab.sync.SignInProblem
+import app.habitlab.sync.SYNC_MODE_OFFLINE
+import app.habitlab.sync.SYNC_MODE_SERVER
+import app.habitlab.sync.SyncClient
+import app.habitlab.sync.SyncOutcome
+import app.habitlab.sync.createHttpClient
 
 private val ink = androidx.compose.ui.graphics.Color(0xFFE5ECE6)
 private val muted = androidx.compose.ui.graphics.Color(0xFFA3AFA6)
@@ -75,6 +82,55 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     var showNewRun by remember { mutableStateOf(false) }
     var runsRevision by remember { mutableIntStateOf(0) }
     var builderCopy by remember { mutableStateOf<Boolean?>(null) }
+    val syncClient = remember(database) { SyncClient(database, createHttpClient()) }
+    var syncMode by remember(database) { mutableStateOf(syncClient.mode()) }
+    var syncing by remember { mutableStateOf(false) }
+    var syncDirty by remember { mutableStateOf(false) }
+    var syncStatus by remember { mutableStateOf<String?>(null) }
+    var syncProgress by remember { mutableStateOf<Pair<Long, Long?>?>(null) }
+    var showFirstStart by remember(database) { mutableStateOf(syncClient.mode() == null) }
+    var showSignIn by remember { mutableStateOf(false) }
+    var signInError by remember { mutableStateOf<String?>(null) }
+    fun openSignIn() {
+        signInError = null
+        showFirstStart = false
+        showSignIn = true
+    }
+    val syncScope = rememberCoroutineScope()
+    fun describeOutcome(outcome: SyncOutcome): String = when (outcome) {
+        is SyncOutcome.Success -> "Synced · ${outcome.sent} sent · ${outcome.received} received"
+        SyncOutcome.NotConfigured -> "Sync is not set up."
+        is SyncOutcome.LocalProblem -> outcome.message
+        is SyncOutcome.Unreachable -> outcome.message
+        is SyncOutcome.ServerRefused -> outcome.message
+    }
+    fun doSync() {
+        if (syncing || syncMode != SYNC_MODE_SERVER) return
+        syncScope.launch {
+            syncing = true
+            syncProgress = 0L to null
+            val outcome = syncClient.syncOnce { downloaded, total -> syncProgress = downloaded to total }
+            syncProgress = null
+            syncing = false
+            syncStatus = describeOutcome(outcome)
+            if (outcome is SyncOutcome.Success) {
+                syncDirty = false
+                if (outcome.received > 0) runsRevision++
+            }
+        }
+    }
+    fun noteLocalChange() {
+        syncDirty = true
+        doSync()
+    }
+    LaunchedEffect(syncMode) {
+        if (syncMode != SYNC_MODE_SERVER) return@LaunchedEffect
+        doSync()
+        while (true) {
+            kotlinx.coroutines.delay(20_000)
+            if (syncDirty) doSync()
+        }
+    }
     MaterialTheme(colorScheme = darkColorScheme(primary = green, onPrimary = androidx.compose.ui.graphics.Color(0xFF173721), background = androidx.compose.ui.graphics.Color(0xFF111713), surface = surface, onSurface = ink, onSurfaceVariant = muted, secondary = androidx.compose.ui.graphics.Color(0xFFB9CBBE))) {
         Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = {
             NavigationBar(containerColor = surface) {
@@ -85,12 +141,39 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
             Column(Modifier.fillMaxSize().padding(padding)) {
                 Row(Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(if (page == Destination.Runs) "Habits" else page.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    if (page == Destination.Runs && syncMode == SYNC_MODE_SERVER) IconButton(
+                        onClick = { doSync() },
+                        enabled = !syncing,
+                        modifier = Modifier.size(42.dp).clip(RoundedCornerShape(50)).background(surface)
+                            .semantics { contentDescription = "Sync now" }
+                    ) { Text(if (syncing) "…" else "⟳", color = green, style = MaterialTheme.typography.headlineMedium) }
                     if (page == Destination.Runs) IconButton(onClick = { showNewRun = true }, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(50)).background(surface)) { Text("＋", color = green, style = MaterialTheme.typography.headlineMedium) }
+                    if (page == Destination.Runs && syncMode == SYNC_MODE_OFFLINE) TextButton(
+                        onClick = { openSignIn() },
+                        modifier = Modifier.semantics { contentDescription = "Connect to sync server" }
+                    ) { Text("Offline · connect", style = MaterialTheme.typography.labelSmall, color = muted) }
                     if (page == Destination.QuickLog) Text("~5 min", style = MaterialTheme.typography.labelMedium, color = muted)
                 }
+                if (page == Destination.Runs && syncMode == SYNC_MODE_SERVER) {
+                    syncStatus?.let { status ->
+                        Text(
+                            if (syncing) "Syncing…" else status,
+                            color = muted, style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp)
+                        )
+                    }
+                    val progress = syncProgress
+                    if (syncing && progress != null && progress.second != null && progress.second!! > 0) {
+                        LinearProgressIndicator(
+                            progress = { (progress.first.toFloat() / progress.second!!.toFloat()).coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            color = green, trackColor = androidx.compose.ui.graphics.Color(0xFF3B5141)
+                        )
+                    }
+                }
                 when (page) {
-                    Destination.Runs -> RunsScreen(database, runsRevision, today, week, onWeekChange = { week = (week + it).coerceIn(0, 3) })
-                    Destination.QuickLog -> QuickLogScreen(database, today, runsRevision)
+                    Destination.Runs -> RunsScreen(database, runsRevision, today, week, onWeekChange = { week = (week + it).coerceIn(0, 3) }, onLocalChange = { noteLocalChange() })
+                    Destination.QuickLog -> QuickLogScreen(database, today, runsRevision, onLocalChange = { noteLocalChange() })
                     Destination.Goals -> ListingScreen("Your goals", listOf("Start focused work by 9:30", "Build a steady sleep routine", "Run 5 km comfortably"), "Progress history starts from each goal’s start date.")
                     Destination.Trackers -> ListingScreen("Personal measurements", listOf("Sleep quality · /10", "Daily energy · /10", "Body weight · kg"), "Dated entries and simple history graphs.")
                     Destination.Analytics -> ListingScreen("Analytics preview", listOf("Cycle analytics arrive in Phase 2", "Example data is not personal data"), "Analytics is a Phase 2 preview.")
@@ -103,9 +186,93 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                 confirmButton = { TextButton(onClick = { showNewRun = false; builderCopy = false }) { Text("Start from scratch") } },
                 dismissButton = { TextButton(onClick = { showNewRun = false; builderCopy = true }) { Text("Copy previous") } }
             )
-            builderCopy?.let { copy -> RunBuilderDialog(database, today, copy, onCreated = { runsRevision++ }, onDismiss = { builderCopy = null }) }
+            builderCopy?.let { copy ->
+                RunBuilderDialog(
+                    database, today, copy,
+                    onCreated = { runsRevision++; noteLocalChange() },
+                    onDismiss = { builderCopy = null }
+                )
+            }
+            if (showFirstStart) {
+                AlertDialog(
+                    onDismissRequest = {},
+                    title = { Text("Sync your habits?") },
+                    text = { Text("Connect to your sync server to keep every device up to date, or keep using this phone offline. You can change this later.") },
+                    confirmButton = {
+                        TextButton(onClick = { openSignIn() }) { Text("Connect to a server") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            syncClient.setMode(SYNC_MODE_OFFLINE)
+                            syncMode = SYNC_MODE_OFFLINE
+                            showFirstStart = false
+                        }) { Text("Use offline") }
+                    }
+                )
+            }
+            if (showSignIn) {
+                SignInDialog(
+                    initialUrl = syncClient.serverUrl() ?: "",
+                    initialUsername = syncClient.account() ?: "",
+                    error = signInError,
+                    onSignIn = { url, username, password ->
+                        syncScope.launch {
+                            try {
+                                syncClient.signIn(url, username, password)
+                                syncMode = SYNC_MODE_SERVER
+                                signInError = null
+                                showSignIn = false
+                            } catch (e: SignInProblem) {
+                                signInError = e.message
+                            } catch (e: IllegalArgumentException) {
+                                signInError = e.message
+                            }
+                        }
+                    },
+                    onOffline = {
+                        syncClient.setMode(SYNC_MODE_OFFLINE)
+                        syncMode = SYNC_MODE_OFFLINE
+                        showSignIn = false
+                        showFirstStart = false
+                    },
+                    onDismiss = { showSignIn = false }
+                )
+            }
         }
     }
+}
+
+@Composable private fun SignInDialog(
+    initialUrl: String,
+    initialUsername: String,
+    error: String?,
+    onSignIn: (String, String, String) -> Unit,
+    onOffline: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var url by remember { mutableStateOf(initialUrl) }
+    var username by remember { mutableStateOf(initialUsername) }
+    var password by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Connect to sync server") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("Server address") }, placeholder = { Text("http://192.168.0.8:8788") }, singleLine = true)
+                OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true)
+                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
+                if (error != null) Text(error, color = androidx.compose.ui.graphics.Color(0xFFE7B4AD), style = MaterialTheme.typography.bodySmall)
+                Text("First connection downloads everything; later syncs are small and silent.", color = muted, style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSignIn(url.trim(), username.trim(), password) },
+                enabled = url.isNotBlank() && username.isNotBlank() && password.isNotEmpty()
+            ) { Text("Connect") }
+        },
+        dismissButton = { TextButton(onClick = onOffline) { Text("Use offline") } }
+    )
 }
 
 @Composable private fun DockGlyph(destination: Destination) {
@@ -237,7 +404,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     )
 }
 
-@Composable private fun RunsScreen(database: HabitDatabase, revision: Int, today: String, week: Int, onWeekChange: (Int) -> Unit) {
+@Composable private fun RunsScreen(database: HabitDatabase, revision: Int, today: String, week: Int, onWeekChange: (Int) -> Unit, onLocalChange: () -> Unit = {}) {
     val latestRun = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList().firstOrNull() }
     val currentHabits = remember(database, revision, latestRun) {
         latestRun?.let { run -> database.schemaQueries.selectHabitsForRun(run.uid).executeAsList().map { row ->
@@ -296,6 +463,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                             } else {
                                 database.schemaQueries.updateCheckIn(dbState, null, h.uid(), date)
                             }
+                            onLocalChange()
                         }
                     }
                     Box(Modifier.fillMaxWidth().padding(top = 11.dp, bottom = 7.dp)) {
@@ -598,7 +766,7 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
     )
 }
 
-@Composable private fun QuickLogScreen(database: HabitDatabase, today: String, runsRevision: Int) {
+@Composable private fun QuickLogScreen(database: HabitDatabase, today: String, runsRevision: Int, onLocalChange: () -> Unit = {}) {
     var index by remember { mutableIntStateOf(0) }
     var comment by remember { mutableStateOf("") }
     var commentOpen by remember { mutableStateOf(false) }
@@ -641,6 +809,7 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
         }
         when (state) { "done" -> done++; "partial" -> partial++; "skipped" -> skipped++ }
         index++; comment = ""; commentOpen = false
+        onLocalChange()
     }
     fun animateCommitAction(action: QuickSwipeAction, habit: Habit, targetX: Float) {
         if (animating) return
