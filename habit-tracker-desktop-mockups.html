@@ -19,6 +19,7 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 .sidenav button{display:flex;align-items:center;gap:12px;border:0;background:none;color:var(--muted);font-size:13.5px;padding:11px 12px;border-radius:12px;cursor:pointer;text-align:left}
 .sidenav button .ic{font-size:17px;width:24px;text-align:center}
 .sidenav button:hover{background:var(--surface2);color:var(--ink)}
+.sidenav button[hidden]{display:none}
 .sidenav button.active{background:#344b39;color:#d3ead7;font-weight:600}
 .side-foot{margin-top:auto;border-top:1px solid #242d26;padding:14px 10px 2px;font-size:11px;color:var(--muted)}
 .sync-line{display:flex;align-items:center;gap:8px;margin-bottom:8px}
@@ -159,9 +160,9 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 <div class="brand"><div class="brand-mark">H</div><div><b>Habit Lab</b><small>Desktop mockup</small></div></div>
 <nav class="sidenav" aria-label="Main navigation">
 <button class="active" data-view="runs"><span class="ic">◷</span><span class="lbl">Runs &amp; Habits</span></button>
-<button data-view="analytics"><span class="ic">▥</span><span class="lbl">Analytics</span></button>
+<button data-view="analytics" hidden><span class="ic">▥</span><span class="lbl">Analytics</span></button>
 <button data-view="goals"><span class="ic">◎</span><span class="lbl">Goals</span></button>
-<button data-view="trackers"><span class="ic">⌁</span><span class="lbl">Trackers</span></button>
+<button data-view="trackers" hidden><span class="ic">⌁</span><span class="lbl">Trackers</span></button>
 </nav>
 <div class="side-foot"><div class="sync-line"><span class="sync-dot"></span>Synced · just now</div><div>aakashk.kvjp58@gmail.com · <u>Sign out</u></div></div>
 </aside>
