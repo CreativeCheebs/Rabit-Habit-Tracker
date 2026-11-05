@@ -150,11 +150,48 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 .field{width:100%;height:46px;border:1px solid var(--outline);border-radius:12px;background:var(--surface2);color:var(--ink);padding:0 12px;font-size:14px;font-family:inherit;margin-bottom:4px}
 .field-label{display:block;color:var(--secondary);font-size:11px;margin:14px 0 6px}
 .build-button{width:100%;height:48px;border:0;border-radius:100px;background:var(--primary);color:var(--on-primary);font-size:14px;font-weight:600;margin:20px 0 6px;cursor:pointer}
+/* ---------- builder / forms ---------- */
+.builder-source{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;max-width:760px}
+.source-btn{border:1px solid var(--outline);background:var(--surface1);color:var(--secondary);border-radius:14px;padding:12px;font-size:12px;cursor:pointer;font-family:inherit;text-align:left}
+.source-btn b{display:block;font-weight:600;color:var(--ink);margin-bottom:4px}
+.source-btn.active{border-color:var(--primary);background:#26372b}
+.field{width:100%;height:46px;border:1px solid var(--outline);border-radius:12px;background:var(--surface2);color:var(--ink);padding:0 12px;font-size:14px;font-family:inherit}
+select.field option{background:var(--surface2)}
+textarea.field{height:auto;min-height:76px;resize:vertical;padding:10px 12px}
+textarea.code{font:12px ui-monospace,Menlo,monospace;min-height:220px;line-height:1.55}
+.field-label{display:block;color:var(--secondary);font-size:11px;margin:14px 0 6px}
+.form-narrow{max-width:560px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.duration-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.duration-chip{white-space:nowrap;text-align:center;border:1px solid var(--outline);background:var(--surface2);color:var(--secondary);border-radius:100px;padding:8px 2px;font:11px ui-monospace,Menlo,monospace;cursor:pointer;font-family:inherit}
+.duration-chip.selected{background:#344b39;border-color:var(--primary);color:#d3ead7}
+.habit-editor{background:var(--surface1);border-radius:18px;padding:16px;margin:10px 0;max-width:760px}
+.editor-head{display:flex;align-items:center;gap:8px}
+.editor-head .field{flex:1}
+.remove-habit{border:0;color:var(--muted);background:none;font-size:20px;cursor:pointer;flex:none}
+.editor-impact{max-width:110px;flex:none}
+.segmented{display:flex;background:var(--surface2);border-radius:12px;padding:3px;margin:12px 0 9px;max-width:420px}
+.segmented button{flex:1;border:0;border-radius:9px;background:none;color:var(--muted);padding:9px 4px;font-size:11px;cursor:pointer;font-family:inherit}
+.segmented button.selected{background:#344b39;color:#d3ead7;font-weight:600}
+.interval-row{display:flex;align-items:center;gap:9px;font-size:13px;flex-wrap:wrap}
+.interval-row input{width:64px;text-align:center}
+.helper{font-size:11px;line-height:1.5;color:var(--muted);margin-top:8px}
+.add-habit{height:46px;border:1px dashed #56645a;border-radius:14px;background:transparent;color:var(--primary);font-size:13px;font-weight:500;margin:4px 0 12px;cursor:pointer;font-family:inherit;padding:0 22px}
+.build-button{height:48px;border:0;border-radius:100px;background:var(--primary);color:var(--on-primary);font-size:14px;font-weight:600;margin:16px 0 20px;cursor:pointer;font-family:inherit;padding:0 34px}
+.btn{border:1px solid var(--outline);background:var(--surface2);color:var(--ink);border-radius:100px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary);font-weight:600}
+.checkline{display:flex;align-items:center;gap:9px;font-size:13px;margin-top:12px}
+.checkline input{width:16px;height:16px;accent-color:var(--primary)}
+.yaml-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+pre.prompt{background:var(--surface2);border:1px solid var(--outline);border-radius:12px;padding:14px;font:11px ui-monospace,Menlo,monospace;line-height:1.6;white-space:pre-wrap;max-height:300px;overflow:auto;color:var(--secondary)}
+.snack{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#303b32;border-radius:10px;padding:12px 18px;font-size:12px;display:none;box-shadow:0 4px 20px #0006;z-index:60}
+.snack.show{display:block}
 /* ---------- responsive ---------- */
 @media(max-width:1100px){.run-hero{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(4,1fr)}.charts-2{grid-template-columns:1fr}.ana-grid{grid-template-columns:1fr}.cards-3{grid-template-columns:repeat(2,1fr)}.qlog-layout{grid-template-columns:minmax(0,440px) minmax(0,1fr)}}
 @media(max-width:860px){.side{width:76px;padding:16px 10px}.brand b,.brand small{display:none}.sidenav button span.lbl{display:none}.sidenav button{justify-content:center}.side-foot{display:none}.qlog-layout{grid-template-columns:1fr}.login-split{grid-template-columns:1fr}.login-art{padding:32px}.cards-3{grid-template-columns:1fr}.hrow{grid-template-columns:34px minmax(140px,1fr) 44px}.dots{grid-column:1/-1}}</style></head>
 <body>
 <div id="tip" role="tooltip"></div>
+<div class="snack" id="msnack"></div>
 <div class="desk">
 <aside class="side">
 <div class="brand"><div class="brand-mark">H</div><div><b>Habit Lab</b><small>Desktop mockup</small></div></div>
@@ -163,6 +200,8 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 <button data-view="analytics" hidden><span class="ic">▥</span><span class="lbl">Analytics</span></button>
 <button data-view="goals"><span class="ic">◎</span><span class="lbl">Goals</span></button>
 <button data-view="trackers" hidden><span class="ic">⌁</span><span class="lbl">Trackers</span></button>
+<button data-view="builder"><span class="ic">＋</span><span class="lbl">New run</span></button>
+<button data-view="edit"><span class="ic">✎</span><span class="lbl">Edit run</span></button>
 </nav>
 <div class="side-foot"><div class="sync-line"><span class="sync-dot"></span>Synced · just now</div><div>aakashk.kvjp58@gmail.com · <u>Sign out</u></div></div>
 </aside>
@@ -214,11 +253,72 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 <div class="cards-3" id="trackerGrid"></div>
 </section>
 
+<section class="view" id="v-builder">
+<div class="eyebrow">New run</div>
+<h1 style="font-size:26px;font-weight:500;margin:4px 0">Build a run</h1>
+<div class="sub">Copy the last run, start from scratch, or paste YAML from any AI chatbot.</div>
+<div class="builder-source">
+<button class="source-btn active" data-bmode="copy"><b>Copy previous</b>Reuse habits and edit them</button>
+<button class="source-btn" data-bmode="scratch"><b>Start from scratch</b>Choose habits yourself</button>
+<button class="source-btn" data-bmode="yaml"><b>From YAML</b>Configure using external AI</button></div>
+<div class="card form-narrow" id="bCopyPanel"><label class="field-label" for="bPrev" style="margin-top:0">Copy from</label>
+<select class="field" id="bPrev"><option>21-day habit run · 21 days</option><option>Sleep reset · 14 days</option></select>
+<label class="checkline"><input type="checkbox" checked> Also include standalone habits</label>
+<div class="helper">Copied habits stay editable. Past check-ins on overlapping dates count toward the new run automatically.</div></div>
+<div class="card" id="bYamlPanel" style="display:none;max-width:760px"><div class="chart-title">Paste a run file</div>
+<div class="helper">Copy the guide prompt into any chatbot, describe the habits you want, paste the YAML answer here, then load it into the editor below.</div>
+<div class="yaml-actions"><button class="btn" id="bCopyGuide">Copy guide prompt</button>
+<button class="btn" id="bShowGuide">Show guide</button></div>
+<pre class="prompt" id="bGuide" style="display:none"></pre>
+<label class="field-label" for="bYaml">Run YAML</label>
+<textarea class="field code" id="bYaml">name: Reset week
+days: 14
+habits:
+  - name: Morning light
+    group: Wellbeing
+    points: 2
+    every: 1 day
+  - name: Plan the day
+    group: Focus
+    points: 3
+    days_per_week: 5</textarea>
+<div class="yaml-actions"><button class="btn primary" id="bLoadYaml">Load into editor</button></div></div>
+<div class="form-row form-narrow"><div><label class="field-label" for="bName">Run name</label>
+<input class="field" id="bName" placeholder="Name this run" value=""></div>
+<div><label class="field-label" for="bStart">Start date</label>
+<input class="field" id="bStart" type="date" value="2026-11-06"></div></div>
+<div class="form-narrow"><label class="field-label">Run length</label><div class="duration-row">
+<button class="duration-chip">7 days</button><button class="duration-chip">14 days</button><button class="duration-chip selected">21 days</button><button class="duration-chip">Custom</button></div></div>
+<div class="section-head"><h3>Habits in this run</h3><span class="caption" id="bCount">2 habits</span></div>
+<div id="bHabits"></div>
+<button class="add-habit" id="bAdd">＋ Add a habit</button><br>
+<button class="build-button" id="bCreate">Create run</button>
+</section>
+
+<section class="view" id="v-edit">
+<div class="eyebrow">Edit run</div>
+<h1 style="font-size:26px;font-weight:500;margin:4px 0">Edit run</h1>
+<div class="form-row form-narrow"><div><label class="field-label" for="eName">Run name</label>
+<input class="field" id="eName" value="21-day habit run"></div>
+<div><label class="field-label" for="eStart">Start date</label>
+<input class="field" id="eStart" type="date" value="2026-10-20"></div></div>
+<div class="form-narrow"><label class="field-label">Run length</label><div class="duration-row">
+<button class="duration-chip">7 days</button><button class="duration-chip">14 days</button><button class="duration-chip selected">21 days</button><button class="duration-chip">Custom</button></div></div>
+<div class="section-head"><h3>Habits in this run</h3><span class="caption" id="eCount">2 habits</span></div>
+<div class="helper" style="max-width:760px">Editing a habit here updates it everywhere it is used.</div>
+<div id="eHabits"></div>
+<div class="form-row form-narrow"><div><label class="field-label" for="eAttach">Attach an existing habit</label>
+<select class="field" id="eAttach"><option>Choose…</option><option>Drink water · General</option><option>Read 20 pages · Learning</option></select></div>
+<div style="align-self:end"><button class="btn" id="eAttachBtn">Attach</button></div></div>
+<button class="add-habit" id="eAdd">＋ New habit in this run</button><br>
+<button class="build-button" id="eSave">Save changes</button>
+</section>
+
 </main>
 </div>
 </div>
 <script>
-const TITLES={runs:'Runs & Habits',analytics:'Analytics',goals:'Goals',trackers:'Trackers'};
+const TITLES={runs:'Runs & Habits',analytics:'Analytics',goals:'Goals',trackers:'Trackers',builder:'New run',edit:'Edit run'};
 let signedIn=true;const ACCT='aakashk.kvjp58@gmail.com';
 function renderAcct(){const m=document.getElementById('acctMenu');
 m.innerHTML=signedIn?`<div class="eyebrow">Signed in</div><div class="who" style="margin-top:6px">${ACCT}</div><div class="sub">Synced · just now</div><button class="build-button" onclick="signedIn=false;renderAcct()">Sign out</button>`
@@ -273,4 +373,45 @@ const GOALS=[['Start focused work by 9:30','Started Oct 1 · target Nov 30',68,'
 document.getElementById('goalGrid').innerHTML=GOALS.map(g=>`<div class="goal"><div class="row"><div class="goal-title">${g[0]}</div><div class="percent">${g[2]}%</div></div><div class="goal-sub">${g[1]}</div><div class="track"><i style="width:${g[2]}%;${g[3]==='#a4d0ad'?'':`background:${g[3]}`}"></i></div></div>`).join('')+`<button class="goal new-card">＋ New goal<small>Write it down, track it weekly</small></button>`;
 const TRACKERS=[['Sleep quality','7.4','/ 10','Daily',[45,68,57,77,82,65,88]],['Daily energy','6.8','/ 10','Daily',[40,54,61,51,72,79,68]],['Body weight','—','','Weekly',[]]];
 document.getElementById('trackerGrid').innerHTML=TRACKERS.map(t=>`<div class="tracker-card"><div class="row"><div><div class="chart-title">${t[0]}</div><div class="tracker-value">${t[1]} ${t[2]?`<span class="caption">${t[2]}</span>`:''}</div>${t[4].length?'<div class="trend">↑ trending up</div>':'<div class="caption">No recent entry</div>'}</div><span class="pill">${t[3]}</span></div>${t[4].length?`<div class="mini-bars">${t[4].map(v=>`<i style="height:${v}%"></i>`).join('')}</div>`:''}</div>`).join('')+`<button class="tracker-card new-card">＋ New tracker<small>Log a number daily or weekly</small></button>`;
+function mt(m){const e=document.getElementById('msnack');e.textContent=m;e.classList.add('show');clearTimeout(window.mtT);window.mtT=setTimeout(()=>e.classList.remove('show'),2000)}
+function med(h,i,pre){return `<div class="habit-editor"><div class="editor-head"><input class="field" value="${h.name}" aria-label="Habit name"><input class="field editor-impact" value="${h.group}" aria-label="Group"><button class="remove-habit" onclick="${pre}.splice(${i},1);mrender()">×</button></div><label class="field-label">Impact points per completion</label><div class="editor-head"><input class="field editor-impact" type="number" value="${h.points}" style="text-align:center"><span class="caption">points</span></div><div class="segmented"><button class="${h.iv?'':'selected'}" onclick="${pre}[${i}].iv=false;mrender()">Days per week</button><button class="${h.iv?'selected':''}" onclick="${pre}[${i}].iv=true;mrender()">Every N days</button></div>${h.iv?`<div><label class="field-label">Repeat interval</label><div class="interval-row">Every <input class="field" type="number" value="${h.n}"> days</div><div class="helper">If missed, it stays due until completed. After a Done it hides for N-1 days.</div></div>`:`<div><label class="field-label">Days per week</label><div class="interval-row"><input class="field" type="number" value="${h.n}"> days per week</div><div class="helper">Set a weekly target; complete it on any days. Due every day until done.</div></div>`}</div>`}
+let bEdits=[{name:'Morning light',group:'Wellbeing',points:2,iv:true,n:1},{name:'Plan the day',group:'Focus',points:3,iv:false,n:5}];
+let eEdits=[{name:'Morning light',group:'Wellbeing',points:2,iv:false,n:7},{name:'Sleep before 11:30 PM',group:'Wellbeing',points:2,iv:true,n:3}];
+function mrender(){document.getElementById('bHabits').innerHTML=bEdits.map((h,i)=>med(h,i,'bEdits')).join('');document.getElementById('bCount').textContent=`${bEdits.length} habit${bEdits.length===1?'':'s'}`;document.getElementById('eHabits').innerHTML=eEdits.map((h,i)=>med(h,i,'eEdits')).join('');document.getElementById('eCount').textContent=`${eEdits.length} habit${eEdits.length===1?'':'s'}`}
+mrender();
+document.getElementById('bAdd').onclick=()=>{bEdits.push({name:'',group:'General',points:1,iv:false,n:3});mrender()};
+document.getElementById('eAdd').onclick=()=>{eEdits.push({name:'',group:'General',points:1,iv:false,n:3});mrender()};
+document.getElementById('bCreate').onclick=()=>mt('Run created (preview — the real app syncs it).');
+document.getElementById('eSave').onclick=()=>mt('Run saved (preview — the real app syncs it).');
+document.getElementById('eAttachBtn').onclick=()=>{const s=document.getElementById('eAttach');if(!s.selectedIndex)return;eEdits.push({name:s.value.split(' · ')[0],group:'General',points:1,iv:false,n:3});mrender();mt('Habit attached (preview).')};
+document.querySelectorAll('[data-bmode]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-bmode]').forEach(x=>x.classList.toggle('active',x===b));const m=b.dataset.bmode;document.getElementById('bCopyPanel').style.display=m==='copy'?'block':'none';document.getElementById('bYamlPanel').style.display=m==='yaml'?'block':'none';if(m==='scratch'&&bEdits.length){bEdits=[];mrender()}}));
+document.querySelectorAll('#v-builder .duration-chip, #v-edit .duration-chip').forEach(c=>c.addEventListener('click',()=>{c.parentElement.querySelectorAll('.duration-chip').forEach(x=>x.classList.toggle('selected',x===c))}));
+const GUIDE=`You are helping configure a habit run for Habit Lab, a habit tracker.
+Output ONLY a YAML run file, no explanations. The user will paste it into the app.
+
+FORMAT (2-space indent, "# " comments allowed):
+  name: <run name, optional, default "<days>-day run">
+  days: <run length 1..365, optional, default 21>
+  start: <YYYY-MM-DD start date, optional, default today>
+  habits:   # required, at least one
+    - name: <habit name, required>
+      group: <group label, optional, default General>
+      points: <impact points per completion, integer >= 0, optional, default 1>
+      days_per_week: <1..7, weekly target the user hits on any days>
+      every: <N days, e.g. "2 days"; repeat interval, 1 means daily>
+  Give each habit EXACTLY ONE of days_per_week / every.
+  daily habit -> every: 1 day.  weekdays habit -> days_per_week: 5.
+
+RULES THE APP ENFORCES (respect them when choosing schedules):
+- An "every N days" habit stays due until done: if missed today it is
+  still due tomorrow. After a Done it hides for N-1 days, then is due again.
+- A "days_per_week" habit is due every day until done that day.
+- Only Done earns impact points. Partial and Skipped earn nothing.
+- Keep 2-6 habits per run, 1-4 points each. Ask the user if unclear.
+
+Ask the user which habits they want (name, how often, group, points),
+then output ONLY the YAML file.`;
+document.getElementById('bShowGuide').onclick=()=>{const g=document.getElementById('bGuide');const open=g.style.display!=='block';g.style.display=open?'block':'none';if(open&&!g.textContent)g.textContent=GUIDE};
+document.getElementById('bCopyGuide').onclick=()=>{if(navigator.clipboard)navigator.clipboard.writeText(GUIDE).then(()=>mt('Guide prompt copied — paste it into any chatbot.'),()=>mt('Copy failed.'));else mt('Clipboard unavailable.')};
+document.getElementById('bLoadYaml').onclick=()=>mt('Loaded 2 habits into the editor (preview).');
 </script></body></html>

@@ -7,77 +7,47 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="app" id="app">
-  <div class="status"></div>
-
-  <!-- Login -->
-  <section class="screen" id="login">
-    <div class="login-wrap">
-      <div class="login-card">
-        <div class="brand"><div class="brand-mark">H</div><h1>Habit Lab</h1></div>
-        <div class="sub">Sign in to sync your runs across devices.</div>
-        <form id="loginForm" autocomplete="on">
-          <label class="field-label" for="loginUser">Username</label>
-          <input class="field" id="loginUser" name="username" autocomplete="username" placeholder="you@example.com">
-          <label class="field-label" for="loginPass">Password</label>
-          <input class="field" id="loginPass" type="password" name="password" autocomplete="current-password" placeholder="Your password">
-          <div class="login-error" id="loginError" role="alert"></div>
-          <button class="build-button" type="submit" id="loginBtn">Sign in</button>
-        </form>
-        <div class="login-hint">Your data stays on your own sync server.<br>Use the account set up on it.</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Runs -->
-  <section class="screen" id="runs">
-    <header class="appbar"><h2>Runs &amp; Habits</h2><span class="sync-dot" id="syncDot"></span><span class="sync-label" id="syncLabel">Offline</span><button class="signout" id="signOutBtn" title="Sign out">Sign out</button><button class="appicon" id="newRunBtn" aria-label="Create a new run">＋</button></header>
-    <div class="screen-wrap"><div class="content" id="runsBody"></div></div>
-  </section>
-
-  <!-- Analytics -->
-  <section class="screen" id="analytics">
-    <header class="appbar"><h2>Analytics</h2></header>
-    <div class="screen-wrap"><div class="content" id="analyticsBody"></div></div>
-  </section>
-
-  <!-- Quick Log -->
-  <section class="screen" id="quicklog">
-    <header class="appbar"><h2>Quick Log</h2><span class="caption">~5 min</span></header>
-    <div class="screen-wrap"><div class="content">
-      <div class="quick-progress"><strong>Today&rsquo;s due habits</strong><span class="pill" id="quickCounter">–</span></div>
-      <div id="quickBody"></div>
-      <div class="quick-note">Swipe right to mark done &middot; swipe left to skip. Skipped interval habits stay due until completed.</div>
-    </div></div>
-  </section>
-
-  <!-- Goals -->
-  <section class="screen" id="goals">
-    <header class="appbar"><h2>Goals</h2></header>
-    <div class="screen-wrap"><div class="content" id="goalsBody"></div></div>
-  </section>
-
-  <!-- Trackers -->
-  <section class="screen" id="trackers">
-    <header class="appbar"><h2>Trackers</h2></header>
-    <div class="screen-wrap"><div class="content" id="trackersBody"></div></div>
-  </section>
-
-  <!-- Run builder -->
-  <section class="screen" id="builder">
-    <header class="appbar"><button class="appicon" id="builderBack" aria-label="Back to runs">‹</button><h2>Build a new run</h2><span style="width:38px"></span></header>
-    <div class="screen-wrap"><div class="content" id="builderBody"></div></div>
-  </section>
-
-  <nav class="nav" id="mainNav" aria-label="Main navigation" style="display:none">
-    <button data-screen="runs"><span class="navicon">◷</span>Runs</button>
-    <button data-screen="analytics"><span class="navicon">▥</span>Analytics</button>
-    <button data-screen="quicklog"><span class="navicon">⇆</span>Quick Log</button>
-    <button data-screen="goals"><span class="navicon">◎</span>Goals</button>
-    <button data-screen="trackers"><span class="navicon">⌁</span>Trackers</button>
-  </nav>
-  <div class="snack" id="snack"></div>
+<div id="tip" role="tooltip"></div>
+<div class="desk" id="desk" style="display:none">
+<aside class="side">
+<div class="brand"><div class="brand-mark">H</div><div><b>Habit Lab</b><small id="brandSub">Desktop</small></div></div>
+<nav class="sidenav" aria-label="Main navigation">
+<button class="active" data-view="runs"><span class="ic">◷</span><span class="lbl">Runs &amp; Habits</span></button>
+<button data-view="analytics" hidden><span class="ic">▥</span><span class="lbl">Analytics</span></button>
+<button data-view="goals"><span class="ic">◎</span><span class="lbl">Goals</span></button>
+<button data-view="trackers" hidden><span class="ic">⌁</span><span class="lbl">Trackers</span></button>
+<button data-view="quicklog" hidden><span class="ic">⇆</span><span class="lbl">Quick Log</span></button>
+</nav>
+<div class="side-foot"><div class="sync-line"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Offline</span></div><div id="sideUser"></div></div>
+</aside>
+<div class="main">
+<header class="topbar"><h1 id="topTitle">Runs &amp; Habits</h1><div class="acct-wrap"><button class="avatar" id="acctBtn" aria-label="Account">?</button><div class="acct-menu" id="acctMenu"></div></div></header>
+<main class="content">
+<section class="view active" id="v-runs"><div id="runsBody"></div></section>
+<section class="view" id="v-analytics"><div id="analyticsBody"></div></section>
+<section class="view" id="v-goals"><div id="goalsBody"></div></section>
+<section class="view" id="v-trackers"><div id="trackersBody"></div></section>
+<section class="view" id="v-quicklog"><div id="quickBody"></div></section>
+<section class="view" id="v-builder"><div id="builderBody"></div></section>
+<section class="view" id="v-edit"><div id="editBody"></div></section>
+</main>
 </div>
-<script src="app.js"></script>
+</div>
+<div class="login-wrap" id="loginWrap" style="display:none">
+<div class="login-card">
+<div class="brand"><div class="brand-mark">H</div><h1>Habit Lab</h1></div>
+<div class="sub">Sign in to sync your runs across devices.</div>
+<form id="loginForm" autocomplete="on">
+<label class="field-label" for="loginUser">Username</label>
+<input class="field" id="loginUser" name="username" autocomplete="username" placeholder="you@example.com">
+<label class="field-label" for="loginPass">Password</label>
+<input class="field" id="loginPass" type="password" name="password" autocomplete="current-password" placeholder="Your password">
+<div class="login-error" id="loginError" role="alert"></div>
+<button class="build-button" type="submit" id="loginBtn">Sign in</button>
+</form>
+<div class="login-hint">Your data stays on your own sync server.<br>Use the account set up on it.</div>
+</div>
+</div>
+<script type="module" src="app.js"></script>
 </body>
 </html>
