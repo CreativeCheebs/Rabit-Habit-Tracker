@@ -76,10 +76,16 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 .charts-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
 .chart-title{font-size:14px;font-weight:500}
 .caption{font-size:11px;color:var(--muted)}
-.chart{height:120px;display:flex;align-items:flex-end;gap:4px;padding:8px 2px 0;border-bottom:1px solid var(--outline)}
-.bar{flex:1;display:flex;align-items:center;justify-content:flex-end;flex-direction:column;height:100%;gap:4px;min-width:0}
-.bar i{width:70%;background:#6f9a78;border-radius:3px 3px 1px 1px;min-height:3px}
+.chart{height:160px;display:flex;align-items:flex-end;gap:4px;padding:8px 2px 0;border-bottom:1px solid var(--outline)}
+.bar{flex:1;display:flex;align-items:center;justify-content:flex-end;flex-direction:column;height:100%;min-width:0}
+.bar i{width:70%;background:#6f9a78;border-radius:3px 3px 1px 1px;min-height:3px;flex:none}
 .bar label{font:8px ui-monospace,Menlo,monospace;color:var(--muted)}
+.bar.today i{background:var(--primary)}
+.group-bars .bar i{max-height:calc(100% - 18px)}
+.xlabels{display:flex;gap:4px;padding:3px 2px 0}
+.xlabels span{flex:1;text-align:center;font:9px ui-monospace,Menlo,monospace;color:var(--muted);min-width:0}
+.xlabels span.today{color:var(--primary);font-weight:700}
+.daynums span.today{color:var(--primary);font-weight:700}
 .chart-key{display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--muted)}
 /* ---------- quick log ---------- */
 .qlog-layout{display:grid;grid-template-columns:minmax(0,460px) minmax(0,1fr);gap:22px;align-items:start;max-width:1020px}
@@ -228,7 +234,7 @@ const ELAPSED=13;
 function dotCls(v,day){if(day>ELAPSED)return'future';return v===1?'done':v===2?'partial':v===3?'skipped':''}
 const DAYS=21,dayCols=`grid-template-columns:repeat(${DAYS},1fr)`;
 document.getElementById('dayNums').style.cssText=dayCols;
-document.getElementById('dayNums').innerHTML=Array.from({length:DAYS},(_,d)=>`<span>Day ${d+1}</span>`).join('');
+document.getElementById('dayNums').innerHTML=Array.from({length:DAYS},(_,d)=>`<span class="${d+1===ELAPSED?'today':''}">${d+1}</span>`).join('');
 const table=document.getElementById('runTable');
 table.innerHTML=HABITS.map((h,i)=>{
 let dots='';h.days.forEach((v,d)=>{dots+=`<button class="dot ${dotCls(v,d+1)}" title="${h.name} · day ${d+1}"></button>`});
@@ -236,8 +242,10 @@ return `<div class="hrow"><div class="symbol">${h.icon}</div><div><div class="ha
 table.addEventListener('click',e=>{const b=e.target.closest('.dot');if(!b||b.classList.contains('future'))return;
 b.classList.toggle('done');if(b.classList.contains('done'))b.classList.remove('partial','skipped');});
 const IMPACT=[4,7,5,6,9,3,5,6,8,4,7,5,3,0,0,0,0,0,0,0,0];
-function bars(el,n){const m=Math.max(1,...IMPACT.slice(0,n));document.getElementById(el).innerHTML=IMPACT.slice(0,n).map((v,i)=>`<div class="bar"><i style="height:${Math.max(4,Math.round(v/m*100))}%"></i><label>${i+1}</label></div>`).join('')}
-bars('impactChart',21);bars('anaChart',21);
+function bars(id,n,today){const vals=IMPACT.slice(0,n),m=Math.max(1,...vals),el=document.getElementById(id);
+el.innerHTML=vals.map((v,i)=>`<div class="bar${i===today?' today':''}"><i style="height:${Math.max(4,Math.round(v/m*100))}%"></i></div>`).join('');
+el.insertAdjacentHTML('afterend',`<div class="xlabels">${vals.map((_,i)=>`<span class="${i===today?'today':''}">${i+1}</span>`).join('')}</div>`)}
+bars('impactChart',21,ELAPSED-1);bars('anaChart',21,ELAPSED-1);
 const cum=[];IMPACT.slice(0,ELAPSED).reduce((s,v)=>(cum.push(s+v),s+v),0);
 const last=cum[cum.length-1],pace=last/ELAPSED,yMax=Math.max(last,pace*21,1);
 const pt=(i,v)=>`${i?'L':'M'} ${(20+i*300/20).toFixed(1)} ${(116-v/yMax*96).toFixed(1)}`;
