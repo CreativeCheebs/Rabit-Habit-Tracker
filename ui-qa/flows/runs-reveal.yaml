@@ -1,0 +1,29 @@
+appId: app.habitlab
+---
+# Swipe-to-reveal on Runs habit rows. Opens and closes trays only; never taps
+# an action, so no check-in is written. Coordinates target the first two rows
+# of the seeded run on a 360 dp wide phone.
+- launchApp
+- tapOn:
+    text: Runs
+- assertVisible: Focused work block
+# Drag that starts on the day squares (they used to swallow the swipe).
+- swipe:
+    start: 45%, 53%
+    end: 72%, 53%
+    duration: 400
+- assertVisible: Done
+- takeScreenshot:
+    path: runs-reveal-right
+- tapOn: Close actions
+- assertNotVisible: Done
+# Short quick flick from the title line opens the opposite tray.
+- swipe:
+    start: 70%, 61%
+    end: 58%, 61%
+    duration: 60
+- assertVisible: Skipped
+- takeScreenshot:
+    path: runs-reveal-left
+- tapOn: Close actions
+- assertNotVisible: Skipped

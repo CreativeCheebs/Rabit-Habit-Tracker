@@ -5,7 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,12 +17,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -40,6 +46,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 import app.habitlab.db.HabitDatabase
@@ -427,6 +434,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     }
     val avgImpact = earnedPoints.toFloat() / elapsed
     var selectedDay by remember(week) { mutableIntStateOf(0) }
+    var openRow by remember { mutableStateOf<String?>(null) }
     var dragTotal by remember { mutableFloatStateOf(0f) }
     val runScope = rememberCoroutineScope()
     LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -466,36 +474,55 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                             onLocalChange()
                         }
                     }
-                    Box(Modifier.fillMaxWidth().padding(top = 11.dp, bottom = 7.dp)) {
-                        SwipeActionBackground(
-                            action = previewSwipeAction(runSwipeOffset.value, QuickSwipeAction.Done, QuickSwipeAction.Skipped),
-                            progress = swipeProgress(runSwipeOffset.value, 55f),
-                            positive = runSwipeOffset.value >= 0f,
-                            shape = RoundedCornerShape(16.dp)
+                    val runButtonPx = with(LocalDensity.current) { 76.dp.toPx() }
+                    val flingPx = with(LocalDensity.current) { 700.dp.toPx() }
+                    val haptics = LocalHapticFeedback.current
+                    val commitLatest by rememberUpdatedState<(Int) -> Unit> { commitSwipe(it) }
+                    var rowWidthPx by remember { mutableFloatStateOf(0f) }
+                    val runTrayOpen by remember(runSwipeOffset) { derivedStateOf { kotlin.math.abs(runSwipeOffset.value) >= runButtonPx - 1f } }
+                    val runCommitting by remember(runSwipeOffset) { derivedStateOf { rowWidthPx > 0f && kotlin.math.abs(runSwipeOffset.value) >= rowWidthPx * REVEAL_COMMIT_FRACTION } }
+                    LaunchedEffect(runCommitting) { if (runCommitting) haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
+                    LaunchedEffect(openRow) { if (openRow != h.uid() && runSwipeOffset.value != 0f) runSwipeOffset.animateTo(0f, spring(dampingRatio = .85f, stiffness = 500f)) }
+                    fun settleRow(target: Float, velocity: Float) {
+                        runScope.launch { runSwipeOffset.animateTo(target, spring(dampingRatio = .82f, stiffness = 520f), initialVelocity = velocity) }
+                    }
+                    Box(Modifier.fillMaxWidth().padding(top = 11.dp, bottom = 7.dp).onSizeChanged { rowWidthPx = it.width.toFloat() }) {
+                        SwipeRevealPanel(
+                            rightActions = listOf(QuickSwipeAction.Done),
+                            leftActions = listOf(QuickSwipeAction.Skipped),
+                            offset = runSwipeOffset,
+                            panelEnabled = runTrayOpen,
+                            committing = runCommitting,
+                            onAction = { action ->
+                                commitSwipe(if (action == QuickSwipeAction.Done) 1 else 3)
+                                settleRow(0f, 0f)
+                            }
                         )
                     Column(Modifier.fillMaxWidth()
-                        .graphicsLayer { translationX = runSwipeOffset.value; rotationZ = runSwipeOffset.value / 90f }
+                        .graphicsLayer { translationX = runSwipeOffset.value }
+                        .then(if (runTrayOpen) Modifier.clickable { settleRow(0f, 0f) }.semantics { contentDescription = "Close actions" } else Modifier)
                         .semantics { customActions = listOf(
                             CustomAccessibilityAction("Mark done") { commitSwipe(1); runScope.launch { runSwipeOffset.snapTo(0f) }; true },
                             CustomAccessibilityAction("Mark skipped") { commitSwipe(3); runScope.launch { runSwipeOffset.snapTo(0f) }; true }
                         ) }
-                        .pointerInput(selectedDay, h.name, week) {
-                            var drag = 0f
-                            detectHorizontalDragGestures(onHorizontalDrag = { change, amount ->
-                                change.consume(); drag += amount
-                                runScope.launch { runSwipeOffset.snapTo(runSwipeOffset.value + amount) }
-                            }, onDragEnd = {
-                                val direction = when (resolveSwipeAction(drag, 55f, QuickSwipeAction.Done, QuickSwipeAction.Skipped)) { QuickSwipeAction.Done -> 1; QuickSwipeAction.Skipped -> -1; else -> 0 }
-                                if (direction == 0) runScope.launch { runSwipeOffset.animateTo(0f, spring()) }
-                                else runScope.launch {
-                                    runSwipeOffset.animateTo(direction * size.width.toFloat() * 1.15f, tween(190))
-                                    commitSwipe(if (direction > 0) 1 else 3)
-                                    runSwipeOffset.snapTo(-direction * size.width.toFloat() * .38f)
-                                    runSwipeOffset.animateTo(0f, spring(dampingRatio = .78f, stiffness = 420f))
+                        .horizontalSwipe(
+                            key = runSwipeOffset,
+                            onStart = { openRow = h.uid() },
+                            onDrag = { dx, _ ->
+                                val limit = if (rowWidthPx > 0f) rowWidthPx else Float.MAX_VALUE
+                                val next = (runSwipeOffset.value + dx).coerceIn(-limit, limit)
+                                runScope.launch(start = CoroutineStart.UNDISPATCHED) { runSwipeOffset.snapTo(next) }
+                            },
+                            onRelease = { velocity ->
+                                when (revealSettle(runSwipeOffset.value, velocity, runButtonPx, rowWidthPx, flingPx)) {
+                                    RevealSettle.Closed -> settleRow(0f, velocity)
+                                    RevealSettle.OpenRight -> settleRow(runButtonPx, velocity)
+                                    RevealSettle.OpenLeft -> settleRow(-runButtonPx, velocity)
+                                    RevealSettle.CommitRight -> { commitLatest(1); settleRow(0f, velocity) }
+                                    RevealSettle.CommitLeft -> { commitLatest(3); settleRow(0f, velocity) }
                                 }
-                                drag = 0f
-                            })
-                        }) {
+                            }
+                        )) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                             Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(androidx.compose.ui.graphics.Color(0xFF29352D)), contentAlignment = Alignment.Center) { HabitGlyph(h, Modifier.size(22.dp), androidx.compose.ui.graphics.Color(0xFF29352D)) }
                             Column(Modifier.weight(1f)) {
@@ -507,7 +534,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                             }
                             TextButton(onClick = { commitSwipe(2) }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("Partial", style = MaterialTheme.typography.labelSmall, color = androidx.compose.ui.graphics.Color(0xFFE6BD76)) }
                         }
-                        Row(Modifier.fillMaxWidth().padding(start = 49.dp, top = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(start = 49.dp, top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             days.forEachIndexed { day, state ->
                                 Box(Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)).then(if (selectedDay == day && state >= 0) Modifier.border(2.dp, ink, RoundedCornerShape(6.dp)) else Modifier).then(when (state) { 1 -> Modifier.background(green); 2 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFFE6BD76)); 3 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFF754B4B)); -1 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFF252C27)); else -> Modifier.border(1.dp, muted, RoundedCornerShape(6.dp)) }).clickable(enabled = state >= 0) { selectedDay = day })
                             }
@@ -665,18 +692,18 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
         QuickSwipeAction.Comment -> androidx.compose.ui.graphics.Color(0xFFA4D0AD)
     }
 
-/** Gmail-style action background revealed behind a swiped card. Transparent at rest. */
+/** Gmail-style action background revealed behind the last swiped card. Fades in from the draw layer. */
 @Composable private fun SwipeActionBackground(
     action: QuickSwipeAction?,
-    progress: Float,
+    progress: () -> Float,
     positive: Boolean,
     shape: RoundedCornerShape = RoundedCornerShape(26.dp),
 ) {
-    if (action == null || progress <= 0.02f) {
+    if (action == null) {
         Spacer(Modifier.fillMaxSize())
         return
     }
-    Box(Modifier.fillMaxSize().clip(shape).background(swipeActionContainer(action).copy(alpha = 0.35f + 0.65f * progress.coerceIn(0f, 1f)))) {
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress().coerceIn(0f, 1f) }.clip(shape).background(swipeActionContainer(action))) {
         Row(
             Modifier.fillMaxSize().padding(horizontal = 26.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -684,7 +711,7 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
         ) {
             Text(
                 "${swipeActionGlyph(action)}  ${swipeActionLabel(action)}",
-                color = swipeActionContent(action).copy(alpha = progress.coerceIn(0f, 1f)),
+                color = swipeActionContent(action),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -692,45 +719,93 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
     }
 }
 
+/**
+ * Swipe-to-reveal rails: real action buttons resting behind the card. The
+ * card uncovers them while dragging and stays open on release; a full swipe
+ * fires the first action. Buttons accept clicks only while the tray is open.
+ */
+@Composable private fun SwipeRevealPanel(
+    rightActions: List<QuickSwipeAction>,
+    leftActions: List<QuickSwipeAction>,
+    offset: Animatable<Float, AnimationVector1D>,
+    panelEnabled: Boolean,
+    committing: Boolean,
+    onAction: (QuickSwipeAction) -> Unit,
+) {
+    // Only the drag side triggers recomposition; per-frame alpha stays in the draw layer.
+    val side by remember(offset) { derivedStateOf { kotlin.math.sign(offset.value).toInt() } }
+    val actions = when (side) { 1 -> rightActions; -1 -> leftActions; else -> emptyList() }
+    if (actions.isEmpty()) return
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = swipeProgress(offset.value, 60f) }) {
+        if (committing) {
+            Box(Modifier.fillMaxSize().padding(vertical = 8.dp).clip(RoundedCornerShape(18.dp)).background(swipeActionContainer(actions.first())))
+        }
+        Row(
+            Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (side > 0) Arrangement.Start else Arrangement.End
+        ) {
+            actions.forEach { action -> SwipeRevealButton(action, panelEnabled, onAction) }
+        }
+    }
+}
+
+@Composable private fun RowScope.SwipeRevealButton(
+    action: QuickSwipeAction,
+    panelEnabled: Boolean,
+    onAction: (QuickSwipeAction) -> Unit,
+) {
+    Box(
+        Modifier.width(76.dp).fillMaxHeight().padding(vertical = 8.dp, horizontal = 4.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(swipeActionContainer(action))
+            .clickable(enabled = panelEnabled) { onAction(action) }
+            .semantics { contentDescription = swipeActionLabel(action) },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(swipeActionGlyph(action), color = swipeActionContent(action), style = MaterialTheme.typography.titleLarge)
+            Text(swipeActionLabel(action), color = swipeActionContent(action), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+/** Face of a Quick Log card; the card underneath renders the same face so promotion is seamless. */
+@Composable private fun QuickLogCardFace(h: Habit, hint: String) {
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxWidth().weight(0.45f).background(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF344B3A), androidx.compose.ui.graphics.Color(0xFF1B2A21)))), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+                val maxRadius = size.minDimension * .47f
+                listOf(.55f, .78f, 1f).forEach { ratio -> drawCircle(androidx.compose.ui.graphics.Color(0xFF53665A).copy(alpha = .28f), radius = maxRadius * ratio, center = center, style = Stroke(width = 1.dp.toPx())) }
+            }
+            Text("${h.group.uppercase()}  ·  DUE", Modifier.align(Alignment.TopStart).padding(start = 17.dp, top = 15.dp), color = green, style = MaterialTheme.typography.labelMedium)
+            Box(Modifier.size(142.dp).clip(RoundedCornerShape(36.dp)).background(green), contentAlignment = Alignment.Center) { HabitGlyph(h, Modifier.size(56.dp), green, androidx.compose.ui.graphics.Color(0xFF173721)) }
+        }
+        Column(Modifier.fillMaxWidth().weight(0.55f).verticalScroll(rememberScrollState()).padding(horizontal = 23.dp, vertical = 19.dp)) {
+            Text("${h.recurrence}  ·  due today", color = muted, style = MaterialTheme.typography.labelMedium)
+            Text(h.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 8.dp))
+            Text("${h.iteration}  ·  ${h.recurrence}", color = muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 5.dp))
+            Text("${h.points} impact points", color = green, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
+            Text(hint, color = muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 14.dp))
+        }
+    }
+}
+
 /** Bordered corner stamp, matching the web prototype's DONE/SKIP stamp treatment. */
-@Composable private fun BoxScope.SwipeStamp(action: QuickSwipeAction, alpha: Float, positive: Boolean) {
+@Composable private fun BoxScope.SwipeStamp(action: QuickSwipeAction, alpha: () -> Float, positive: Boolean) {
     val content = swipeActionContent(action)
     Text(
         swipeStampLabel(action),
-        Modifier.align(if (positive) Alignment.TopEnd else Alignment.TopStart)
+        Modifier.align(if (positive) Alignment.TopStart else Alignment.TopEnd)
             .padding(top = 18.dp, start = 18.dp, end = 18.dp)
-            .graphicsLayer { rotationZ = if (positive) 12f else -12f; this.alpha = alpha.coerceIn(0f, 1f) }
+            .graphicsLayer { rotationZ = if (positive) -12f else 12f; this.alpha = alpha().coerceIn(0f, 1f) }
             .border(3.dp, content, RoundedCornerShape(10.dp))
             .padding(horizontal = 10.dp, vertical = 6.dp),
         color = content,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold
     )
-}
-
-/** Full next-habit preview so the layer behind a swiped card is never empty gray. */
-@Composable private fun NextHabitPreview(habit: Habit) {
-    Column(Modifier.fillMaxSize()) {
-        Box(
-            Modifier.fillMaxWidth().weight(0.45f)
-                .background(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF344B3A), androidx.compose.ui.graphics.Color(0xFF1B2A21)))),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "${habit.group.uppercase()} · UP NEXT",
-                Modifier.align(Alignment.TopStart).padding(start = 17.dp, top = 15.dp),
-                color = green, style = MaterialTheme.typography.labelMedium
-            )
-            Box(Modifier.size(72.dp).clip(RoundedCornerShape(20.dp)).background(green.copy(alpha = .9f)), contentAlignment = Alignment.Center) {
-                HabitGlyph(habit, Modifier.size(30.dp), green, androidx.compose.ui.graphics.Color(0xFF173721))
-            }
-        }
-        Column(Modifier.fillMaxWidth().weight(0.55f).padding(horizontal = 23.dp, vertical = 16.dp)) {
-            Text("Up next", color = muted, style = MaterialTheme.typography.labelMedium)
-            Text(habit.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 6.dp), maxLines = 2)
-            Text("${habit.points} impact points · ${habit.recurrence}", color = green, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
-        }
-    }
 }
 
 @Composable private fun SwipeSettingsDialog(
@@ -778,8 +853,18 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
     var swipeRight by remember(database) { mutableStateOf(loadQuickSwipeAction(database, SWIPE_RIGHT_KEY, QuickSwipeAction.Done)) }
     var swipeLeft by remember(database) { mutableStateOf(loadQuickSwipeAction(database, SWIPE_LEFT_KEY, QuickSwipeAction.Skipped)) }
     val offsetX = remember { Animatable(0f) }
+    val offsetY = remember { Animatable(0f) }
+    var cardWidthPx by remember { mutableFloatStateOf(1000f) }
     val scope = rememberCoroutineScope()
     val commitThresholdPx = with(LocalDensity.current) { 96.dp.toPx() }
+    val flingPx = with(LocalDensity.current) { 700.dp.toPx() }
+    val flyOutSpeedPx = with(LocalDensity.current) { 2200.dp.toPx() }
+    val haptics = LocalHapticFeedback.current
+    val dragSide by remember { derivedStateOf { kotlin.math.sign(offsetX.value).toInt() } }
+    val dragAction by remember { derivedStateOf { when (dragSide) { 1 -> swipeRight; -1 -> swipeLeft; else -> null } } }
+    val pastCommit by remember { derivedStateOf { kotlin.math.abs(offsetX.value) >= commitThresholdPx } }
+    LaunchedEffect(pastCommit) { if (pastCommit && !animating) haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
+    val hint = "Swipe right for ${swipeRight.key} · left for ${swipeLeft.key}"
     val runHabits = remember(database, runsRevision) {
         val latestRun = database.schemaQueries.selectRuns().executeAsList().firstOrNull()
         latestRun?.let { database.schemaQueries.selectHabitsForRun(it.uid).executeAsList().map { row ->
@@ -811,20 +896,29 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
         index++; comment = ""; commentOpen = false
         onLocalChange()
     }
-    fun animateCommitAction(action: QuickSwipeAction, habit: Habit, targetX: Float) {
+    fun springBack(velocity: Float) {
+        scope.launch { offsetX.animateTo(0f, spring(dampingRatio = .62f, stiffness = 380f), initialVelocity = velocity) }
+        scope.launch { offsetY.animateTo(0f, spring(dampingRatio = .75f, stiffness = 380f)) }
+    }
+    /** Throws the top card off-screen at the finger's speed, then promotes the card underneath in the same frame. */
+    fun flyOut(action: QuickSwipeAction, habit: Habit, direction: Int, velocity: Float = 0f) {
         if (animating) return
         val state = swipeCheckInState(action)
         if (state == null) {
             commentOpen = true
-            scope.launch { offsetX.animateTo(0f, spring()) }
+            springBack(velocity)
             return
         }
+        animating = true
         scope.launch {
-            animating = true
-            offsetX.animateTo(targetX, tween(230))
+            val target = direction * cardWidthPx * 1.5f
+            val speed = maxOf(kotlin.math.abs(velocity), flyOutSpeedPx)
+            val millis = (kotlin.math.abs(target - offsetX.value) / speed * 1000f).toInt().coerceIn(120, 320)
+            val easing = if (kotlin.math.abs(velocity) >= flingPx) LinearEasing else FastOutLinearInEasing
+            offsetX.animateTo(target, tween(millis, easing = easing))
             record(state, habit)
-            offsetX.snapTo(if (targetX > 0f) -320f else 320f)
-            offsetX.animateTo(0f, spring(dampingRatio = .78f, stiffness = 420f))
+            offsetX.snapTo(0f)
+            offsetY.snapTo(0f)
             animating = false
         }
     }
@@ -838,78 +932,68 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
                 IconButton(onClick = { swipeSettingsOpen = true }, enabled = !animating, modifier = Modifier.size(40.dp).semantics { contentDescription = "Swipe actions" }) { Text("⚙", color = muted) }
             }
         }
-        Box(Modifier.fillMaxWidth().weight(1f)) {
-            SwipeActionBackground(
-                action = previewSwipeAction(offsetX.value, swipeRight, swipeLeft),
-                progress = swipeProgress(offsetX.value, commitThresholdPx),
-                positive = offsetX.value >= 0f
+        Box(Modifier.fillMaxWidth().weight(1f).onSizeChanged { cardWidthPx = it.width.toFloat() }) {
+            if (index + 1 >= due.size) SwipeActionBackground(
+                action = dragAction,
+                progress = { swipeProgress(offsetX.value, commitThresholdPx) },
+                positive = dragSide >= 0
             )
             if (index + 1 < due.size) {
+                // The next card waits underneath and grows to full size as the top card leaves.
                 Card(
-                    Modifier.fillMaxSize().padding(top = 9.dp, start = 9.dp, end = 9.dp).zIndex(0f)
-                        .graphicsLayer { scaleX = .96f; scaleY = .96f; alpha = .85f },
+                    Modifier.fillMaxSize().zIndex(0f)
+                        .graphicsLayer {
+                            val lift = (kotlin.math.abs(offsetX.value) / (size.width * 0.5f)).coerceIn(0f, 1f)
+                            val scale = 0.94f + 0.06f * lift
+                            scaleX = scale; scaleY = scale
+                            translationY = (1f - lift) * 14.dp.toPx()
+                        },
                     colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(26.dp)
                 ) {
-                    NextHabitPreview(due[index + 1])
+                    QuickLogCardFace(due[index + 1], hint)
                 }
             }
             Card(
                 Modifier.fillMaxSize().zIndex(1f)
-                    .graphicsLayer { translationX = offsetX.value; rotationZ = offsetX.value / 36f }
+                    .graphicsLayer {
+                        translationX = offsetX.value
+                        translationY = offsetY.value
+                        rotationZ = offsetX.value / size.width * 14f
+                        transformOrigin = TransformOrigin(0.5f, 1.1f)
+                    }
                     .semantics { customActions = listOf(
-                        CustomAccessibilityAction("Mark done") { animateCommitAction(QuickSwipeAction.Done, h, 900f); true },
-                        CustomAccessibilityAction("Mark partial") { animateCommitAction(QuickSwipeAction.Partial, h, -900f); true },
-                        CustomAccessibilityAction("Mark skipped") { animateCommitAction(QuickSwipeAction.Skipped, h, -900f); true },
+                        CustomAccessibilityAction("Mark done") { flyOut(QuickSwipeAction.Done, h, 1); true },
+                        CustomAccessibilityAction("Mark partial") { flyOut(QuickSwipeAction.Partial, h, -1); true },
+                        CustomAccessibilityAction("Mark skipped") { flyOut(QuickSwipeAction.Skipped, h, -1); true },
                         CustomAccessibilityAction("Add comment") { commentOpen = true; true }
                     ) }
-                    .pointerInput(index, animating, swipeRight, swipeLeft) {
-                        detectHorizontalDragGestures(
-                            onHorizontalDrag = { change, drag -> change.consume(); scope.launch { if (!animating) offsetX.snapTo(offsetX.value + drag) } },
-                            onDragEnd = {
-                                val action = resolveSwipeAction(offsetX.value, commitThresholdPx, swipeRight, swipeLeft)
-                                if (action != null) {
-                                    animateCommitAction(action, h, if (offsetX.value > 0f) size.width.toFloat() * 1.25f else -size.width.toFloat() * 1.25f)
-                                } else {
-                                    scope.launch { offsetX.animateTo(0f, spring()) }
-                                }
-                            }
-                        )
-                    },
+                    .horizontalSwipe(
+                        key = h.uid(),
+                        canStart = { !animating },
+                        onDrag = { dx, dy ->
+                            val nextX = offsetX.value + dx
+                            val nextY = offsetY.value + dy * 0.4f
+                            scope.launch(start = CoroutineStart.UNDISPATCHED) { offsetX.snapTo(nextX) }
+                            scope.launch(start = CoroutineStart.UNDISPATCHED) { offsetY.snapTo(nextY) }
+                        },
+                        onRelease = { velocity ->
+                            val direction = swipeReleaseDirection(offsetX.value, velocity, commitThresholdPx, flingPx)
+                            if (direction == 0) springBack(velocity)
+                            else flyOut(if (direction > 0) swipeRight else swipeLeft, h, direction, velocity)
+                        }
+                    ),
                 colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(26.dp)
             ) {
                 Box(Modifier.fillMaxSize()) {
-                    Column(Modifier.fillMaxSize()) {
-                        Box(Modifier.fillMaxWidth().weight(0.45f).background(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF344B3A), androidx.compose.ui.graphics.Color(0xFF1B2A21)))), contentAlignment = Alignment.Center) {
-                            Canvas(Modifier.fillMaxSize()) {
-                                val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
-                                val maxRadius = size.minDimension * .47f
-                                listOf(.55f, .78f, 1f).forEach { ratio -> drawCircle(androidx.compose.ui.graphics.Color(0xFF53665A).copy(alpha = .28f), radius = maxRadius * ratio, center = center, style = Stroke(width = 1.dp.toPx())) }
-                            }
-                            Text("${h.group.uppercase()}  ·  DUE", Modifier.align(Alignment.TopStart).padding(start = 17.dp, top = 15.dp), color = green, style = MaterialTheme.typography.labelMedium)
-                            Box(Modifier.size(142.dp).clip(RoundedCornerShape(36.dp)).background(green), contentAlignment = Alignment.Center) { HabitGlyph(h, Modifier.size(56.dp), green, androidx.compose.ui.graphics.Color(0xFF173721)) }
-                        }
-                        Column(Modifier.fillMaxWidth().weight(0.55f).verticalScroll(rememberScrollState()).padding(horizontal = 23.dp, vertical = 19.dp)) {
-                            Text("${h.recurrence}  ·  due today", color = muted, style = MaterialTheme.typography.labelMedium)
-                            Text(h.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 8.dp))
-                            Text("${h.iteration}  ·  ${h.recurrence}", color = muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 5.dp))
-                            Text("${h.points} impact points", color = green, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
-                            Text("Swipe right for ${swipeRight.key} · left for ${swipeLeft.key}", color = muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 14.dp))
-                        }
-                    }
-                    val stampAction = resolveSwipeAction(offsetX.value, commitThresholdPx, swipeRight, swipeLeft)
-                        ?: previewSwipeAction(offsetX.value, swipeRight, swipeLeft)
-                    if (stampAction != null && kotlin.math.abs(offsetX.value) > 8f) {
-                        SwipeStamp(
-                            action = stampAction,
-                            alpha = (kotlin.math.abs(offsetX.value) / 90f).coerceIn(0f, 1f),
-                            positive = offsetX.value >= 0f
-                        )
+                    QuickLogCardFace(h, hint)
+                    dragAction?.let { action ->
+                        SwipeStamp(action = action, alpha = { (kotlin.math.abs(offsetX.value) - 8f) / 90f }, positive = dragSide >= 0)
                     }
                 }
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { animateCommitAction(QuickSwipeAction.Partial, h, -900f) }, enabled = !animating, modifier = Modifier.weight(1f).height(54.dp).semantics { contentDescription = "Partial" }, shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFF4A402A), contentColor = androidx.compose.ui.graphics.Color(0xFFFFD18F))) { Text("◐  Partial") }
+            Button(onClick = { flyOut(QuickSwipeAction.Partial, h, -1) }, enabled = !animating, modifier = Modifier.weight(1f).height(54.dp).semantics { contentDescription = "Partial" }, shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFF4A402A), contentColor = androidx.compose.ui.graphics.Color(0xFFFFD18F))) { Text("◐  Partial") }
             FilledTonalButton(onClick = { commentOpen = true }, enabled = !animating, modifier = Modifier.weight(1f).height(54.dp).semantics { contentDescription = "Comment" }, shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.filledTonalButtonColors(containerColor = androidx.compose.ui.graphics.Color(0xFF24352A), contentColor = green)) { Text("✎  Comment") }
         }
         Text("Swipe right for ${swipeRight.key} · left for ${swipeLeft.key}. Skipped interval habits stay due until completed.", Modifier.fillMaxWidth().padding(horizontal = 12.dp), color = muted, style = MaterialTheme.typography.bodySmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)

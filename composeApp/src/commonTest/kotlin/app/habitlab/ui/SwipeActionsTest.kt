@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
+
 class SwipeActionsTest {
     @Test
     fun rightSwipeCommitsRightActionPastThreshold() {
@@ -81,6 +82,76 @@ class SwipeActionsTest {
         assertEquals("partial", swipeCheckInState(QuickSwipeAction.Partial))
         assertEquals("skipped", swipeCheckInState(QuickSwipeAction.Skipped))
         assertNull(swipeCheckInState(QuickSwipeAction.Comment))
+    }
+
+    @Test
+    fun actionListsRoundTripAndCapAtThree() {
+        assertEquals(
+            listOf(QuickSwipeAction.Done, QuickSwipeAction.Comment),
+            parseSwipeActionList("done,comment", listOf(QuickSwipeAction.Skipped)),
+        )
+        assertEquals(
+            listOf(QuickSwipeAction.Done, QuickSwipeAction.Partial, QuickSwipeAction.Skipped),
+            parseSwipeActionList("done,partial,skipped,comment", listOf(QuickSwipeAction.Done)),
+        )
+        assertEquals(
+            listOf(QuickSwipeAction.Skipped),
+            parseSwipeActionList(null, listOf(QuickSwipeAction.Skipped)),
+        )
+        assertEquals(
+            listOf(QuickSwipeAction.Skipped),
+            parseSwipeActionList("bogus", listOf(QuickSwipeAction.Skipped)),
+        )
+        assertEquals(
+            "done,comment",
+            serializeSwipeActionList(listOf(QuickSwipeAction.Done, QuickSwipeAction.Comment)),
+        )
+        assertEquals(
+            listOf(QuickSwipeAction.Done),
+            parseSwipeActionList("done", listOf(QuickSwipeAction.Skipped)),
+        )
+    }
+
+    @Test
+    fun releasePastThresholdCommitsInDragDirection() {
+        assertEquals(1, swipeReleaseDirection(120f, 0f, 96f, 1000f))
+        assertEquals(-1, swipeReleaseDirection(-120f, 0f, 96f, 1000f))
+        assertEquals(1, swipeReleaseDirection(120f, 2000f, 96f, 1000f))
+    }
+
+    @Test
+    fun quickFlickCommitsOnShortDrag() {
+        assertEquals(1, swipeReleaseDirection(30f, 1500f, 96f, 1000f))
+        assertEquals(-1, swipeReleaseDirection(-30f, -1500f, 96f, 1000f))
+    }
+
+    @Test
+    fun slowShortDragOrFlickBackSpringsBack() {
+        assertEquals(0, swipeReleaseDirection(60f, 200f, 96f, 1000f))
+        assertEquals(0, swipeReleaseDirection(150f, -1500f, 96f, 1000f))
+        assertEquals(0, swipeReleaseDirection(0f, 0f, 96f, 1000f))
+    }
+
+    @Test
+    fun revealOpensPastHalfButtonOrOnFlick() {
+        assertEquals(RevealSettle.OpenRight, revealSettle(40f, 0f, 76f, 360f, 1000f))
+        assertEquals(RevealSettle.OpenLeft, revealSettle(-40f, 0f, 76f, 360f, 1000f))
+        assertEquals(RevealSettle.OpenRight, revealSettle(12f, 1500f, 76f, 360f, 1000f))
+        assertEquals(RevealSettle.Closed, revealSettle(30f, 0f, 76f, 360f, 1000f))
+    }
+
+    @Test
+    fun revealFlickBackCloses() {
+        assertEquals(RevealSettle.Closed, revealSettle(76f, -1500f, 76f, 360f, 1000f))
+        assertEquals(RevealSettle.Closed, revealSettle(-200f, 1500f, 76f, 360f, 1000f))
+    }
+
+    @Test
+    fun revealHalfWidthDragCommits() {
+        assertEquals(RevealSettle.CommitRight, revealSettle(180f, 0f, 76f, 360f, 1000f))
+        assertEquals(RevealSettle.CommitLeft, revealSettle(-180f, -400f, 76f, 360f, 1000f))
+        assertEquals(RevealSettle.OpenRight, revealSettle(179f, 0f, 76f, 360f, 1000f))
+        assertEquals(RevealSettle.Closed, revealSettle(0f, 0f, 76f, 360f, 1000f))
     }
 
     @Test

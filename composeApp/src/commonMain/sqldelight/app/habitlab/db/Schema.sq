@@ -31,7 +31,8 @@ INSERT OR IGNORE INTO run_habit(uid, run_uid, habit_uid) VALUES (?, ?, ?);
 insertCheckIn:
 INSERT OR IGNORE INTO check_in(uid, habit_uid, day, state, comment) VALUES (?, ?, ?, ?, ?);
 updateCheckIn:
-UPDATE check_in SET state = ?, comment = ? WHERE habit_uid = ? AND day = ?;
+-- A null comment keeps the existing note, so re-logging a day never erases it.
+UPDATE check_in SET state = ?, comment = COALESCE(?, comment) WHERE habit_uid = ? AND day = ?;
 selectCheckInsForDay:
 SELECT * FROM check_in WHERE day = ?;
 selectCheckInsForHabit:
