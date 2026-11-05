@@ -43,16 +43,18 @@ function toast(msg) {
 const LS = { account: 'habitlab.account', key: 'habitlab.key', device: 'habitlab.device', token: 'habitlab.token', clock: 'habitlab.clock', db: 'habitlab.db' };
 const TABLES = ['habit', 'run', 'goal', 'tracker', 'run_habit', 'check_in', 'tracker_entry'];
 let mirror = {};
-let dirty = new Set();
+let dirty = new Map();
+let dirtySeq = 0;
 function loadMirror() {
   mirror = {};
   try { mirror = JSON.parse(localStorage.getItem(LS.db) || '{}'); } catch { mirror = {}; }
   for (const t of TABLES) if (!mirror[t]) mirror[t] = {};
-  try { dirty = new Set(JSON.parse(localStorage.getItem('habitlab.dirty') || '[]')); } catch { dirty = new Set(); }
+  try { dirty = new Map(JSON.parse(localStorage.getItem('habitlab.dirty') || '[]').map((k) => [k, 0])); }
+  catch { dirty = new Map(); }
 }
 function saveMirror() {
   localStorage.setItem(LS.db, JSON.stringify(mirror));
-  localStorage.setItem(LS.dirty, JSON.stringify([...dirty]));
+  localStorage.setItem(LS.dirty, JSON.stringify([...dirty.keys()]));
 }
 function rows(t) { return Object.values(mirror[t] || {}).map((r) => r.v); }
 function row(t, u) { return (mirror[t] || {})[u]; }
@@ -76,7 +78,7 @@ function putRow(t, u, values) {
   for (const k of Object.keys(values)) s[k] = { c, d };
   if (!mirror[t]) mirror[t] = {};
   mirror[t][u] = { v, s };
-  dirty.add(t + '|' + u);
+  dirty.set(t + '|' + u, ++dirtySeq);
   saveMirror();
   scheduleSync();
 }
@@ -109,7 +111,10 @@ async function sync() {
   syncing = true;
   setSync('busy', 'Syncing…');
   try {
-    const changes = [...dirty].map((k) => {
+    // Snapshot the queue: rows dirtied while this push is in flight keep
+    // their newer sequence numbers and are pushed by the follow-up sync.
+    const snap = new Map(dirty);
+    const changes = [...snap.keys()].map((k) => {
       const i = k.indexOf('|'), t = k.slice(0, i), u = k.slice(i + 1);
       const r = row(t, u);
       return r ? { t, u, v: r.v, s: r.s } : null;
@@ -121,7 +126,7 @@ async function sync() {
       else mirror[r.t][r.u] = { v: r.v, s: r.s };
     }
     localStorage.setItem(LS.token, String(resp.token));
-    dirty.clear();
+    for (const [k, s] of snap) if (dirty.get(k) === s) dirty.delete(k);
     saveMirror();
     setSync('ok', 'Synced');
     renderCurrent();
@@ -198,7 +203,7 @@ document.querySelectorAll('#mainNav [data-screen]').forEach((b) => b.addEventLis
 function signOut() {
   for (const k of Object.values(LS)) localStorage.removeItem(k);
   localStorage.removeItem('habitlab.dirty');
-  mirror = {}; dirty = new Set();
+  mirror = {}; dirty = new Map();
   showScreen('login');
 }
 async function boot() {
