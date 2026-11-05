@@ -1,0 +1,10 @@
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+send_tool/
+habitlab-sync.zip
+sync-server/data/
+ui-qa/node_modules/
+ui-qa/tools/

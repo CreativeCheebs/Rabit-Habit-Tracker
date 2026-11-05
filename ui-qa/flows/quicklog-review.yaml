@@ -1,0 +1,22 @@
+appId: app.habitlab
+---
+- launchApp
+- tapOn:
+    text: Runs
+- assertVisible: Habits
+- takeScreenshot:
+    path: runs-screen
+- tapOn:
+    text: Quick Log
+- assertVisible: Today’s due habits
+- takeScreenshot:
+    path: quicklog-screen
+- tapOn:
+    text: Comment
+- assertVisible: Add a comment
+- assertVisible: Comment for today
+- takeScreenshot:
+    path: quicklog-comment-open
+- tapOn:
+    text: Save comment
+- assertNotVisible: Add a comment
