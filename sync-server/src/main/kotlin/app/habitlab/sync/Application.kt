@@ -2,6 +2,7 @@ package app.habitlab.sync
 
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
+import io.ktor.server.http.content.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
@@ -142,5 +143,7 @@ private fun Application.syncModule() {
             call.response.header("X-Sync-Byte-Size", wireJson.encodeToString(SyncResponse.serializer(), response).length.toString())
             call.respond(response)
         }
+        // Web app bundle (static, same origin as the API so no CORS is needed).
+        staticResources("/", "webapp") { default("index.html") }
     }
 }

@@ -30,3 +30,7 @@ java -jar build/libs/HabitLabSyncServer-all.jar
 `POST /api/sign-in` accepts `{"username":"…","password":"…"}` and returns an account plus signed bearer token. `POST /api/sync` accepts the offline-sync guide's device/token/change envelope, with `X-Account-Id` and `Authorization: Bearer …` headers. Data files are keyed by a hash of the account. The server applies field-level last-writer-wins stamps (clock, device, then value tie-break), persists changes transactionally in SQLite, and returns changed fields since the supplied token. `/health` is public.
 
 Keep the service on loopback behind an authenticated HTTPS reverse proxy for remote clients. Do not expose the plain HTTP listener directly to an untrusted network.
+
+## Web app
+
+The server also hosts the Habit Lab web app at `/` (same origin as the API, so no CORS is needed). Open `http://<host>:<port>/` in a browser, sign in with a sync-server account, and log runs from the Runs, Quick Log, Analytics, Goals, and Trackers screens. The bundle lives in `sync-server/src/main/resources/webapp/` and ships inside the fat JAR; UI checks run with `node ui-qa/webapp-check.mjs`.
