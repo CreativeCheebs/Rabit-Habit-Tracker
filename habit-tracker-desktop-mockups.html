@@ -27,7 +27,14 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 .topbar{height:64px;flex:none;display:flex;align-items:center;gap:14px;padding:0 28px;border-bottom:1px solid #242d26;background:var(--bg);position:sticky;top:0;z-index:2}
 .topbar h1{font-size:19px;font-weight:500;margin:0;flex:1}
 .pill{border:1px solid var(--outline);color:var(--secondary);padding:6px 12px;border-radius:100px;font:11px ui-monospace,Menlo,monospace;white-space:nowrap}
-.avatar{width:34px;height:34px;border-radius:50%;background:var(--surface3);color:var(--primary);display:grid;place-items:center;font-weight:600;font-size:14px}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--surface3);color:var(--primary);display:grid;place-items:center;font-weight:600;font-size:14px;border:0;cursor:pointer;flex:none}
+.acct-wrap{position:relative;flex:none}
+.acct-menu{position:absolute;right:0;top:44px;width:280px;background:var(--surface1);border:1px solid var(--outline);border-radius:16px;padding:16px;box-shadow:0 14px 40px #0008;display:none;z-index:10}
+.acct-menu.open{display:block}
+.acct-menu .who{font-size:13px;font-weight:600;word-break:break-all}
+.acct-menu .sub{margin:4px 0 6px}
+.acct-menu .build-button{margin:12px 0 0}
+.acct-menu .field{margin-bottom:0}
 .content{padding:26px 28px 60px;max-width:1240px;width:100%;margin:0 auto}
 .view{display:none}
 .view.active{display:block}
@@ -41,10 +48,14 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 .big-pct{font-size:44px;font-weight:600;line-height:1}
 .track{height:8px;border-radius:5px;background:#3b5141;margin-top:12px;overflow:hidden}
 .track i{height:100%;display:block;border-radius:5px;background:var(--primary)}
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.metric{background:#18241c;border:1px solid #3a5040;border-radius:14px;padding:12px 14px}
+.metrics-card{background:#18241c;border:1px solid #3a5040;border-radius:16px;padding:16px 18px}
+.metrics-card h5{margin:0 0 10px;font:10px ui-monospace,Menlo,monospace;letter-spacing:1px;color:#b7ddbf;font-weight:400}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
 .metric small{display:block;font-size:10px;color:#becbbf}
 .metric b{display:block;font-size:19px;font-weight:600;margin-top:4px}
+.hrow.head{border-top:0;padding:4px 0 8px}
+#runTable{border-top:1px solid #303a32}
+.daynums{display:grid;font:8px ui-monospace,Menlo,monospace;color:var(--muted);text-align:center}
 .section-head{display:flex;align-items:center;justify-content:space-between;margin:26px 2px 10px}
 .section-head h3{font-size:16px;font-weight:500;margin:0}
 .htable{background:var(--surface1);border-radius:18px;padding:8px 18px}
@@ -54,8 +65,8 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 .habit-name{font-size:13px;font-weight:500}
 .iteration{font:9px ui-monospace,Menlo,monospace;padding:2px 5px;border-radius:5px;background:#344c39;color:#c3e3c9;margin-left:5px}
 .habit-meta{font-size:10px;color:var(--muted);margin-top:3px}
-.dots{display:flex;gap:4px;align-items:center;min-width:0}
-.dot{width:13px;height:13px;flex:none;border:1px solid #536157;border-radius:4px;background:none;padding:0;cursor:pointer}
+.dots{display:grid;min-width:0;gap:2px}
+.dot{width:17px;height:17px;justify-self:center;border:1px solid #536157;border-radius:5px;background:none;padding:0;cursor:pointer}
 .dot.done{background:#83b58f;border-color:#83b58f}
 .dot.partial{background:var(--tertiary);border-color:var(--tertiary)}
 .dot.skipped{background:#754b4b;border-color:#754b4b}
@@ -129,7 +140,7 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 .field-label{display:block;color:var(--secondary);font-size:11px;margin:14px 0 6px}
 .build-button{width:100%;height:48px;border:0;border-radius:100px;background:var(--primary);color:var(--on-primary);font-size:14px;font-weight:600;margin:20px 0 6px;cursor:pointer}
 /* ---------- responsive ---------- */
-@media(max-width:1100px){.run-hero{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.charts-2{grid-template-columns:1fr}.ana-grid{grid-template-columns:1fr}.cards-3{grid-template-columns:repeat(2,1fr)}.qlog-layout{grid-template-columns:minmax(0,440px) minmax(0,1fr)}}
+@media(max-width:1100px){.run-hero{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(4,1fr)}.charts-2{grid-template-columns:1fr}.ana-grid{grid-template-columns:1fr}.cards-3{grid-template-columns:repeat(2,1fr)}.qlog-layout{grid-template-columns:minmax(0,440px) minmax(0,1fr)}}
 @media(max-width:860px){.side{width:76px;padding:16px 10px}.brand b,.brand small{display:none}.sidenav button span.lbl{display:none}.sidenav button{justify-content:center}.side-foot{display:none}.qlog-layout{grid-template-columns:1fr}.login-split{grid-template-columns:1fr}.login-art{padding:32px}.cards-3{grid-template-columns:1fr}.hrow{grid-template-columns:34px minmax(140px,1fr) 44px}.dots{grid-column:1/-1}}</style></head>
 <body>
 <div class="desk">
@@ -137,16 +148,14 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 <div class="brand"><div class="brand-mark">H</div><div><b>Habit Lab</b><small>Desktop mockup</small></div></div>
 <nav class="sidenav" aria-label="Main navigation">
 <button class="active" data-view="runs"><span class="ic">◷</span><span class="lbl">Runs &amp; Habits</span></button>
-<button data-view="quicklog"><span class="ic">⇆</span><span class="lbl">Quick Log</span></button>
 <button data-view="analytics"><span class="ic">▥</span><span class="lbl">Analytics</span></button>
 <button data-view="goals"><span class="ic">◎</span><span class="lbl">Goals</span></button>
 <button data-view="trackers"><span class="ic">⌁</span><span class="lbl">Trackers</span></button>
-<button data-view="login"><span class="ic">⍈</span><span class="lbl">Login</span></button>
 </nav>
 <div class="side-foot"><div class="sync-line"><span class="sync-dot"></span>Synced · just now</div><div>aakashk.kvjp58@gmail.com · <u>Sign out</u></div></div>
 </aside>
 <div class="main">
-<header class="topbar"><h1 id="topTitle">Runs &amp; Habits</h1><span class="pill">21-day run · day 13</span><span class="pill">~5 min quick log</span><div class="avatar">A</div></header>
+<header class="topbar"><h1 id="topTitle">Runs &amp; Habits</h1><div class="acct-wrap"><button class="avatar" id="acctBtn" aria-label="Account">A</button><div class="acct-menu" id="acctMenu"></div></div></header>
 <main class="content">
 
 <section class="view active" id="v-runs">
@@ -156,30 +165,20 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 <div style="display:flex;align-items:baseline;gap:12px;margin-top:16px"><span class="big-pct">62%</span><span class="caption">IMPACT POINTS EARNED</span></div>
 <div class="track"><i style="width:62%"></i></div>
 <div class="caption" style="margin-top:8px;color:#c4d2c7">42 of 68 planned impact points</div></div>
-<div class="metrics">
+<div class="metrics-card"><h5>RUN IMPACT</h5><div class="metrics">
 <div class="metric"><small>Total impact</small><b>42 pts</b></div>
 <div class="metric"><small>Average impact</small><b>3.2 / day</b></div>
 <div class="metric"><small>Days logged</small><b>12 / 13</b></div>
 <div class="metric"><small>Habits</small><b>4</b></div>
-</div>
+</div></div>
 </div>
 <div class="section-head"><h3>Run habits · all 21 days</h3><span class="caption">Click a day to toggle</span></div>
-<div class="htable" id="runTable"></div>
+<div class="htable"><div class="hrow head"><span></span><span></span><div class="daynums" id="dayNums"></div><span></span></div><div id="runTable"></div></div>
 <div class="charts-2">
 <div class="card"><div class="chart-title">Impact points by day</div><div class="caption">Whole run</div><div class="chart" id="impactChart"></div><div class="chart-key"><span>Earned impact points</span><span>Oct 20 – Nov 9</span></div></div>
 <div class="card"><div class="chart-title">Impact points burnup</div><div class="caption">Cumulative actual and predicted</div>
 <svg id="burnSvg" viewBox="0 0 330 148" style="width:100%;height:auto;margin-top:8px" role="img" aria-label="Burnup"><line x1="20" y1="116" x2="320" y2="116" stroke="#465349"/><line x1="20" y1="14" x2="20" y2="116" stroke="#465349"/><path id="burnActual" d="" fill="none" stroke="#a4d0ad" stroke-width="3" stroke-linecap="round"/><path id="burnPredicted" d="" fill="none" stroke="#dfbd82" stroke-width="3" stroke-dasharray="6 5" stroke-linecap="round"/><text x="20" y="136" fill="#a3afa6" font-size="9">Day 1</text><text x="285" y="136" fill="#a3afa6" font-size="9">Day 21</text></svg>
 <div class="chart-key"><span>━ Actual</span><span>┄ Predicted</span></div></div>
-</div>
-</section>
-
-<section class="view" id="v-quicklog">
-<div class="qlog-layout">
-<div><div class="quick-progress" style="display:flex;justify-content:space-between;margin:2px 2px 12px"><strong>Today&rsquo;s due habits</strong><span class="pill" id="quickCounter">1 of 4</span></div>
-<div class="quick-stack" id="quickStack"></div>
-<div class="quick-actions"><button class="quick-action done" onclick="recordQuick('done')">✓ Done</button><button class="quick-action partial" onclick="recordQuick('partial')">◐ Partial</button><button class="quick-action skip" onclick="recordQuick('skip')">✕ Skip</button></div>
-<div class="caption" style="text-align:center;margin-top:10px">Drag the card right for done · left for skip. Skipped interval habits stay due until completed.</div></div>
-<div class="queue"><h4>Today&rsquo;s queue</h4><div class="sub" style="margin-bottom:6px">Stays in sync with the card stack.</div><div id="queueList"></div></div>
 </div>
 </section>
 
@@ -204,25 +203,18 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 <div class="cards-3" id="trackerGrid"></div>
 </section>
 
-<section class="view" id="v-login">
-<div class="login-split">
-<div class="login-art"><div class="eyebrow">Habit Lab · desktop</div><h2>Your runs,<br>on the big screen.</h2>
-<p>Same account, same sync server. Review three weeks at a glance, log the day, and keep the phone for quick captures.</p>
-<ul><li>◷ &nbsp;Full 21-day grid, no week paging</li><li>⇆ &nbsp;Quick Log with keyboard shortcuts</li><li>▥ &nbsp;Group analytics side by side</li></ul></div>
-<div class="login-form"><div class="eyebrow">Sign in</div><h2 style="margin:8px 0 4px">Welcome back</h2>
-<div class="sub">Use the account set up on your sync server.</div>
-<label class="field-label" for="loginUser">Username</label><input class="field" id="loginUser" value="aakashk.kvjp58@gmail.com">
-<label class="field-label" for="loginPass">Password</label><input class="field" id="loginPass" type="password" value="password">
-<button class="build-button">Sign in</button>
-<div class="sub" style="text-align:center">Your data stays on your own sync server.</div></div>
-</div>
-</section>
-
 </main>
 </div>
 </div>
 <script>
-const TITLES={runs:'Runs & Habits',quicklog:'Quick Log',analytics:'Analytics',goals:'Goals',trackers:'Trackers',login:'Login'};
+const TITLES={runs:'Runs & Habits',analytics:'Analytics',goals:'Goals',trackers:'Trackers'};
+let signedIn=true;const ACCT='aakashk.kvjp58@gmail.com';
+function renderAcct(){const m=document.getElementById('acctMenu');
+m.innerHTML=signedIn?`<div class="eyebrow">Signed in</div><div class="who" style="margin-top:6px">${ACCT}</div><div class="sub">Synced · just now</div><button class="build-button" onclick="signedIn=false;renderAcct()">Sign out</button>`
+:`<div class="eyebrow">Sign in</div><label class="field-label" for="mUser">Username</label><input class="field" id="mUser" value="${ACCT}"><label class="field-label" for="mPass">Password</label><input class="field" id="mPass" type="password" value="password"><button class="build-button" onclick="signedIn=true;renderAcct()">Sign in</button>`}
+renderAcct();
+document.getElementById('acctBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('acctMenu').classList.toggle('open')});
+document.addEventListener('click',e=>{if(!e.target.closest('.acct-wrap'))document.getElementById('acctMenu').classList.remove('open')});
 document.querySelectorAll('.sidenav button').forEach(b=>b.addEventListener('click',()=>{
 document.querySelectorAll('.sidenav button').forEach(x=>x.classList.toggle('active',x===b));
 document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='v-'+b.dataset.view));
@@ -234,10 +226,13 @@ const HABITS=[
 {name:'Focused work block',group:'Focus',icon:'⌁',iter:'I',meta:'4 impact pts · weekdays',pts:4,days:[1,0,1,1,0,0,0,2,1,0,1,0,0,0,0,0,0,0,0,0,0]}];
 const ELAPSED=13;
 function dotCls(v,day){if(day>ELAPSED)return'future';return v===1?'done':v===2?'partial':v===3?'skipped':''}
+const DAYS=21,dayCols=`grid-template-columns:repeat(${DAYS},1fr)`;
+document.getElementById('dayNums').style.cssText=dayCols;
+document.getElementById('dayNums').innerHTML=Array.from({length:DAYS},(_,d)=>`<span>Day ${d+1}</span>`).join('');
 const table=document.getElementById('runTable');
 table.innerHTML=HABITS.map((h,i)=>{
-let dots='';h.days.forEach((v,d)=>{if(d>0&&d%7===0)dots+='<span class="dot-sep"></span>';dots+=`<button class="dot ${dotCls(v,d+1)}" data-h="${i}" data-d="${d}" title="${h.name} · day ${d+1}"></button>`});
-return `<div class="hrow"><div class="symbol">${h.icon}</div><div><div class="habit-name">${h.name}<span class="iteration">${h.iter}</span></div><div class="habit-meta">${h.meta}</div></div><div class="dots">${dots}</div><div class="point">${h.pts}</div></div>`}).join('');
+let dots='';h.days.forEach((v,d)=>{dots+=`<button class="dot ${dotCls(v,d+1)}" title="${h.name} · day ${d+1}"></button>`});
+return `<div class="hrow"><div class="symbol">${h.icon}</div><div><div class="habit-name">${h.name}<span class="iteration">${h.iter}</span></div><div class="habit-meta">${h.meta}</div></div><div class="dots" style="${dayCols}">${dots}</div><div class="point">${h.pts}</div></div>`}).join('');
 table.addEventListener('click',e=>{const b=e.target.closest('.dot');if(!b||b.classList.contains('future'))return;
 b.classList.toggle('done');if(b.classList.contains('done'))b.classList.remove('partial','skipped');});
 const IMPACT=[4,7,5,6,9,3,5,6,8,4,7,5,3,0,0,0,0,0,0,0,0];
@@ -253,22 +248,4 @@ const GOALS=[['Start focused work by 9:30','Started Oct 1 · target Nov 30',68,'
 document.getElementById('goalGrid').innerHTML=GOALS.map(g=>`<div class="goal"><div class="row"><div class="goal-title">${g[0]}</div><div class="percent">${g[2]}%</div></div><div class="goal-sub">${g[1]}</div><div class="track"><i style="width:${g[2]}%;${g[3]==='#a4d0ad'?'':`background:${g[3]}`}"></i></div></div>`).join('')+`<button class="goal new-card">＋ New goal<small>Write it down, track it weekly</small></button>`;
 const TRACKERS=[['Sleep quality','7.4','/ 10','Daily',[45,68,57,77,82,65,88]],['Daily energy','6.8','/ 10','Daily',[40,54,61,51,72,79,68]],['Body weight','—','','Weekly',[]]];
 document.getElementById('trackerGrid').innerHTML=TRACKERS.map(t=>`<div class="tracker-card"><div class="row"><div><div class="chart-title">${t[0]}</div><div class="tracker-value">${t[1]} ${t[2]?`<span class="caption">${t[2]}</span>`:''}</div>${t[4].length?'<div class="trend">↑ trending up</div>':'<div class="caption">No recent entry</div>'}</div><span class="pill">${t[3]}</span></div>${t[4].length?`<div class="mini-bars">${t[4].map(v=>`<i style="height:${v}%"></i>`).join('')}</div>`:''}</div>`).join('')+`<button class="tracker-card new-card">＋ New tracker<small>Log a number daily or weekly</small></button>`;
-const QUICK=[{name:'Morning light',group:'Wellbeing',meta:'Daily · due today',points:2,icon:'☀'},{name:'Plan the day',group:'Focus',meta:'5 days per week · due today',points:3,icon:'◉'},{name:'Focused work block',group:'Focus',meta:'Weekdays · due today',points:4,icon:'⌁'},{name:'Sleep before 11:30 PM',group:'Wellbeing',meta:'Every 3 days · due today',points:2,icon:'☾'}];
-let qi=0;const qres=[];
-function renderQuick(){const st=document.getElementById('quickStack');
-document.getElementById('queueList').innerHTML=QUICK.map((h,i)=>`<div class="qitem${i<qi?' logged':i===qi?' current':''}"><span>${i<qi?'✓':i===qi?'→':'·'}</span>${h.name}<span class="pts">${h.points} pts</span></div>`).join('');
-if(qi>=QUICK.length){document.getElementById('quickCounter').textContent='Complete';
-st.innerHTML=`<div class="card" style="text-align:center;padding:40px 22px"><h3 style="font-size:20px;font-weight:500;margin:0 0 8px">Quick Log complete</h3><p class="sub">${qres.filter(x=>x==='done').length} done · ${qres.filter(x=>x==='partial').length} partial · ${qres.filter(x=>x==='skip').length} skipped</p><button class="build-button" style="max-width:240px" onclick="qi=0;qres.length=0;renderQuick()">Review again</button></div>`;return}
-const h=QUICK[qi],nx=QUICK[qi+1];document.getElementById('quickCounter').textContent=`${qi+1} of ${QUICK.length}`;
-st.innerHTML=`${nx?`<div class="quick-card quick-under"><div class="quick-under-name">${nx.name}</div></div>`:''}<article class="quick-card" id="swipeCard"><div class="swipe-stamp done" id="stampDone">DONE</div><div class="swipe-stamp skip" id="stampSkip">SKIP</div><div class="quick-art"><span class="quick-art-label">${h.group.toUpperCase()} · DUE</span><div class="quick-art-icon">${h.icon}</div></div><div class="quick-habit-name">${h.name}</div><div class="quick-meta">${h.meta}</div><div class="quick-impact">${h.points} impact points</div></article>`;
-const card=document.getElementById('swipeCard');let sx=0,dx=0,drag=false;
-card.addEventListener('pointerdown',e=>{drag=true;sx=e.clientX;dx=0;card.classList.add('dragging');try{card.setPointerCapture(e.pointerId)}catch{}});
-card.addEventListener('pointermove',e=>{if(!drag)return;dx=e.clientX-sx;card.style.transform=`translateX(${dx*.82}px) rotate(${dx/18}deg)`;document.getElementById('stampDone').style.opacity=Math.max(0,Math.min(1,dx/90));document.getElementById('stampSkip').style.opacity=Math.max(0,Math.min(1,-dx/90))});
-const end=e=>{if(!drag)return;drag=false;card.classList.remove('dragging');
-if(dx>95){card.style.transform='translateX(120%) rotate(22deg)';setTimeout(()=>recordQuick('done'),190)}
-else if(dx<-95){card.style.transform='translateX(-120%) rotate(-22deg)';setTimeout(()=>recordQuick('skip'),190)}
-else{card.style.transform='';document.getElementById('stampDone').style.opacity=0;document.getElementById('stampSkip').style.opacity=0}};
-card.addEventListener('pointerup',end);card.addEventListener('pointercancel',end);}
-function recordQuick(k){if(qi>=QUICK.length)return;qres.push(k);qi++;renderQuick()}
-renderQuick();
 </script></body></html>
