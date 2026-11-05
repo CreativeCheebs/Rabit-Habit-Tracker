@@ -42,7 +42,10 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 .sub{font-size:12px;color:var(--muted);line-height:1.5}
 .card{background:var(--surface1);border-radius:20px;padding:20px}
 /* ---------- runs ---------- */
-.run-hero{background:#24352a;border-radius:22px;padding:24px 26px;display:grid;grid-template-columns:1.2fr 2fr;gap:26px;align-items:center}
+.run-hero{background:#24352a;border-radius:22px;padding:24px 26px;display:grid;grid-template-columns:1.5fr 1fr;gap:26px;align-items:center}
+#tip{position:fixed;z-index:50;pointer-events:none;background:#303b32;border:1px solid var(--outline);border-radius:10px;padding:8px 11px;font-size:11px;color:var(--ink);box-shadow:0 6px 22px #0009;display:none;white-space:nowrap;transform:translate(-50%,-135%)}
+#tip b{color:var(--primary)}
+.dot-pt{fill:transparent;pointer-events:all;cursor:crosshair}
 .run-title{font-size:24px;font-weight:500;margin:8px 0 4px}
 .run-dates{font-size:12px;color:#c4d2c7}
 .big-pct{font-size:44px;font-weight:600;line-height:1}
@@ -150,6 +153,7 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 @media(max-width:1100px){.run-hero{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(4,1fr)}.charts-2{grid-template-columns:1fr}.ana-grid{grid-template-columns:1fr}.cards-3{grid-template-columns:repeat(2,1fr)}.qlog-layout{grid-template-columns:minmax(0,440px) minmax(0,1fr)}}
 @media(max-width:860px){.side{width:76px;padding:16px 10px}.brand b,.brand small{display:none}.sidenav button span.lbl{display:none}.sidenav button{justify-content:center}.side-foot{display:none}.qlog-layout{grid-template-columns:1fr}.login-split{grid-template-columns:1fr}.login-art{padding:32px}.cards-3{grid-template-columns:1fr}.hrow{grid-template-columns:34px minmax(140px,1fr) 44px}.dots{grid-column:1/-1}}</style></head>
 <body>
+<div id="tip" role="tooltip"></div>
 <div class="desk">
 <aside class="side">
 <div class="brand"><div class="brand-mark">H</div><div><b>Habit Lab</b><small>Desktop mockup</small></div></div>
@@ -167,23 +171,22 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 
 <section class="view active" id="v-runs">
 <div class="run-hero">
-<div><div class="eyebrow">Active run · day 13 of 21</div><div class="run-title">21-day habit run</div>
-<div class="run-dates">Oct 20 — Nov 9 · 4 habits</div>
-<div style="display:flex;align-items:baseline;gap:12px;margin-top:16px"><span class="big-pct">62%</span><span class="caption">IMPACT POINTS EARNED</span></div>
+<div><div class="run-dates">Oct 20 — Nov 9 · 4 habits</div>
+<div style="display:flex;align-items:baseline;gap:12px;margin-top:10px"><span class="big-pct">62%</span></div>
 <div class="track"><i style="width:62%"></i></div>
-<div class="caption" style="margin-top:8px;color:#c4d2c7">42 of 68 planned impact points</div></div>
-<div class="metrics-card"><h5>RUN IMPACT</h5><div class="metrics">
+<div class="caption" style="margin-top:8px;color:#c4d2c7">42 / 68</div></div>
+<div class="metrics-card"><div class="metrics">
 <div class="metric"><small>Total impact</small><b>42 pts</b></div>
 <div class="metric"><small>Average impact</small><b>3.2 / day</b></div>
 <div class="metric"><small>Days logged</small><b>12 / 13</b></div>
 <div class="metric"><small>Habits</small><b>4</b></div>
 </div></div>
 </div>
-<div class="section-head"><h3>Run habits · all 21 days</h3><span class="caption">Click a day to toggle</span></div>
+<div class="section-head"><h3>Habits</h3><span class="caption">Click a day to toggle</span></div>
 <div class="htable"><div class="hrow head"><span></span><span></span><div class="daynums" id="dayNums"></div><span></span></div><div id="runTable"></div></div>
 <div class="charts-2">
-<div class="card"><div class="chart-title">Impact points by day</div><div class="caption">Whole run</div><div class="chart" id="impactChart"></div><div class="chart-key"><span>Earned impact points</span><span>Oct 20 – Nov 9</span></div></div>
-<div class="card"><div class="chart-title">Impact points burnup</div><div class="caption">Cumulative actual and predicted</div>
+<div class="card"><div class="chart-title">Points per day</div><div class="caption">Whole run · hover a bar for values</div><div class="chart" id="impactChart"></div><div class="chart-key"><span>Earned impact points</span><span>Oct 20 – Nov 9</span></div></div>
+<div class="card"><div class="chart-title">Points burnup</div><div class="caption">Cumulative actual and predicted · hover the line for values</div>
 <svg id="burnSvg" viewBox="0 0 330 148" style="width:100%;height:auto;margin-top:8px" role="img" aria-label="Burnup"><line x1="20" y1="116" x2="320" y2="116" stroke="#465349"/><line x1="20" y1="14" x2="20" y2="116" stroke="#465349"/><path id="burnActual" d="" fill="none" stroke="#a4d0ad" stroke-width="3" stroke-linecap="round"/><path id="burnPredicted" d="" fill="none" stroke="#dfbd82" stroke-width="3" stroke-dasharray="6 5" stroke-linecap="round"/><text x="20" y="136" fill="#a3afa6" font-size="9">Day 1</text><text x="285" y="136" fill="#a3afa6" font-size="9">Day 21</text></svg>
 <div class="chart-key"><span>━ Actual</span><span>┄ Predicted</span></div></div>
 </div>
@@ -244,7 +247,7 @@ table.addEventListener('click',e=>{const b=e.target.closest('.dot');if(!b||b.cla
 b.classList.toggle('done');if(b.classList.contains('done'))b.classList.remove('partial','skipped');});
 const IMPACT=[4,7,5,6,9,3,5,6,8,4,7,5,3,0,0,0,0,0,0,0,0];
 function bars(id,n,today){const vals=IMPACT.slice(0,n),m=Math.max(1,...vals),el=document.getElementById(id);
-el.innerHTML=vals.map((v,i)=>`<div class="bar${i===today?' today':''}"><i style="height:${Math.max(4,Math.round(v/m*100))}%"></i></div>`).join('');
+el.innerHTML=vals.map((v,i)=>`<div class="bar${i===today?' today':''}" data-day="${i+1}" data-val="${v}"><i style="height:${Math.max(4,Math.round(v/m*100))}%"></i></div>`).join('');
 el.insertAdjacentHTML('afterend',`<div class="xlabels">${vals.map((_,i)=>`<span class="${i===today?'today':''}">${i+1}</span>`).join('')}</div>`)}
 bars('impactChart',21,ELAPSED-1);bars('anaChart',21,ELAPSED-1);
 const cum=[];IMPACT.slice(0,ELAPSED).reduce((s,v)=>(cum.push(s+v),s+v),0);
@@ -253,6 +256,18 @@ const pt=(i,v)=>`${i?'L':'M'} ${(20+i*300/20).toFixed(1)} ${(116-v/yMax*96).toFi
 document.getElementById('burnActual').setAttribute('d',cum.map((v,i)=>pt(i,v)).join(' '));
 const fore=[last];for(let i=1;i<=21-ELAPSED;i++)fore.push(last+pace*i);
 document.getElementById('burnPredicted').setAttribute('d',fore.map((v,k)=>{const i=ELAPSED-1+k;return `${k?'L':'M'} ${(20+i*300/20).toFixed(1)} ${(116-v/yMax*96).toFixed(1)}`}).join(' '));
+const tip=document.getElementById('tip');
+const showTip=(html,x,y)=>{tip.innerHTML=html;tip.style.display='block';tip.style.left=x+'px';tip.style.top=y+'px'};
+const hideTip=()=>tip.style.display='none';
+document.querySelectorAll('.chart .bar').forEach(b=>{
+b.addEventListener('mousemove',e=>showTip(`Day <b>${b.dataset.day}</b> · <b>${b.dataset.val}</b> pts`,e.clientX,e.clientY));
+b.addEventListener('mouseleave',hideTip)});
+const svg=document.getElementById('burnSvg');
+const circ=(i,v,label)=>`<circle class="dot-pt" cx="${(20+i*300/20).toFixed(1)}" cy="${(116-v/yMax*96).toFixed(1)}" r="11" data-day="${i+1}" data-val="${Math.round(v)}" data-label="${label}"/>`;
+svg.innerHTML+=cum.map((v,i)=>circ(i,v,'actual')).join('')+fore.map((v,k)=>circ(ELAPSED-1+k,v,'forecast')).join('');
+svg.querySelectorAll('.dot-pt').forEach(c=>{
+c.addEventListener('mousemove',e=>showTip(`Day <b>${c.dataset.day}</b> · <b>${c.dataset.val}</b> pts <span class="caption">${c.dataset.label}</span>`,e.clientX,e.clientY));
+c.addEventListener('mouseleave',hideTip)});
 const GOALS=[['Start focused work by 9:30','Started Oct 1 · target Nov 30',68,'#a4d0ad'],['Build a steady sleep routine','Started Oct 10 · target Dec 15',42,'#9bb6df'],['Run 5 km comfortably','Started Oct 15 · target Jan 10',31,'#dfbd82']];
 document.getElementById('goalGrid').innerHTML=GOALS.map(g=>`<div class="goal"><div class="row"><div class="goal-title">${g[0]}</div><div class="percent">${g[2]}%</div></div><div class="goal-sub">${g[1]}</div><div class="track"><i style="width:${g[2]}%;${g[3]==='#a4d0ad'?'':`background:${g[3]}`}"></i></div></div>`).join('')+`<button class="goal new-card">＋ New goal<small>Write it down, track it weekly</small></button>`;
 const TRACKERS=[['Sleep quality','7.4','/ 10','Daily',[45,68,57,77,82,65,88]],['Daily energy','6.8','/ 10','Daily',[40,54,61,51,72,79,68]],['Body weight','—','','Weekly',[]]];
