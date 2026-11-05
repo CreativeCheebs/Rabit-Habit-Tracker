@@ -76,7 +76,8 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 .charts-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
 .chart-title{font-size:14px;font-weight:500}
 .caption{font-size:11px;color:var(--muted)}
-.chart{height:160px;display:flex;align-items:flex-end;gap:4px;padding:8px 2px 0;border-bottom:1px solid var(--outline)}
+.charts-2 .card,.ana-grid .card{display:flex;flex-direction:column}
+.chart{flex:1;min-height:150px;height:auto;display:flex;align-items:flex-end;gap:4px;padding:8px 2px 0;border-bottom:1px solid var(--outline)}
 .bar{flex:1;display:flex;align-items:center;justify-content:flex-end;flex-direction:column;height:100%;min-width:0}
 .bar i{width:70%;background:#6f9a78;border-radius:3px 3px 1px 1px;min-height:3px;flex:none}
 .bar label{font:8px ui-monospace,Menlo,monospace;color:var(--muted)}
@@ -116,7 +117,7 @@ body{margin:0;background:#0d120e;color:var(--ink);font:14px -apple-system,"Segoe
 .qitem.logged{color:var(--muted);text-decoration:line-through}
 /* ---------- analytics ---------- */
 .ana-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:14px}
-.group-bars{height:170px;display:flex;align-items:flex-end;gap:44px;border-bottom:1px solid var(--outline);margin-top:14px;padding-top:14px;justify-content:center}
+.group-bars{flex:1;min-height:170px;display:flex;align-items:flex-end;gap:44px;border-bottom:1px solid var(--outline);margin-top:14px;padding-top:14px;justify-content:center}
 .group-bars .bar{max-width:110px}
 .group-bars .bar i{width:52px}
 .grow{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid #303a32;font-size:13px}
