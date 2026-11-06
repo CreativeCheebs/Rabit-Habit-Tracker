@@ -47,6 +47,24 @@ fun accountFileKey(account: String): String =
 fun isValidAccountId(account: String): Boolean =
     account.matches(Regex("[A-Za-z0-9._@+-]{1,254}"))
 
+private val safeUid = Regex("[A-Za-z0-9._:@#+~-]{1,200}")
+private val safeFieldName = Regex("_?[a-z][a-z_]{0,31}")
+
+/**
+ * Row ids and reference fields end up in the browser app's markup, so only a
+ * plain charset is accepted. Every client generates ids within it.
+ */
+fun isSafeSyncRow(row: SyncRow): Boolean =
+    row.u.matches(safeUid) &&
+        row.v.all { (field, value) ->
+            field.matches(safeFieldName) &&
+                (!(field == "uid" || field.endsWith("_uid")) || value !is JsonPrimitive || !value.isString || value.content.matches(safeUid))
+        } &&
+        row.s.keys.all { it.matches(safeFieldName) }
+
+private const val WEB_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+
 fun main() {
     requireSyncSecret()
     val port = System.getenv("HABITLAB_SYNC_PORT")?.toIntOrNull() ?: 8787
@@ -56,6 +74,13 @@ fun main() {
 
 private fun Application.syncModule() {
     install(ContentNegotiation) { json(wireJson) }
+    intercept(ApplicationCallPipeline.Plugins) {
+        call.response.headers.append("X-Content-Type-Options", "nosniff")
+        call.response.headers.append("X-Frame-Options", "DENY")
+        call.response.headers.append("Referrer-Policy", "no-referrer")
+        call.response.headers.append("Content-Security-Policy", WEB_CSP)
+        if (call.request.local.uri.startsWith("/api/")) call.response.headers.append("Cache-Control", "no-store")
+    }
     routing {
         get("/health") { call.respond(mapOf("status" to "ok", "service" to "habitlab-sync")) }
         post("/api/sign-in") {
@@ -91,6 +116,9 @@ private fun Application.syncModule() {
             }
             val req = call.receive<SyncRequest>()
             if (!req.device.matches(Regex("[a-fA-F0-9-]{8,64}")) || req.token < 0 || req.changes.size > 10000) {
+                call.respond(io.ktor.http.HttpStatusCode.BadRequest, mapOf("error" to "Invalid sync request")); return@post
+            }
+            if (!req.changes.all(::isSafeSyncRow)) {
                 call.respond(io.ktor.http.HttpStatusCode.BadRequest, mapOf("error" to "Invalid sync request")); return@post
             }
             val accountKey = accountFileKey(account)

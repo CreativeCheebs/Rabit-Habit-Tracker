@@ -59,8 +59,36 @@ row = await mirrorRow(uid);
 check('single-field update keeps the rest of the row', row?.v?.habit_uid === 'merge-check' && row?.v?.day === day && row?.v?.comment === 'first note', JSON.stringify(row?.v));
 check('single-field update applies the new state', row?.v?.state === 'partial');
 
-// Clean up the row this check created.
-await deviceSync([{ t: 'check_in', u: uid, v: { _deleted: true }, s: { _deleted: { c: base + 90000, d: DEVICE } } }]);
+// A delete from the other device hides the row, and a late live field must not revive a partial row.
+await deviceSync();
+await deviceSync([{ t: 'check_in', u: uid, v: { _deleted: true }, s: { _deleted: { c: base + 20000, d: DEVICE } } }]);
+await reload();
+row = await mirrorRow(uid);
+check('incoming delete hides the row', row?.v?._deleted === true);
+await deviceSync();
+await deviceSync([{ t: 'check_in', u: uid, v: { state: 'done' }, s: { state: { c: base + 30000, d: DEVICE } } }]);
+await reload();
+row = await mirrorRow(uid);
+check('late field after a delete does not revive the row', row?.v?._deleted === true && row?.v?.state === undefined, JSON.stringify(row?.v));
+
+// The server refuses ids that could carry markup or script.
+const bad = await fetch(BASE + '/api/sync', {
+  method: 'POST', headers,
+  body: JSON.stringify({ device: DEVICE, token, changes: [{ t: 'check_in', u: "x');alert(1);('", v: { state: 'done' }, s: { state: { c: base, d: DEVICE } } }] }),
+});
+check('server rejects an unsafe row id', bad.status === 400);
+const badRef = await fetch(BASE + '/api/sync', {
+  method: 'POST', headers,
+  body: JSON.stringify({ device: DEVICE, token, changes: [{ t: 'check_in', u: 'ok-id', v: { habit_uid: '"><img src=x>' }, s: { habit_uid: { c: base, d: DEVICE } } }] }),
+});
+check('server rejects an unsafe reference field', badRef.status === 400);
+
+// Security headers on the page and API.
+const home = await fetch(BASE + '/');
+check('nosniff header', home.headers.get('x-content-type-options') === 'nosniff');
+check('CSP forbids framing and external scripts', /frame-ancestors 'none'/.test(home.headers.get('content-security-policy') || '') && !/script-src[^;]*https?:/.test(home.headers.get('content-security-policy') || ''));
+check('API responses are not cached', (await fetch(BASE + '/api/config')).headers.get('cache-control') === 'no-store');
+
 await browser.close();
-if (failures.length) { console.error('\n' + failures.length + ' check(s) failed'); process.exit(1); }
-console.log('\nAll sync merge checks passed');
+if (failures.length) { console.error(String.fromCharCode(10) + failures.length + ' check(s) failed'); process.exit(1); }
+console.log(String.fromCharCode(10) + 'All sync merge checks passed');

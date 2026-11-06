@@ -1,5 +1,7 @@
 package app.habitlab.sync
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -54,5 +56,30 @@ class SyncAuthTest {
     fun missingSecretFailsFast() {
         // Documents the fail-fast contract; the real check reads env at boot.
         assertFailsWith<IllegalStateException> { error("HABITLAB_SYNC_SECRET is required") }
+    }
+
+    private fun row(uid: String, vararg values: Pair<String, String>, stampField: String = "title") =
+        SyncRow("habit", uid, JsonObject(values.associate { it.first to JsonPrimitive(it.second) }), mapOf(stampField to Stamp(1, "dev")))
+
+    @Test
+    fun ordinaryClientIdsAreAccepted() {
+        assertTrue(isSafeSyncRow(row("h-plan-the-day-3f#mw3y5wqf", "uid" to "h-plan-the-day-3f#mw3y5wqf", "title" to "Plan the day's <b>start</b>")))
+        assertTrue(isSafeSyncRow(row("run-2026-11-06-bcfd2027:morning-light", "habit_uid" to "morning-light", "run_uid" to "run-2026-11-06-bcfd2027")))
+        assertTrue(isSafeSyncRow(row("morning-light:2031-01-01", "state" to "done", stampField = "_row")))
+    }
+
+    @Test
+    fun markupInIdsIsRejected() {
+        assertFalse(isSafeSyncRow(row("x');alert(1);('")))
+        assertFalse(isSafeSyncRow(row("ok", "uid" to "\"><script>")))
+        assertFalse(isSafeSyncRow(row("ok", "habit_uid" to "a b")))
+        assertFalse(isSafeSyncRow(row("")))
+        assertFalse(isSafeSyncRow(row("x".repeat(201))))
+    }
+
+    @Test
+    fun oddFieldNamesAreRejected() {
+        assertFalse(isSafeSyncRow(row("ok", "__proto__" to "x")))
+        assertFalse(isSafeSyncRow(row("ok", "title" to "x", stampField = "constructor.x")))
     }
 }

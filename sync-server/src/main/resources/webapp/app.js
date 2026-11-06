@@ -4,6 +4,12 @@ import { parseRunYaml, YAML_GUIDE_PROMPT } from './yaml.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/* Ids come from other devices. Anything outside this charset is never put into markup or handlers. */
+const SAFE_UID = /^[A-Za-z0-9._:@#+~-]{1,200}$/;
+const SAFE_FIELD = /^_?[a-z][a-z_]{0,31}$/;
+const safeId = (u) => (SAFE_UID.test(String(u)) ? String(u) : '');
+const STATES = ['done', 'partial', 'skipped'];
+const safeState = (st) => (STATES.includes(st) ? st : '');
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
 const roman = (n) => ROMAN[n - 1] || String(n);
 const GROUP_ICON = { wellbeing: '☀', focus: '◉', health: '♥', fitness: '⛹', learning: '✎', sleep: '☾', general: '●' };
@@ -147,17 +153,30 @@ function fieldWins(inc, cur, incValue, curValue) {
  * A field edited here after the request was built keeps its newer stamp.
  */
 function mergeIncoming(r) {
-  if (!mirror[r.t]) mirror[r.t] = {};
-  if (r.v && r.v._deleted === true) { delete mirror[r.t][r.u]; return; }
-  const cur = mirror[r.t][r.u] || { v: {}, s: {} };
+  if (!r || !TABLES.includes(r.t) || !SAFE_UID.test(String(r.u))) return;
+  const incoming = r.v && typeof r.v === 'object' ? r.v : {};
+  const stamps = r.s && typeof r.s === 'object' ? r.s : {};
+  for (const [field, value] of Object.entries(incoming)) {
+    if (!SAFE_FIELD.test(field)) return;
+    if ((field === 'uid' || field.endsWith('_uid')) && typeof value === 'string' && !SAFE_UID.test(value)) return;
+  }
+  const table = mirror[r.t] || (mirror[r.t] = {});
+  const cur = Object.hasOwn(table, r.u) ? table[r.u] : { v: {}, s: {} };
+  const own = (o, k) => (Object.hasOwn(o, k) ? o[k] : undefined);
+  if (own(cur.v, '_deleted') === true) return; // a delete here stays deleted, so late live fields cannot revive a partial row
+  if (incoming._deleted === true) {
+    // Keep a tombstone instead of dropping the row so stale fields arriving later stay hidden.
+    table[r.u] = { v: { _deleted: true }, s: { ...cur.s, _deleted: stamps._deleted || { c: Date.now(), d: '' } } };
+    return;
+  }
   const v = { ...cur.v }, s = { ...cur.s };
-  for (const [field, value] of Object.entries(r.v || {})) {
-    const stamp = (r.s || {})[field];
-    if (stamp && !fieldWins(stamp, cur.s[field], value, cur.v[field])) continue;
+  for (const [field, value] of Object.entries(incoming)) {
+    const stamp = own(stamps, field);
+    if (stamp && !fieldWins(stamp, own(cur.s, field), value, own(cur.v, field))) continue;
     v[field] = value;
     if (stamp) s[field] = stamp;
   }
-  mirror[r.t][r.u] = { v, s };
+  table[r.u] = { v, s };
 }
 let syncing = false, syncQueued = false;
 function setSync(state, label) {
@@ -529,7 +548,7 @@ function habitTable(habits, startDate, count, todayIso, numberedBase) {
       const future = day > todayIso;
       body += future
         ? `<span class="dot future"></span>`
-        : `<button class="dot ${c ? c.state : ''}${day === todayIso ? ' today' : ''}" aria-label="${esc(h.title)} ${day}" onclick="toggleDay('${h.uid}','${day}')"></button>`;
+        : `<button class="dot ${c ? safeState(c.state) : ''}${day === todayIso ? ' today' : ''}" aria-label="${esc(h.title)} ${day}" onclick="toggleDay('${safeId(h.uid)}','${day}')"></button>`;
     }
     body += `</div><div class="point">${h.impact_points}</div></div>`;
   }
@@ -553,7 +572,7 @@ function standaloneSection() {
     html += `<div class="hrow" style="grid-template-columns:34px minmax(170px,1.1fr) minmax(0,2fr) 44px"><div class="symbol">${groupIcon(h.group_name)}</div>
       <div><div class="habit-name">${esc(h.title)}<span class="iteration">${roman(h.iteration || 1)}</span></div>
       <div class="habit-meta">${habitMeta(h)}</div></div>
-      <div><button class="btn${c && c.state === 'done' ? ' primary' : ''}" onclick="toggleDay('${h.uid}','${today}')">${c && c.state === 'done' ? '✓ Done today' : c ? esc(c.state) + ' · tap for done' : 'Log today'}</button></div>
+      <div><button class="btn${c && c.state === 'done' ? ' primary' : ''}" onclick="toggleDay('${safeId(h.uid)}','${today}')">${c && c.state === 'done' ? '✓ Done today' : c ? esc(c.state) + ' · tap for done' : 'Log today'}</button></div>
       <div class="point">${h.impact_points}</div></div>`;
   }
   html += `</div><button class="add-habit" onclick="openStandalone()">＋ New standalone habit</button><div id="standaloneForm"></div>`;
@@ -593,7 +612,7 @@ function renderRuns() {
     <div class="metric"><small>Days logged</small><b>${perDay.filter((e) => e > 0).length} / ${elapsed}</b></div>
     <div class="metric"><small>Habits</small><b>${habits.length}</b></div>
     </div></div></div>
-    <div class="section-head"><h3>Habits</h3><span class="head-btns"><button class="btn" onclick="openBuilder()">＋ New run</button><button class="btn" onclick="openEdit('${run.uid}')">Edit run</button></span></div>
+    <div class="section-head"><h3>Habits</h3><span class="head-btns"><button class="btn" onclick="openBuilder()">＋ New run</button><button class="btn" onclick="openEdit('${safeId(run.uid)}')">Edit run</button></span></div>
     ${habitTable(habits, run.start_date, dur, today, 1)}
     <div class="charts-2">
     <div class="card pts-card"><div class="chart-title">Points per day</div><div class="caption">Whole run · hover a bar for values</div>
@@ -829,7 +848,7 @@ function renderTrackers() {
       </div><span class="pill">${esc(t.cadence)}</span></div>
       ${week.length ? `<div class="mini-bars">${week.map((e) => `<i style="height:${Math.max(5, Math.round((e.value / maxV) * 100))}%"></i>`).join('')}</div>` : ''}
       <div class="log-row"><input class="field" id="tv-${t.uid}" type="number" step="any" placeholder="New value" aria-label="New value for ${esc(t.name)}">
-      <button class="btn primary" onclick="logTracker('${t.uid}')">Log</button></div></div>`;
+      <button class="btn primary" onclick="logTracker('${safeId(t.uid)}')">Log</button></div></div>`;
   }
   html += `</div>`;
   body.innerHTML = html;
@@ -925,7 +944,7 @@ function renderBuilder() {
   if (b.mode === 'copy') {
     html += `<div class="card form-narrow"><label class="field-label" for="previousRun" style="margin-top:0">Copy from</label>
       <select class="field" id="previousRun" onchange="builderCopyFrom(this.value)">
-      ${runs.map((r) => `<option value="${r.uid}"${r.uid === b.copyFrom ? ' selected' : ''}>${esc(r.name)} · ${r.duration_days} days</option>`).join('')}</select>
+      ${runs.map((r) => `<option value="${esc(safeId(r.uid))}"${r.uid === b.copyFrom ? ' selected' : ''}>${esc(r.name)} · ${r.duration_days} days</option>`).join('')}</select>
       <label class="checkline"><input type="checkbox"${b.includeStandalone ? ' checked' : ''} onchange="builder.includeStandalone=this.checked;builderCopyFrom(builder.copyFrom)"> Also include standalone habits</label>
       <div class="helper">Copied habits stay editable. Past check-ins on overlapping dates count toward the new run automatically.</div></div>`;
   }
@@ -1045,7 +1064,7 @@ function renderEdit() {
   html += `<div class="form-row form-narrow"><div><label class="field-label" for="attachSel">Attach an existing habit</label>
     <select class="field" id="attachSel" onchange="editRun.attachUid=this.value">
     <option value="">Choose…</option>
-    ${unattached.map((h) => `<option value="${h.uid}">${esc(h.title)} · ${esc(h.group_name)}</option>`).join('')}</select></div>
+    ${unattached.map((h) => `<option value="${esc(safeId(h.uid))}">${esc(h.title)} · ${esc(h.group_name)}</option>`).join('')}</select></div>
     <div style="align-self:end"><button class="btn" onclick="attachExisting()">Attach</button></div></div>
     <button class="add-habit" onclick="editRun.habits.push(blankHabit());renderEdit()">＋ New habit in this run</button><br>
     <button class="build-button" onclick="saveEdit()">Save changes</button> <button class="btn" onclick="showView('runs')">Cancel</button>`;
