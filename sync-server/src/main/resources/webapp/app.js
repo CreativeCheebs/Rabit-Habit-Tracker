@@ -548,7 +548,7 @@ function habitTable(habits, startDate, count, todayIso, numberedBase) {
       const future = day > todayIso;
       body += future
         ? `<span class="dot future"></span>`
-        : `<button class="dot ${c ? safeState(c.state) : ''}${day === todayIso ? ' today' : ''}" aria-label="${esc(h.title)} ${day}" onclick="toggleDay('${safeId(h.uid)}','${day}')"></button>`;
+        : `<button class="dot ${c ? safeState(c.state) : ''}${day === todayIso ? ' today' : ''}" aria-label="${esc(h.title)} ${day}" data-click="toggleDay" data-a="${safeId(h.uid)}" data-b="${day}"></button>`;
     }
     body += `</div><div class="point">${h.impact_points}</div></div>`;
   }
@@ -572,10 +572,10 @@ function standaloneSection() {
     html += `<div class="hrow" style="grid-template-columns:34px minmax(170px,1.1fr) minmax(0,2fr) 44px"><div class="symbol">${groupIcon(h.group_name)}</div>
       <div><div class="habit-name">${esc(h.title)}<span class="iteration">${roman(h.iteration || 1)}</span></div>
       <div class="habit-meta">${habitMeta(h)}</div></div>
-      <div><button class="btn${c && c.state === 'done' ? ' primary' : ''}" onclick="toggleDay('${safeId(h.uid)}','${today}')">${c && c.state === 'done' ? '✓ Done today' : c ? esc(c.state) + ' · tap for done' : 'Log today'}</button></div>
+      <div><button class="btn${c && c.state === 'done' ? ' primary' : ''}" data-click="toggleDay" data-a="${safeId(h.uid)}" data-b="${today}">${c && c.state === 'done' ? '✓ Done today' : c ? esc(c.state) + ' · tap for done' : 'Log today'}</button></div>
       <div class="point">${h.impact_points}</div></div>`;
   }
-  html += `</div><button class="add-habit" onclick="openStandalone()">＋ New standalone habit</button><div id="standaloneForm"></div>`;
+  html += `</div><button class="add-habit" data-click="openStandalone">＋ New standalone habit</button><div id="standaloneForm"></div>`;
   return html;
 }
 function renderRuns() {
@@ -612,7 +612,7 @@ function renderRuns() {
     <div class="metric"><small>Days logged</small><b>${perDay.filter((e) => e > 0).length} / ${elapsed}</b></div>
     <div class="metric"><small>Habits</small><b>${habits.length}</b></div>
     </div></div></div>
-    <div class="section-head"><h3>Habits</h3><span class="head-btns"><button class="btn" onclick="openBuilder()">＋ New run</button><button class="btn" onclick="openEdit('${safeId(run.uid)}')">Edit run</button></span></div>
+    <div class="section-head"><h3>Habits</h3><span class="head-btns"><button class="btn" data-click="openBuilder">＋ New run</button><button class="btn" data-click="openEdit" data-a="${safeId(run.uid)}">Edit run</button></span></div>
     ${habitTable(habits, run.start_date, dur, today, 1)}
     <div class="charts-2">
     <div class="card pts-card"><div class="chart-title">Points per day</div><div class="caption">Whole run · hover a bar for values</div>
@@ -629,7 +629,7 @@ function renderRuns() {
 function emptyRunsView() {
   return `<div class="page-intro"><div class="eyebrow">Runs</div><h1 style="font-size:26px;font-weight:500;margin:0 0 4px">No run running</h1>
     <div class="sub">Build a fixed-length run, or continue without one.</div></div>
-    <div class="empty">Nothing here yet.<br><br><button class="btn primary" onclick="openBuilder()">Build a run</button> <button class="btn" onclick="setInfinite(true);renderRuns()">Continue without a run</button></div>
+    <div class="empty">Nothing here yet.<br><br><button class="btn primary" data-click="openBuilder">Build a run</button> <button class="btn" data-click="infiniteOn">Continue without a run</button></div>
     ${standaloneSection()}`;
 }
 function infiniteView(today) {
@@ -644,7 +644,7 @@ function infiniteView(today) {
     const h = row('habit', c.habit_uid);
     if (h && !h.v.archived) baseline += h.v.impact_points;
   }
-  let html = `<div class="section-head"><h3>Habits</h3><span class="head-btns"><span class="caption">Infinite run · last 21 days</span><button class="btn primary" onclick="openBuilder()">Build a run</button><button class="btn" onclick="setInfinite(false);renderRuns()">Exit</button></span></div>`;
+  let html = `<div class="section-head"><h3>Habits</h3><span class="head-btns"><span class="caption">Infinite run · last 21 days</span><button class="btn primary" data-click="openBuilder">Build a run</button><button class="btn" data-click="infiniteOff">Exit</button></span></div>`;
   if (!list.length) {
     html += `<div class="empty">No standalone habits yet.<br>Add one below — it stays due with or without a run.</div>`;
   } else {
@@ -658,7 +658,7 @@ function infiniteView(today) {
     ${infiniteBurnup(perDay, baseline)}
     <div class="chart-key"><span>━ Actual</span><span>┄ Pace</span></div></div>
     </div>
-    <button class="add-habit" onclick="openStandalone()">＋ New standalone habit</button><div id="standaloneForm"></div>`;
+    <button class="add-habit" data-click="openStandalone">＋ New standalone habit</button><div id="standaloneForm"></div>`;
   return html;
 }
 function infiniteBurnup(perDay, baseline) {
@@ -716,8 +716,8 @@ function renderQuick() {
     <div class="comment-box" id="quickComment" style="display:${quickCommentOpen ? 'block' : 'none'}">
     <textarea class="field" id="quickNoteText" placeholder="Add a note about this habit today"></textarea></div>
     </article></div>
-    <div class="quick-actions"><button class="quick-action partial" onclick="recordQuick('partial')"><span>◐</span> Partial</button>
-    <button class="comment-btn" onclick="setQuickComment(!quickCommentOpen)">✎ Comment</button></div>
+    <div class="quick-actions"><button class="quick-action partial" data-click="recordQuick" data-a="partial"><span>◐</span> Partial</button>
+    <button class="comment-btn" data-click="toggleQuickComment">✎ Comment</button></div>
     <div class="quick-note">Swipe right to mark done · swipe left to skip. Skipped interval habits stay due until completed.</div>`;
   const card = $('swipeCard');
   card.addEventListener('pointerdown', startQuickDrag);
@@ -818,7 +818,7 @@ function renderGoals() {
     <input class="field" id="goalDesc" placeholder="e.g. Read 20 pages daily">
     <label class="field-label" for="goalTarget">Target date (optional)</label>
     <input class="field" id="goalTarget" type="date">
-    <button class="build-button" style="margin-bottom:0" onclick="addGoal()">Add goal</button></div></div>`;
+    <button class="build-button" style="margin-bottom:0" data-click="addGoal">Add goal</button></div></div>`;
   body.innerHTML = html;
 }
 function addGoal() {
@@ -848,7 +848,7 @@ function renderTrackers() {
       </div><span class="pill">${esc(t.cadence)}</span></div>
       ${week.length ? `<div class="mini-bars">${week.map((e) => `<i style="height:${Math.max(5, Math.round((e.value / maxV) * 100))}%"></i>`).join('')}</div>` : ''}
       <div class="log-row"><input class="field" id="tv-${t.uid}" type="number" step="any" placeholder="New value" aria-label="New value for ${esc(t.name)}">
-      <button class="btn primary" onclick="logTracker('${safeId(t.uid)}')">Log</button></div></div>`;
+      <button class="btn primary" data-click="logTracker" data-a="${safeId(t.uid)}">Log</button></div></div>`;
   }
   html += `</div>`;
   body.innerHTML = html;
@@ -905,18 +905,19 @@ function builderCopyFrom(runUid) {
 function builderDays(d) { builder.days = d; builder.custom = false; renderBuilder(); }
 function builderCustom() { builder.custom = true; renderBuilder(); }
 function habitEditorHTML(h, i, ctx) {
+  const edCtx = ctx === 'builder.habits' ? 'builder' : 'edit';
   return `<div class="habit-editor"><div class="editor-head">
-    <input class="field" value="${esc(h.name)}" aria-label="Habit name" placeholder="Habit name" oninput="${ctx}[${i}].name=this.value">
-    <input class="field editor-impact" value="${esc(h.group)}" aria-label="Group" oninput="${ctx}[${i}].group=this.value">
-    <button class="remove-habit" aria-label="Remove" onclick="${ctx}.splice(${i},1);render${ctx === 'builder.habits' ? 'Builder' : 'Edit'}()">×</button></div>
+    <input class="field" value="${esc(h.name)}" aria-label="Habit name" placeholder="Habit name" data-input="habit" data-ctx="${edCtx}" data-i="${i}" data-field="name">
+    <input class="field editor-impact" value="${esc(h.group)}" aria-label="Group" data-input="habit" data-ctx="${edCtx}" data-i="${i}" data-field="group">
+    <button class="remove-habit" aria-label="Remove" data-click="removeHabit" data-a="${edCtx}" data-b="${i}">×</button></div>
     <label class="field-label">Impact points per completion</label>
-    <div class="editor-head"><input class="field editor-impact" type="number" min="0" value="${h.points}" oninput="${ctx}[${i}].points=Number(this.value)||0"><span class="caption">points</span></div>
-    <div class="segmented"><button class="${h.interval ? '' : 'selected'}" onclick="${ctx}[${i}].interval=false;render${ctx === 'builder.habits' ? 'Builder' : 'Edit'}()">Days per week</button>
-    <button class="${h.interval ? 'selected' : ''}" onclick="${ctx}[${i}].interval=true;render${ctx === 'builder.habits' ? 'Builder' : 'Edit'}()">Every N days</button></div>
+    <div class="editor-head"><input class="field editor-impact" type="number" min="0" value="${h.points}" data-input="habit" data-ctx="${edCtx}" data-i="${i}" data-field="points"><span class="caption">points</span></div>
+    <div class="segmented"><button class="${h.interval ? '' : 'selected'}" data-click="habitInterval" data-a="${edCtx}" data-b="${i}" data-c="weekly">Days per week</button>
+    <button class="${h.interval ? 'selected' : ''}" data-click="habitInterval" data-a="${edCtx}" data-b="${i}" data-c="interval">Every N days</button></div>
     ${h.interval
-      ? `<div><label class="field-label">Repeat interval</label><div class="interval-row">Every <input class="field" type="number" min="1" value="${h.count}" oninput="${ctx}[${i}].count=Number(this.value)||1"> days</div>
+      ? `<div><label class="field-label">Repeat interval</label><div class="interval-row">Every <input class="field" type="number" min="1" value="${h.count}" data-input="habit" data-ctx="${edCtx}" data-i="${i}" data-field="count"> days</div>
         <div class="helper">If missed, it stays due until completed. After a Done it hides for N-1 days.</div></div>`
-      : `<div><label class="field-label">Days per week</label><div class="interval-row"><input class="field" type="number" min="1" max="7" value="${h.count}" oninput="${ctx}[${i}].count=Number(this.value)||1"> days per week</div>
+      : `<div><label class="field-label">Days per week</label><div class="interval-row"><input class="field" type="number" min="1" max="7" value="${h.count}" data-input="habit" data-ctx="${edCtx}" data-i="${i}" data-field="count"> days per week</div>
         <div class="helper">Set a weekly target; complete it on any days. Due every day until done.</div></div>`}</div>`;
 }
 function renderBuilder() {
@@ -927,41 +928,41 @@ function renderBuilder() {
     <h1 style="font-size:26px;font-weight:500;margin:4px 0">Build a run</h1>
     <div class="sub">Copy the last run, start from scratch, or paste YAML from any AI chatbot.</div>
     <div class="builder-source">
-    <button class="source-btn${b.mode === 'copy' ? ' active' : ''}" onclick="builderMode('copy')"><b>Copy previous</b>Reuse habits and edit them</button>
-    <button class="source-btn${b.mode === 'scratch' ? ' active' : ''}" onclick="builderMode('scratch')"><b>Start from scratch</b>Choose habits yourself</button>
-    <button class="source-btn${b.mode === 'yaml' ? ' active' : ''}" onclick="builderMode('yaml')"><b>From YAML</b>Configure using external AI</button></div>`;
+    <button class="source-btn${b.mode === 'copy' ? ' active' : ''}" data-click="builderMode" data-a="copy"><b>Copy previous</b>Reuse habits and edit them</button>
+    <button class="source-btn${b.mode === 'scratch' ? ' active' : ''}" data-click="builderMode" data-a="scratch"><b>Start from scratch</b>Choose habits yourself</button>
+    <button class="source-btn${b.mode === 'yaml' ? ' active' : ''}" data-click="builderMode" data-a="yaml"><b>From YAML</b>Configure using external AI</button></div>`;
   if (b.mode === 'yaml') {
     html += `<div class="card" style="max-width:760px"><div class="chart-title">Paste a run file</div>
       <div class="helper">Copy the guide prompt into any chatbot, describe the habits you want, paste the YAML answer here, then load it into the editor below.</div>
-      <div class="yaml-actions"><button class="btn" onclick="copyGuidePrompt()">Copy guide prompt</button>
-      <button class="btn" onclick="builder.showGuide=!builder.showGuide;renderBuilder()">${b.showGuide ? 'Hide guide' : 'Show guide'}</button></div>
+      <div class="yaml-actions"><button class="btn" data-click="copyGuidePrompt">Copy guide prompt</button>
+      <button class="btn" data-click="toggleGuide">${b.showGuide ? 'Hide guide' : 'Show guide'}</button></div>
       ${b.showGuide ? `<pre class="prompt">${esc(YAML_GUIDE_PROMPT)}</pre>` : ''}
       <label class="field-label" for="yamlText">Run YAML</label>
-      <textarea class="field code" id="yamlText" placeholder="name: Reset week&#10;days: 14&#10;habits:&#10;  - name: Morning light&#10;    every: 1 day" oninput="builder.yamlText=this.value;builder.yamlLoaded=false">${esc(b.yamlText)}</textarea>
+      <textarea class="field code" id="yamlText" placeholder="name: Reset week&#10;days: 14&#10;habits:&#10;  - name: Morning light&#10;    every: 1 day" data-input="builder" data-field="yamlText">${esc(b.yamlText)}</textarea>
       <div class="form-errors${b.yamlErrors.length ? ' show' : ''}" id="yamlErrors">${b.yamlErrors.map(esc).join('<br>')}</div>
-      <div class="yaml-actions"><button class="btn primary" onclick="loadYamlIntoEditor()">Load into editor</button></div></div>`;
+      <div class="yaml-actions"><button class="btn primary" data-click="loadYamlIntoEditor">Load into editor</button></div></div>`;
   }
   if (b.mode === 'copy') {
     html += `<div class="card form-narrow"><label class="field-label" for="previousRun" style="margin-top:0">Copy from</label>
-      <select class="field" id="previousRun" onchange="builderCopyFrom(this.value)">
+      <select class="field" id="previousRun" data-change="copyFrom">
       ${runs.map((r) => `<option value="${esc(safeId(r.uid))}"${r.uid === b.copyFrom ? ' selected' : ''}>${esc(r.name)} · ${r.duration_days} days</option>`).join('')}</select>
-      <label class="checkline"><input type="checkbox"${b.includeStandalone ? ' checked' : ''} onchange="builder.includeStandalone=this.checked;builderCopyFrom(builder.copyFrom)"> Also include standalone habits</label>
+      <label class="checkline"><input type="checkbox"${b.includeStandalone ? ' checked' : ''} data-change="includeStandalone"> Also include standalone habits</label>
       <div class="helper">Copied habits stay editable. Past check-ins on overlapping dates count toward the new run automatically.</div></div>`;
   }
   html += `<div class="form-row form-narrow"><div><label class="field-label" for="runName">Run name</label>
-    <input class="field" id="runName" placeholder="Name this run" value="${esc(b.name)}" oninput="builder.name=this.value"></div>
+    <input class="field" id="runName" placeholder="Name this run" value="${esc(b.name)}" data-input="builder" data-field="name"></div>
     <div><label class="field-label" for="runStart">Start date</label>
-    <input class="field" id="runStart" type="date" value="${esc(b.start)}" oninput="builder.start=this.value"></div></div>
+    <input class="field" id="runStart" type="date" value="${esc(b.start)}" data-input="builder" data-field="start"></div></div>
     <div class="form-narrow"><label class="field-label">Run length</label><div class="duration-row">
-    ${[7, 14, 21].map((d) => `<button class="duration-chip${!b.custom && b.days === d ? ' selected' : ''}" onclick="builderDays(${d})">${d} days</button>`).join('')}
-    <button class="duration-chip${b.custom ? ' selected' : ''}" onclick="builderCustom()">Custom</button></div>
-    ${b.custom ? `<div class="interval-row" style="margin-top:8px"><input class="field" id="customDays" type="number" min="1" max="365" value="${b.days}" oninput="builder.days=Number(this.value)||21"> days</div>` : ''}</div>
+    ${[7, 14, 21].map((d) => `<button class="duration-chip${!b.custom && b.days === d ? ' selected' : ''}" data-click="builderDays" data-a="${d}">${d} days</button>`).join('')}
+    <button class="duration-chip${b.custom ? ' selected' : ''}" data-click="builderCustom">Custom</button></div>
+    ${b.custom ? `<div class="interval-row" style="margin-top:8px"><input class="field" id="customDays" type="number" min="1" max="365" value="${b.days}" data-input="builder" data-field="days"> days</div>` : ''}</div>
     <div class="section-head"><h3>Habits in this run</h3><span class="caption">${b.habits.length} habit${b.habits.length === 1 ? '' : 's'}</span></div>
     <div id="builderHabits">`;
   if (!b.habits.length) html += `<div class="empty-editor" style="border:1px dashed var(--outline);color:var(--muted);border-radius:16px;text-align:center;padding:20px 12px;font-size:12px;max-width:760px">No habits added yet. Add the first habit below.</div>`;
   b.habits.forEach((h, i) => { html += habitEditorHTML(h, i, 'builder.habits'); });
-  html += `</div><button class="add-habit" onclick="builder.habits.push(blankHabit());renderBuilder()">＋ Add a habit</button><br>
-    <button class="build-button" onclick="createRun()">Create run</button> <button class="btn" onclick="showView('runs')">Cancel</button>`;
+  html += `</div><button class="add-habit" data-click="addHabit" data-a="builder">＋ Add a habit</button><br>
+    <button class="build-button" data-click="createRun">Create run</button> <button class="btn" data-click="showView" data-a="runs">Cancel</button>`;
   body.innerHTML = html;
   const yt = $('yamlText');
   if (yt && !yt.value && b.yamlText) yt.value = b.yamlText;
@@ -1051,23 +1052,23 @@ function renderEdit() {
   let html = `<div class="eyebrow">Edit run</div>
     <h1 style="font-size:26px;font-weight:500;margin:4px 0">Edit run</h1>
     <div class="form-row form-narrow"><div><label class="field-label" for="editName">Run name</label>
-    <input class="field" id="editName" value="${esc(e.name)}" oninput="editRun.name=this.value"></div>
+    <input class="field" id="editName" value="${esc(e.name)}" data-input="edit" data-field="name"></div>
     <div><label class="field-label" for="editStart">Start date</label>
-    <input class="field" id="editStart" type="date" value="${esc(e.start)}" oninput="editRun.start=this.value"></div></div>
+    <input class="field" id="editStart" type="date" value="${esc(e.start)}" data-input="edit" data-field="start"></div></div>
     <div class="form-narrow"><label class="field-label">Run length</label><div class="duration-row">
-    ${[7, 14, 21].map((d) => `<button class="duration-chip${!e.custom && e.days === d ? ' selected' : ''}" onclick="editRun.days=${d};editRun.custom=false;renderEdit()">${d} days</button>`).join('')}
-    <button class="duration-chip${e.custom ? ' selected' : ''}" onclick="editRun.custom=true;renderEdit()">Custom</button></div>
-    ${e.custom ? `<div class="interval-row" style="margin-top:8px"><input class="field" type="number" min="1" max="365" value="${e.days}" oninput="editRun.days=Number(this.value)||21"> days</div>` : ''}</div>
+    ${[7, 14, 21].map((d) => `<button class="duration-chip${!e.custom && e.days === d ? ' selected' : ''}" data-click="editDays" data-a="${d}">${d} days</button>`).join('')}
+    <button class="duration-chip${e.custom ? ' selected' : ''}" data-click="editCustom">Custom</button></div>
+    ${e.custom ? `<div class="interval-row" style="margin-top:8px"><input class="field" type="number" min="1" max="365" value="${e.days}" data-input="edit" data-field="days"> days</div>` : ''}</div>
     <div class="section-head"><h3>Habits in this run</h3><span class="caption">${e.habits.length} habit${e.habits.length === 1 ? '' : 's'}</span></div>
     <div class="helper" style="max-width:760px">Editing a habit here updates it everywhere it is used${others}.</div>`;
   e.habits.forEach((h, i) => { html += habitEditorHTML(h, i, 'editRun.habits'); });
   html += `<div class="form-row form-narrow"><div><label class="field-label" for="attachSel">Attach an existing habit</label>
-    <select class="field" id="attachSel" onchange="editRun.attachUid=this.value">
+    <select class="field" id="attachSel" data-change="attachUid">
     <option value="">Choose…</option>
     ${unattached.map((h) => `<option value="${esc(safeId(h.uid))}">${esc(h.title)} · ${esc(h.group_name)}</option>`).join('')}</select></div>
-    <div style="align-self:end"><button class="btn" onclick="attachExisting()">Attach</button></div></div>
-    <button class="add-habit" onclick="editRun.habits.push(blankHabit());renderEdit()">＋ New habit in this run</button><br>
-    <button class="build-button" onclick="saveEdit()">Save changes</button> <button class="btn" onclick="showView('runs')">Cancel</button>`;
+    <div style="align-self:end"><button class="btn" data-click="attachExisting">Attach</button></div></div>
+    <button class="add-habit" data-click="addHabit" data-a="edit">＋ New habit in this run</button><br>
+    <button class="build-button" data-click="saveEdit">Save changes</button> <button class="btn" data-click="showView" data-a="runs">Cancel</button>`;
   body.innerHTML = html;
 }
 function runsUsingHabitInfo(uids) {
@@ -1134,7 +1135,7 @@ function openStandalone() {
     <div class="interval-row" id="saWeekly"><input class="field" id="saCount" type="number" min="1" max="7" value="3"> days per week</div>
     <div class="interval-row" id="saInterval" style="display:none">Every <input class="field" id="saEvery" type="number" min="1" value="2"> days</div>
     <div class="helper">Standalone habits are not in any run. They always appear, and count toward a run once attached to one.</div>
-    <button class="build-button" onclick="createStandalone()">Add habit</button></div>`;
+    <button class="build-button" data-click="createStandalone">Add habit</button></div>`;
   host.querySelectorAll('#saSeg button').forEach((btn) => btn.addEventListener('click', () => {
     host.querySelectorAll('#saSeg button').forEach((x) => x.classList.toggle('selected', x === btn));
     const iv = btn.dataset.v === '1';
@@ -1169,6 +1170,73 @@ Object.defineProperties(window, {
   builder: { get: () => builder, set: (v) => { builder = v; } },
   editRun: { get: () => editRun, set: (v) => { editRun = v; } },
   quickCommentOpen: { get: () => quickCommentOpen, set: (v) => { quickCommentOpen = v; } },
+});
+
+/* ---------- UI events ----------
+ * Delegated from the document so the page contains no inline scripts and the
+ * CSP can forbid them. Markup carries data-click / data-input / data-change.
+ */
+const editorList = (ctx) => (ctx === 'builder' ? builder.habits : editRun.habits);
+const editorRender = (ctx) => (ctx === 'builder' ? renderBuilder() : renderEdit());
+const ACTIONS = {
+  toggleDay: (a, b) => toggleDay(a, b),
+  openStandalone: () => openStandalone(),
+  openBuilder: () => openBuilder(),
+  openEdit: (a) => openEdit(a),
+  infiniteOn: () => { setInfinite(true); renderRuns(); },
+  infiniteOff: () => { setInfinite(false); renderRuns(); },
+  recordQuick: (a) => recordQuick(a),
+  toggleQuickComment: () => setQuickComment(!quickCommentOpen),
+  addGoal: () => addGoal(),
+  logTracker: (a) => logTracker(a),
+  removeHabit: (ctx, i) => { editorList(ctx).splice(Number(i), 1); editorRender(ctx); },
+  habitInterval: (ctx, i, mode) => { editorList(ctx)[Number(i)].interval = mode === 'interval'; editorRender(ctx); },
+  addHabit: (ctx) => { editorList(ctx).push(blankHabit()); editorRender(ctx); },
+  builderMode: (a) => builderMode(a),
+  copyGuidePrompt: () => copyGuidePrompt(),
+  toggleGuide: () => { builder.showGuide = !builder.showGuide; renderBuilder(); },
+  loadYamlIntoEditor: () => loadYamlIntoEditor(),
+  builderDays: (a) => builderDays(Number(a)),
+  builderCustom: () => builderCustom(),
+  createRun: () => createRun(),
+  showView: (a) => showView(a),
+  editDays: (a) => { editRun.days = Number(a); editRun.custom = false; renderEdit(); },
+  editCustom: () => { editRun.custom = true; renderEdit(); },
+  attachExisting: () => attachExisting(),
+  saveEdit: () => saveEdit(),
+  createStandalone: () => createStandalone(),
+};
+const HABIT_FIELDS = { name: (v) => v, group: (v) => v, points: (v) => Number(v) || 0, count: (v) => Number(v) || 1 };
+const RUN_FIELDS = { name: (v) => v, start: (v) => v, days: (v) => Number(v) || 21, yamlText: (v) => v };
+function setRunField(target, field, value) {
+  if (Object.hasOwn(RUN_FIELDS, field)) target[field] = RUN_FIELDS[field](value);
+}
+document.addEventListener('click', (e) => {
+  const el = e.target instanceof Element ? e.target.closest('[data-click]') : null;
+  if (!el) return;
+  const act = Object.hasOwn(ACTIONS, el.dataset.click) ? ACTIONS[el.dataset.click] : null;
+  if (act) act(el.dataset.a, el.dataset.b, el.dataset.c);
+});
+document.addEventListener('input', (e) => {
+  const el = e.target instanceof Element ? e.target.closest('[data-input]') : null;
+  if (!el) return;
+  const d = el.dataset;
+  if (d.input === 'habit' && Object.hasOwn(HABIT_FIELDS, d.field)) {
+    const h = editorList(d.ctx)[Number(d.i)];
+    if (h) h[d.field] = HABIT_FIELDS[d.field](el.value);
+  } else if (d.input === 'builder') {
+    setRunField(builder, d.field, el.value);
+    if (d.field === 'yamlText') builder.yamlLoaded = false;
+  } else if (d.input === 'edit') {
+    setRunField(editRun, d.field, el.value);
+  }
+});
+document.addEventListener('change', (e) => {
+  const el = e.target instanceof Element ? e.target.closest('[data-change]') : null;
+  if (!el) return;
+  if (el.dataset.change === 'attachUid') editRun.attachUid = el.value;
+  else if (el.dataset.change === 'copyFrom') builderCopyFrom(el.value);
+  else if (el.dataset.change === 'includeStandalone') { builder.includeStandalone = el.checked; builderCopyFrom(builder.copyFrom); }
 });
 
 document.addEventListener('DOMContentLoaded', boot);

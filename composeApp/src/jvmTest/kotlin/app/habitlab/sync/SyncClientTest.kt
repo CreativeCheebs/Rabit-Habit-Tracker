@@ -127,6 +127,31 @@ class SyncClientTest {
     }
 
     @Test
+    fun plainHttpToTheInternetIsFlaggedButHomeNetworksAreNot() {
+        assertTrue(isUnencryptedRemote("http://sync.example.com"))
+        assertTrue(isUnencryptedRemote(" HTTP://203.0.113.9:8788/ "))
+        assertTrue(isUnencryptedRemote("http://172.32.0.1"))
+        assertEquals(false, isUnencryptedRemote("https://sync.example.com"))
+        assertEquals(false, isUnencryptedRemote("http://192.168.0.8:8788"))
+        assertEquals(false, isUnencryptedRemote("http://10.0.0.5"))
+        assertEquals(false, isUnencryptedRemote("http://172.16.4.4"))
+        assertEquals(false, isUnencryptedRemote("http://localhost:8787"))
+        assertEquals(false, isUnencryptedRemote("http://homeserver.local:8788"))
+        assertEquals(false, isUnencryptedRemote("http://nas"))
+        assertEquals(false, isUnencryptedRemote(""))
+    }
+
+    @Test
+    fun lockedOutSignInShowsTheServersMessage() = kotlinx.coroutines.test.runTest {
+        val db = freshDb()
+        val client = SyncClient(db, HttpClient(MockEngine {
+            respond("""{"error":"Too many failed attempts. Try again in a few minutes."}""", HttpStatusCode.TooManyRequests)
+        }))
+        val problem = assertFailsWith<SignInProblem.Refused> { client.signIn("http://sync.test:8788", "user@example.com", "x") }
+        assertTrue(problem.message!!.startsWith("Too many failed attempts"))
+    }
+
+    @Test
     fun signInRejectsBadPasswordWithoutStoring()= kotlinx.coroutines.test.runTest {
         val db = freshDb()
         val client = SyncClient(db, HttpClient(MockEngine {

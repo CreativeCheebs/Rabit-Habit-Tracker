@@ -53,6 +53,7 @@ import kotlinx.coroutines.launch
 import kotlin.random.Random
 import app.habitlab.db.HabitDatabase
 import app.habitlab.sync.SignInProblem
+import app.habitlab.sync.isUnencryptedRemote
 import app.habitlab.sync.SYNC_MODE_OFFLINE
 import app.habitlab.sync.SYNC_MODE_SERVER
 import app.habitlab.sync.SyncClient
@@ -312,6 +313,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                 OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text(if (creating) "Password (8+ characters)" else "Password") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
                 if (creating) OutlinedTextField(value = repeat, onValueChange = { repeat = it }, label = { Text("Repeat password") }, singleLine = true, isError = mismatch, supportingText = { if (mismatch) Text("Passwords do not match") }, visualTransformation = PasswordVisualTransformation())
                 TextButton(onClick = { creating = !creating; repeat = "" }) { Text(if (creating) "I already have an account" else "New here? Create an account") }
+                if (isUnencryptedRemote(url)) Text("This address is not encrypted. Use https:// unless the server is on your own home network.", color = palette.error, style = MaterialTheme.typography.bodySmall)
                 if (error != null) Text(error, color = palette.error, style = MaterialTheme.typography.bodySmall)
                 Text("First connection downloads everything; later syncs are small and silent.", color = muted, style = MaterialTheme.typography.bodySmall)
             }

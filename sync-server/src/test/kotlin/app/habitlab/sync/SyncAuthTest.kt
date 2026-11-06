@@ -82,4 +82,38 @@ class SyncAuthTest {
         assertFalse(isSafeSyncRow(row("ok", "__proto__" to "x")))
         assertFalse(isSafeSyncRow(row("ok", "title" to "x", stampField = "constructor.x")))
     }
+
+    @Test
+    fun repeatedFailuresForOneUserAreBlockedThenRecover() {
+        val limiter = SignInAttemptLimiter(windowMs = 1000, maxPerClient = 100, maxPerUser = 3)
+        repeat(3) { assertFalse(limiter.blocked("1.1.1.1", "me", now = 10L), "attempt ${it + 1} is still allowed") ; limiter.failure("1.1.1.1", "me", now = 10L) }
+        assertTrue(limiter.blocked("1.1.1.1", "me", now = 11L))
+        assertTrue(limiter.blocked("2.2.2.2", "me", now = 11L), "a different address cannot dodge the per-user limit")
+        assertFalse(limiter.blocked("1.1.1.1", "someone-else", now = 11L))
+        assertFalse(limiter.blocked("1.1.1.1", "me", now = 2000L), "the window passes")
+    }
+
+    @Test
+    fun oneAddressTryingManyUsernamesIsBlocked() {
+        val limiter = SignInAttemptLimiter(windowMs = 1000, maxPerClient = 4, maxPerUser = 100)
+        repeat(4) { limiter.failure("9.9.9.9", "user$it", now = 5L) }
+        assertTrue(limiter.blocked("9.9.9.9", "brand-new", now = 6L))
+        assertFalse(limiter.blocked("8.8.8.8", "brand-new", now = 6L))
+    }
+
+    @Test
+    fun successClearsTheUsersFailures() {
+        val limiter = SignInAttemptLimiter(windowMs = 1000, maxPerClient = 100, maxPerUser = 2)
+        limiter.failure("1.1.1.1", "me", now = 1L); limiter.failure("1.1.1.1", "me", now = 2L)
+        assertTrue(limiter.blocked("1.1.1.1", "me", now = 3L))
+        limiter.success("me")
+        assertFalse(limiter.blocked("1.1.1.1", "me", now = 3L))
+    }
+
+    @Test
+    fun tablesStayBoundedUnderManyUsernames() {
+        val limiter = SignInAttemptLimiter(windowMs = 1000, maxPerClient = 1_000_000, maxPerUser = 5, maxKeys = 50)
+        repeat(500) { limiter.failure("1.1.1.1", "u$it", now = 1L) }
+        assertFalse(limiter.blocked("1.1.1.1", "fresh-user", now = 2L))
+    }
 }

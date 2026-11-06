@@ -24,6 +24,21 @@ const val SYNC_TOKEN_KEY = "sync_token"
 
 private val syncJson = Json { ignoreUnknownKeys = true }
 
+/** True for a plain http:// address that is not a home/local network one, where traffic would cross the internet unencrypted. */
+fun isUnencryptedRemote(url: String): Boolean {
+    val text = url.trim().lowercase()
+    if (!text.startsWith("http://")) return false
+    val host = text.removePrefix("http://").substringBefore('/').substringBefore(':')
+    if (host.isEmpty() || host == "localhost" || host.endsWith(".local") || !host.contains('.')) return false
+    val parts = host.split('.').map { it.toIntOrNull() }
+    if (parts.size == 4 && parts.all { it != null }) {
+        val a = parts[0]!!
+        val b = parts[1]!!
+        return !(a == 10 || a == 127 || (a == 192 && b == 168) || (a == 172 && b in 16..31) || (a == 169 && b == 254))
+    }
+    return true
+}
+
 sealed interface SyncOutcome {
     data class Success(val received: Int, val sent: Int) : SyncOutcome
     data object NotConfigured : SyncOutcome
@@ -87,7 +102,7 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
         if (!response.status.isSuccess()) {
             if (response.status.value == 401) throw SignInProblem.Rejected()
             val detail = try { ((syncJson.parseToJsonElement(response.bodyAsText()) as? JsonObject)?.get("error") as? JsonPrimitive)?.content } catch (e: Exception) { null }
-            if (create && detail != null) throw SignInProblem.Refused(detail)
+            if ((create || response.status.value == 429) && detail != null) throw SignInProblem.Refused(detail)
             throw SignInProblem.ServerError(response.status.value)
         }
         val account: String

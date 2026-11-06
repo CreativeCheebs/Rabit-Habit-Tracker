@@ -110,3 +110,46 @@ object SignupLimiter {
         return true
     }
 }
+
+/**
+ * Counts failed sign-ins per client address and per username in a sliding
+ * window. Blocked callers are refused before any password hashing runs, so
+ * guessing is slow and cannot be used to burn server CPU.
+ */
+class SignInAttemptLimiter(
+    private val windowMs: Long = 10 * 60 * 1000L,
+    private val maxPerClient: Int = 10,
+    private val maxPerUser: Int = 6,
+    private val maxKeys: Int = 5000,
+) {
+    private val byClient = HashMap<String, ArrayDeque<Long>>()
+    private val byUser = HashMap<String, ArrayDeque<Long>>()
+
+    private fun recent(map: HashMap<String, ArrayDeque<Long>>, key: String, now: Long): ArrayDeque<Long>? {
+        val queue = map[key] ?: return null
+        while (queue.isNotEmpty() && now - queue.first() > windowMs) queue.removeFirst()
+        if (queue.isEmpty()) map.remove(key)
+        return queue.takeIf { it.isNotEmpty() }
+    }
+
+    @Synchronized fun blocked(client: String, user: String, now: Long = System.currentTimeMillis()): Boolean =
+        (recent(byClient, client, now)?.size ?: 0) >= maxPerClient || (recent(byUser, user, now)?.size ?: 0) >= maxPerUser
+
+    @Synchronized fun failure(client: String, user: String, now: Long = System.currentTimeMillis()) {
+        for (map in listOf(byClient, byUser)) {
+            // Usernames are attacker-chosen; keep the tables bounded.
+            if (map.size >= maxKeys) map.keys.toList().forEach { recent(map, it, now) }
+            if (map.size >= maxKeys) map.clear()
+        }
+        byClient.getOrPut(client) { ArrayDeque() }.addLast(now)
+        byUser.getOrPut(user) { ArrayDeque() }.addLast(now)
+    }
+
+    @Synchronized fun success(user: String) {
+        byUser.remove(user)
+    }
+}
+
+object SignInLimiter {
+    val instance = SignInAttemptLimiter()
+}

@@ -86,7 +86,9 @@ check('server rejects an unsafe reference field', badRef.status === 400);
 // Security headers on the page and API.
 const home = await fetch(BASE + '/');
 check('nosniff header', home.headers.get('x-content-type-options') === 'nosniff');
-check('CSP forbids framing and external scripts', /frame-ancestors 'none'/.test(home.headers.get('content-security-policy') || '') && !/script-src[^;]*https?:/.test(home.headers.get('content-security-policy') || ''));
+const csp = home.headers.get('content-security-policy') || '';
+check('CSP forbids framing', /frame-ancestors 'none'/.test(csp));
+check('CSP allows only our own scripts (no inline, no external)', /script-src 'self'(;|$)/.test(csp));
 check('API responses are not cached', (await fetch(BASE + '/api/config')).headers.get('cache-control') === 'no-store');
 
 await browser.close();

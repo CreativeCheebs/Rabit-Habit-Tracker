@@ -62,7 +62,7 @@ fun isSafeSyncRow(row: SyncRow): Boolean =
         } &&
         row.s.keys.all { it.matches(safeFieldName) }
 
-private const val WEB_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+private const val WEB_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 
 fun main() {
@@ -85,10 +85,19 @@ private fun Application.syncModule() {
         get("/health") { call.respond(mapOf("status" to "ok", "service" to "habitlab-sync")) }
         post("/api/sign-in") {
             val credentials = call.receive<SignInRequest>()
+            val client = call.request.local.remoteAddress
+            val user = credentials.username.trim().lowercase().take(254)
+            val limiter = SignInLimiter.instance
+            if (limiter.blocked(client, user)) {
+                call.response.header("Retry-After", "600")
+                call.respond(io.ktor.http.HttpStatusCode.TooManyRequests, mapOf("error" to "Too many failed attempts. Try again in a few minutes.")); return@post
+            }
             val account = Accounts.verify(credentials.username, credentials.password)
             if (account == null) {
+                limiter.failure(client, user)
                 call.respond(io.ktor.http.HttpStatusCode.Unauthorized, mapOf("error" to "Invalid username or password")); return@post
             }
+            limiter.success(user)
             call.respond(SignInResponse(account, bearerFor(requireSyncSecret(), account)))
         }
         get("/api/config") { call.respond(mapOf("signup" to Accounts.signupAllowed())) }
