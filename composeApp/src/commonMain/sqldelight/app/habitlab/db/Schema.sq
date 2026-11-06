@@ -51,6 +51,10 @@ selectRunHabitByUid:
 SELECT * FROM run_habit WHERE uid = ?;
 selectCheckInByUid:
 SELECT * FROM check_in WHERE uid = ?;
+selectGoals:
+SELECT * FROM goal ORDER BY start_date DESC, uid;
+updateGoal:
+UPDATE goal SET description = ?, target_date = ?, progress = ? WHERE uid = ?;
 selectGoalByUid:
 SELECT * FROM goal WHERE uid = ?;
 selectTrackerByUid:

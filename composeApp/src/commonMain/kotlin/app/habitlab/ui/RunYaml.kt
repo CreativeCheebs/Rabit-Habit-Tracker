@@ -23,7 +23,7 @@ private fun unquote(raw: String): String {
     return if (quoted) s.substring(1, s.length - 1) else s
 }
 
-private fun isIsoDate(raw: String): Boolean {
+internal fun isIsoDate(raw: String): Boolean {
     val m = Regex("""^(\d{4})-(\d{2})-(\d{2})$""").find(raw.trim()) ?: return false
     val (y, mo, d) = m.destructured
     val month = mo.toInt()

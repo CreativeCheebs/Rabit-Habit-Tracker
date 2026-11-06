@@ -255,3 +255,15 @@ superseded for this work. Everything below was checked on the ADB phone.
   10 habit colors + "accent".
 - Icon/color are device-local prefs (`habit_icon:<uid>`, `habit_color:<uid>`);
   they do not sync. Habit rows/detail tint with the habit color.
+
+### Step: Goals screen (Android)
+- `ui/Goals.kt` replaces the placeholder list. Mirrors the webapp: card per
+  goal (title, %, "Started … · target …", progress bar), dashed "＋ New goal"
+  card. Tap a goal to edit text / target date (YYYY-MM-DD) / progress (5%
+  steps) or delete. New uid format matches the web (`g-<8 hex>`), start date
+  is today. Queries added to `Schema.sq`: `selectGoals`, `updateGoal`; the
+  existing sync triggers already cover goal insert/update/delete.
+- Progress is manual (the web app has no progress editor either; its goals
+  also sit at 0% unless edited here).
+- Verified on device: create → edit progress → delete round trip; the test
+  goal was deleted afterwards (a tombstone for `g-…` remains on the server).

@@ -191,7 +191,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                 when (page) {
                     Destination.Runs -> RunsScreen(database, runsRevision, today, dense, onOpenHabit = { detailHabit = it }, onLocalChange = { runsRevision++; noteLocalChange() })
                     Destination.QuickLog -> QuickLogScreen(database, today, runsRevision, onLocalChange = { noteLocalChange() })
-                    Destination.Goals -> ListingScreen("Your goals", listOf("Start focused work by 9:30", "Build a steady sleep routine", "Run 5 km comfortably"), "Progress history starts from each goal’s start date.")
+                    Destination.Goals -> GoalsScreen(database, today, onLocalChange = { noteLocalChange() })
                     Destination.Trackers -> ListingScreen("Personal measurements", listOf("Sleep quality · /10", "Daily energy · /10", "Body weight · kg"), "Dated entries and simple history graphs.")
                     Destination.Settings -> SettingsScreen(
                         database = database,
@@ -712,7 +712,7 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
         val latestRun = database.schemaQueries.selectRuns().executeAsList().firstOrNull()
         latestRun?.let { database.schemaQueries.selectHabitsForRun(it.uid).executeAsList().map { row ->
             val recurrence = if (row.recurrence_type == "interval") "Every ${row.recurrence_value} days" else "${row.recurrence_value} days per week"
-            Habit(row.title, row.group_name, row.impact_points.toInt(), recurrence, "I", row.uid, database.habitIcon(row.uid))
+            Habit(row.title, row.group_name, row.impact_points.toInt(), recurrence, romanNumeral(row.iteration.toInt()), row.uid, database.habitIcon(row.uid), database.habitColor(row.uid))
         } }?.takeIf { it.isNotEmpty() } ?: sampleHabits
     }
     val due = remember(database, today, runHabits) {
