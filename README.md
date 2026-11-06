@@ -37,4 +37,4 @@ The server also hosts the Habit Lab web app at `/` (same origin as the API, so n
 
 ## For agents continuing this work
 
-Start with `HANDOFF.md`: live deployment, sync contract, webapp architecture, test accounts, verification gates, and every operational lesson so far.
+Start with `PROGRESS.md`: live deployment, sync contract, webapp architecture, test accounts, verification gates, and every operational lesson so far.

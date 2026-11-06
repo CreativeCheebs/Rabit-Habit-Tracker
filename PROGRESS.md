@@ -1,7 +1,8 @@
-# Habit Lab — agent handoff
+# Habit Lab — progress log
 
-Read this file first. It records what is built, what is live, and every
-operational lesson learned, so another agent can continue without rediscovering them.
+Running record of what is built, what is live, and every operational lesson
+learned. Read this file first before continuing work; append to it when you
+finish a step (the owner commits after every step).
 
 ## What this is
 
@@ -139,8 +140,10 @@ databases on the server.
 
 ## Test accounts and verification
 
-- Throwaway webapp account: `webtest`. Owner's account(s) are unknown to
-  agents — never touch `data/bcf6acb0…sqlite` or infer other passwords.
+- Throwaway webapp account: username `webtest`, password `cEtxziDBk8st3HmB`
+  (throwaway — safe to keep here; created for Playwright E2E). Owner's
+  account(s) are unknown to agents — never touch `data/bcf6acb0…sqlite`
+  or infer other passwords.
 - `webapp-check.mjs` needs a deterministic "latest run", so reset the
   throwaway DB before authed runs: stop server, `rm
   data/2cae3fde…f6.sqlite` (full hash in `ui-qa/README.md`), start, rerun.
@@ -159,8 +162,9 @@ databases on the server.
 - Never rewrite git history. Never `rm`/`git clean` files you did not create.
 - `muse.powershell` runs Windows PowerShell: no `&&`, no `tail`, redirect
   with `Select-Object`, quote remote `--run` bodies with single quotes.
-- Secrets (passwords, env values) stay out of the repo, memory, and commit
-  messages. The throwaway test password exists only in session context.
+- Real secrets (server env values, owner credentials) stay out of the repo,
+  memory, and commit messages. Only the throwaway `webtest` password above
+  is recorded here, by owner instruction.
 - Verify on the real target (device ADB / live server / browser), not just
   by reading code. Screenshots are checked with the image reader, not by
   file size. A self-authored green check that replays your own assumption

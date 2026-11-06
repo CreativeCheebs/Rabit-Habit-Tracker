@@ -40,7 +40,7 @@ Desktop Playwright checks against the live server: static bundle, login + 401 pa
 
 ```powershell
 $env:HABITLAB_TEST_USER = 'webtest'
-$env:HABITLAB_TEST_PASS = '<password>'
+$env:HABITLAB_TEST_PASS = '<password from PROGRESS.md>'
 node ui-qa/webapp-check.mjs
 ```
 
