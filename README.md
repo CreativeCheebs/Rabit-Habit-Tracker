@@ -34,3 +34,7 @@ Keep the service on loopback behind an authenticated HTTPS reverse proxy for rem
 ## Web app
 
 The server also hosts the Habit Lab web app at `/` (same origin as the API, so no CORS is needed). Open `http://<host>:<port>/` in a browser and sign in with a sync-server account. The desktop UI has Runs (full day grid, charts with hover values), Goals, a run builder (copy previous / scratch / paste-YAML from any AI chatbot), run editing, standalone habits that appear without a run, and an infinite-run mode when no run is running. Analytics, Trackers, and Quick Log stay in the code with their nav entries hidden. The bundle lives in `sync-server/src/main/resources/webapp/` and ships inside the fat JAR; UI checks run with `node ui-qa/webapp-check.mjs` (see `ui-qa/README.md`).
+
+## For agents continuing this work
+
+Start with `HANDOFF.md`: live deployment, sync contract, webapp architecture, test accounts, verification gates, and every operational lesson so far.
