@@ -758,7 +758,8 @@ function openBuilder() {
 }
 function builderMode(m) {
   builder.mode = m;
-  if (m === 'scratch') builder.habits = [];
+  builder.yamlLoaded = false;
+  if (m === 'scratch' || m === 'yaml') builder.habits = [];
   else if (m === 'copy') builderCopyFrom(builder.copyFrom || (latestRun() || {}).uid || '');
   renderBuilder();
 }
@@ -807,7 +808,7 @@ function renderBuilder() {
       <button class="btn" onclick="builder.showGuide=!builder.showGuide;renderBuilder()">${b.showGuide ? 'Hide guide' : 'Show guide'}</button></div>
       ${b.showGuide ? `<pre class="prompt">${esc(YAML_GUIDE_PROMPT)}</pre>` : ''}
       <label class="field-label" for="yamlText">Run YAML</label>
-      <textarea class="field code" id="yamlText" placeholder="name: Reset week&#10;days: 14&#10;habits:&#10;  - name: Morning light&#10;    every: 1 day" oninput="builder.yamlText=this.value">${esc(b.yamlText)}</textarea>
+      <textarea class="field code" id="yamlText" placeholder="name: Reset week&#10;days: 14&#10;habits:&#10;  - name: Morning light&#10;    every: 1 day" oninput="builder.yamlText=this.value;builder.yamlLoaded=false">${esc(b.yamlText)}</textarea>
       <div class="form-errors${b.yamlErrors.length ? ' show' : ''}" id="yamlErrors">${b.yamlErrors.map(esc).join('<br>')}</div>
       <div class="yaml-actions"><button class="btn primary" onclick="loadYamlIntoEditor()">Load into editor</button></div></div>`;
   }
@@ -842,15 +843,19 @@ function copyGuidePrompt() {
     navigator.clipboard.writeText(YAML_GUIDE_PROMPT).then(done, () => toast('Copy failed — select the guide text manually.'));
   } else toast('Clipboard unavailable — select the guide text manually.');
 }
-function loadYamlIntoEditor() {
-  const text = $('yamlText').value;
+function loadYamlIntoEditor() { applyYaml($('yamlText').value); }
+/* Parses pasted YAML into the builder. Returns true when it loaded; otherwise shows the errors in the YAML card. */
+function applyYaml(text) {
   const parsed = parseRunYaml(text);
   if (!parsed.ok) {
     builder.yamlErrors = parsed.errors;
     builder.yamlText = text;
     renderBuilder();
-    return;
+    const box = $('yamlErrors');
+    if (box && box.scrollIntoView) box.scrollIntoView({ block: 'center' });
+    return false;
   }
+  builder.yamlLoaded = true;
   builder.yamlErrors = [];
   builder.yamlText = text;
   if (parsed.run.name) builder.name = parsed.run.name;
@@ -860,9 +865,17 @@ function loadYamlIntoEditor() {
   builder.habits = parsed.habits.map((h) => ({ uid: null, name: h.name, group: h.group, points: h.points, interval: h.interval > 0, count: h.interval > 0 ? h.interval : h.weekly }));
   toast(`Loaded ${builder.habits.length} habits — review and create the run.`);
   renderBuilder();
+  return true;
 }
 function createRun() {
   const b = builder;
+  // Pasted YAML that was never loaded would otherwise be ignored (create used whatever habits were in the editor).
+  if (b.mode === 'yaml' && !b.yamlLoaded) {
+    const box = $('yamlText');
+    const text = box ? box.value : b.yamlText;
+    if (!String(text || '').trim()) { toast('Paste your YAML first.'); return; }
+    if (!applyYaml(text)) { toast('The YAML has problems — see the red text above.'); return; }
+  }
   const days = Math.min(Math.max(b.days || 21, 1), 365);
   const start = /^\d{4}-\d{2}-\d{2}$/.test(b.start || '') ? b.start : todayLocal();
   const named = b.habits.filter((h) => (h.name || '').trim());

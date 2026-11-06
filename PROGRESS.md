@@ -281,3 +281,19 @@ superseded for this work. Everything below was checked on the ADB phone.
 - Sizes used: 48dp touch targets for week stepper/back buttons, 40dp date
   circles, 56dp minimum habit row, 24dp-class icons (Material's 48dp minimum
   interactive size). Day dots are display-only, so they are 10–12dp.
+
+### Fix: web "From YAML" → Create run did nothing useful
+- Cause: pasted YAML was only applied by the separate "Load into editor"
+  button. "Create run" ignored it and used whatever habits were in the editor
+  (copied from the previous run, or none → a short "Add at least one habit"
+  toast). Switching to From YAML also kept the copied habits.
+- Fix in `webapp/app.js`: From YAML starts with an empty editor; "Create run"
+  now parses the pasted text itself (`applyYaml`), shows errors in the red
+  YAML box if invalid (and stays), otherwise creates the run from the YAML.
+- Verified with Playwright against the live API using the new `app.js` via
+  route interception (bad YAML → errors; good YAML → run with only the YAML
+  habit). **Not deployed yet**: the live server still serves the old jar.
+- Side effect: those checks created runs "Repro", "FixCheck", "FixCheck2"
+  (the last starts 2030-01-01, so it is now the *latest* run) in the throwaway
+  `webtest` account. Reset that DB before the next `webapp-check.mjs` run
+  (see "Test accounts and verification").
