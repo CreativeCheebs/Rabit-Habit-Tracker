@@ -38,3 +38,23 @@ The server also hosts the Habit Lab web app at `/` (same origin as the API, so n
 ## For agents continuing this work
 
 Start with `PROGRESS.md`: live deployment, sync contract, webapp architecture, test accounts, verification gates, and every operational lesson so far.
+
+## Engineering quality gates
+
+This repository currently has three distinct runtime surfaces: Android and iOS from `composeApp`, a Kotlin/JVM sync server in `sync-server`, and a separately maintained browser app bundled in the server resources. The browser app is not a Kotlin/Wasm target. Keep dependencies and CI checks scoped to the surface they validate.
+
+The root Gradle catalog (`gradle/libs.versions.toml`) owns KMP, Compose, SQLDelight, and Android/iOS tooling. The smaller `sync-server/gradle/libs.versions.toml` owns only the standalone server. Do not merge the catalogs or add Android/Compose dependencies to the server catalog.
+
+Run the relevant checks from the repository root:
+
+```powershell
+./gradlew.bat :composeApp:ktlintCheck :composeApp:detekt :composeApp:jvmTest
+./gradlew.bat :composeApp:assembleDebug
+node --test ui-qa/yaml-test.mjs
+```
+
+Run `node ui-qa/webapp-check.mjs` only after setting `HABITLAB_WEB` to a running test server; its authenticated flow also needs disposable `HABITLAB_TEST_USER` and `HABITLAB_TEST_PASS` credentials.
+
+Android UI review uses the existing Playwright/Pixelmatch/Maestro workflow documented in `ui-qa/README.md`. iOS simulator tests require macOS and an installed Xcode toolchain; they do not run on the Linux CI runner. Keep SQLDelight changes forward-only and test schema/data upgrades before release. Add browser accessibility and performance gates around the actual hosted web app, not Wasm tasks.
+
+CI also runs secret scanning and pull request dependency review. Require the relevant checks in branch protection, review scanner findings, and keep production signing and deployment secrets out of pull request workflows. See `docs/` and `.claude/` for specialist review roles, setup guidance, migration policy, security, release readiness, and UI review.
