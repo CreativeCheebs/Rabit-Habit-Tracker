@@ -53,27 +53,77 @@ class SyncClientTest {
         assertEquals("server", db.schemaQueries.selectMetaValue("sync_mode").executeAsOne())
     }
 
-    @Test
-    fun signInToDifferentServerResetsSyncPosition() = kotlinx.coroutines.test.runTest {
-        val db = freshDb()
-        db.schemaQueries.upsertMetaValue("sync_url", "http://sync.test:8788")
-        db.schemaQueries.upsertMetaValue("sync_account", "user@example.com")
+    private fun signInEngine(account: String = "user@example.com", body: String? = null) = MockEngine {
+        respond(
+            body ?: """{"account":"$account","accessToken":"tok"}""",
+            HttpStatusCode.OK,
+            headersOf("Content-Type" to listOf("application/json")),
+        )
+    }
+
+    private fun connected(db: HabitDatabase, url: String = "http://sync.test:8788", account: String = "user@example.com") {
+        db.schemaQueries.upsertMetaValue("sync_url", url)
+        db.schemaQueries.upsertMetaValue("sync_account", account)
         db.schemaQueries.upsertMetaValue("token", "40")
         db.schemaQueries.upsertMetaValue("pushed", "12")
-        val client = SyncClient(db, HttpClient(MockEngine {
-            respond(
-                """{"account":"user@example.com","accessToken":"tok"}""",
-                HttpStatusCode.OK,
-                headersOf("Content-Type" to listOf("application/json")),
-            )
-        }))
-        client.signIn("http://sync.test:8789", "user@example.com", "secret")
+    }
+
+    @Test
+    fun switchingServerNeedsConfirmationAndChangesNothing() = kotlinx.coroutines.test.runTest {
+        val db = freshDb()
+        connected(db)
+        db.schemaQueries.insertHabit("h1", "Mine", "Focus", 1L, 2L, "weekly", 3L)
+        val client = SyncClient(db, HttpClient(signInEngine()))
+        val problem = assertFailsWith<SignInProblem.SwitchNeedsConfirmation> {
+            client.signIn("http://sync.test:8789", "user@example.com", "secret")
+        }
+        assertEquals("user@example.com", problem.account)
+        assertEquals("http://sync.test:8788", db.schemaQueries.selectMetaValue("sync_url").executeAsOne())
+        assertEquals("40", db.schemaQueries.selectMetaValue("token").executeAsOne())
+        assertEquals(1, db.schemaQueries.selectHabits().executeAsList().size)
+    }
+
+    @Test
+    fun confirmedSwitchClearsLocalDataWithoutRecordingDeletes() = kotlinx.coroutines.test.runTest {
+        val db = freshDb()
+        connected(db, account = "a@example.com")
+        db.schemaQueries.insertHabit("h1", "Account A habit", "Focus", 1L, 2L, "weekly", 3L)
+        val client = SyncClient(db, HttpClient(signInEngine("b@example.com")))
+        client.signIn("http://sync.test:8789", "b@example.com", "secret", replaceLocalData = true)
+        assertEquals(0, db.schemaQueries.selectHabits().executeAsList().size)
         assertEquals("0", db.schemaQueries.selectMetaValue("token").executeAsOne())
         assertEquals("0", db.schemaQueries.selectMetaValue("pushed").executeAsOne())
+        assertEquals("b@example.com", db.schemaQueries.selectMetaValue("sync_account").executeAsOne())
+        assertEquals(0, exportChanges(db).changes.size, "account A's data must not travel to account B")
+    }
 
-        db.schemaQueries.upsertMetaValue("token", "7")
-        client.signIn("http://sync.test:8789", "user@example.com", "secret")
-        assertEquals("7", db.schemaQueries.selectMetaValue("token").executeAsOne())
+    @Test
+    fun firstSignInFromOfflineKeepsLocalDataAndSendsIt() = kotlinx.coroutines.test.runTest {
+        val db = freshDb()
+        db.schemaQueries.upsertMetaValue("sync_mode", "offline")
+        db.schemaQueries.insertHabit("h1", "Made offline", "Focus", 1L, 2L, "weekly", 3L)
+        val client = SyncClient(db, HttpClient(signInEngine()))
+        client.signIn("http://sync.test:8788", "user@example.com", "secret")
+        assertEquals(1, db.schemaQueries.selectHabits().executeAsList().size)
+        assertEquals(1, exportChanges(db).changes.size)
+    }
+
+    @Test
+    fun signInAgainToSameServerKeepsSyncPosition() = kotlinx.coroutines.test.runTest {
+        val db = freshDb()
+        connected(db)
+        val client = SyncClient(db, HttpClient(signInEngine()))
+        client.signIn("http://sync.test:8788/", "user@example.com", "secret")
+        assertEquals("40", db.schemaQueries.selectMetaValue("token").executeAsOne())
+        assertEquals("12", db.schemaQueries.selectMetaValue("pushed").executeAsOne())
+    }
+
+    @Test
+    fun malformedSignInAnswerIsReportedNotThrownRaw() = kotlinx.coroutines.test.runTest {
+        val db = freshDb()
+        val client = SyncClient(db, HttpClient(signInEngine(body = "<html>not json</html>")))
+        assertFailsWith<SignInProblem.Refused> { client.signIn("http://sync.test:8788", "user@example.com", "secret") }
+        assertEquals(null, db.schemaQueries.selectMetaValue("sync_account").executeAsOneOrNull())
     }
 
     @Test

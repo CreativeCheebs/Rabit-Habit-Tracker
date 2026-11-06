@@ -13,6 +13,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.long
+import kotlin.coroutines.cancellation.CancellationException
 
 const val SYNC_MODE_KEY = "sync_mode"
 const val SYNC_MODE_SERVER = "server"
@@ -37,6 +38,10 @@ sealed class SignInProblem(message: String) : Exception(message) {
     class ServerError(val status: Int) : SignInProblem("The server answered $status.")
     /** The server explained itself, e.g. "That username is taken." */
     class Refused(message: String) : SignInProblem(message)
+
+    /** Signing in elsewhere would replace the data this phone holds for [account]; the user must agree first. */
+    class SwitchNeedsConfirmation(val account: String, val url: String) :
+        SignInProblem("This phone is connected to $account at $url. Switching replaces its habits with the new account's.")
 }
 
 /**
@@ -51,11 +56,21 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
     fun account(): String? = db.metaValue(SYNC_ACCOUNT_KEY)
 
     /** Signs in, or with [create] first creates the account on the server (which also signs in). */
-    suspend fun signIn(url: String, username: String, password: String, create: Boolean = false): String {
+    suspend fun signIn(
+        url: String,
+        username: String,
+        password: String,
+        create: Boolean = false,
+        replaceLocalData: Boolean = false,
+    ): String {
         val base = url.trim().trimEnd('/')
         require(base.startsWith("http://") || base.startsWith("https://")) {
             "The server address must start with http:// or https://."
         }
+        val previousAccount = account()
+        val previousUrl = serverUrl()
+        val switching = previousAccount != null && (previousUrl != base || previousAccount != username)
+        if (switching && !replaceLocalData) throw SignInProblem.SwitchNeedsConfirmation(previousAccount!!, previousUrl ?: "")
         val body = JsonObject(
             mapOf("username" to JsonPrimitive(username), "password" to JsonPrimitive(password)),
         )
@@ -64,6 +79,8 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
                 contentType(ContentType.Application.Json)
                 setBody(body.toString())
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw SignInProblem.Unreachable(base)
         }
@@ -73,12 +90,22 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
             if (create && detail != null) throw SignInProblem.Refused(detail)
             throw SignInProblem.ServerError(response.status.value)
         }
-        val parsed = syncJson.parseToJsonElement(response.bodyAsText()) as JsonObject
-        val account = (parsed["account"] as JsonPrimitive).content
-        val token = (parsed["accessToken"] as JsonPrimitive).content
+        val account: String
+        val token: String
+        try {
+            val parsed = syncJson.parseToJsonElement(response.bodyAsText()) as JsonObject
+            account = (parsed["account"] as JsonPrimitive).content
+            token = (parsed["accessToken"] as JsonPrimitive).content
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            throw SignInProblem.Refused("The server's answer was not understood. Check the address.")
+        }
         // Sync positions belong to one server+account. Keeping the old token
         // would ask a different server for "changes after N" and get nothing.
-        if (db.metaValue(SYNC_URL_KEY) != base || db.metaValue(SYNC_ACCOUNT_KEY) != account) {
+        if (switching) {
+            clearLocalData()
+        } else if (previousUrl != base || previousAccount != account) {
             db.setMetaValue("token", "0")
             db.setMetaValue("pushed", "0")
         }
@@ -87,6 +114,30 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
         db.setMetaValue(SYNC_TOKEN_KEY, token)
         db.setMetaValue(SYNC_MODE_KEY, SYNC_MODE_SERVER)
         return account
+    }
+
+    /**
+     * Drops every synced row and stamp with the change triggers muted, so the
+     * removal is not recorded as deletes to push, then restarts the sync position.
+     */
+    private fun clearLocalData() {
+        db.transaction {
+            db.setMetaValue("applying", "1")
+            try {
+                db.schemaQueries.deleteAllTrackerEntries()
+                db.schemaQueries.deleteAllTrackers()
+                db.schemaQueries.deleteAllCheckIns()
+                db.schemaQueries.deleteAllRunHabits()
+                db.schemaQueries.deleteAllGoals()
+                db.schemaQueries.deleteAllRuns()
+                db.schemaQueries.deleteAllHabits()
+                db.schemaQueries.deleteAllFieldStamps()
+                db.setMetaValue("token", "0")
+                db.setMetaValue("pushed", "0")
+            } finally {
+                db.setMetaValue("applying", "0")
+            }
+        }
     }
 
     suspend fun syncOnce(onProgress: (downloaded: Long, total: Long?) -> Unit = { _, _ -> }): SyncOutcome {

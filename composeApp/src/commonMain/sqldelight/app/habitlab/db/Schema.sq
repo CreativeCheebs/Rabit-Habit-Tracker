@@ -89,6 +89,22 @@ deleteTrackerRow:
 DELETE FROM tracker WHERE uid = ?;
 deleteTrackerEntryRow:
 DELETE FROM tracker_entry WHERE uid = ?;
+deleteAllTrackerEntries:
+DELETE FROM tracker_entry;
+deleteAllTrackers:
+DELETE FROM tracker;
+deleteAllCheckIns:
+DELETE FROM check_in;
+deleteAllRunHabits:
+DELETE FROM run_habit;
+deleteAllGoals:
+DELETE FROM goal;
+deleteAllRuns:
+DELETE FROM run;
+deleteAllHabits:
+DELETE FROM habit;
+deleteAllFieldStamps:
+DELETE FROM sync_field;
 selectMetaValue:
 SELECT value FROM sync_meta WHERE key = ?;
 upsertMetaValue:

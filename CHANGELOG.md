@@ -10,5 +10,7 @@ All notable changes are documented here. Follow Keep a Changelog and Semantic Ve
 - Web app: ids used in inline handlers and option values are validated before rendering; incoming rows with unsafe ids or field names are ignored.
 ### Fixed
 - Web app: a change to one field of a row from another device (e.g. a check-in state) no longer wipes the rest of the row, including its comment. Incoming fields are merged by stamp. A delete from another device keeps a tombstone, so later stale fields cannot bring back a half row.
-- Android: signing in to a different server or account resets the saved sync position so the first sync downloads everything.
+- Android: signing in to a different server or account now asks first, then replaces this phone's synced data and restarts sync from zero, so one account's habits are never uploaded into another. Connecting from offline mode still keeps and uploads the phone's own data.
+- Android: a malformed sign-in answer is reported instead of crashing, and cancelling a sign-in is no longer swallowed.
+- Android: Back on the welcome pages steps to the previous page; dismissing sign-in returns to the welcome instead of leaving the sync choice unset. The welcome demos are described once for TalkBack and no longer clip at large text sizes.
 - Initial engineering framework scaffold.

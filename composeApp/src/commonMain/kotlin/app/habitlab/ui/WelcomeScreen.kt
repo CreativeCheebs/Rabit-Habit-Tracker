@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -50,6 +51,7 @@ import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -69,15 +71,16 @@ private const val WELCOME_PAGES = 3
  */
 @Composable
 internal fun WelcomeScreen(onConnect: () -> Unit, onOffline: () -> Unit) {
+    val pager = rememberPagerState { WELCOME_PAGES }
+    val scope = rememberCoroutineScope()
+    val last = WELCOME_PAGES - 1
+    fun goTo(page: Int) { scope.launch { pager.animateScrollToPage(page) } }
     Dialog(
-        onDismissRequest = {},
-        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false, usePlatformDefaultWidth = false),
+        // Back steps to the previous page; on the first page it does nothing (a choice is still needed).
+        onDismissRequest = { if (pager.currentPage > 0) goTo(pager.currentPage - 1) },
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false, usePlatformDefaultWidth = false),
     ) {
         Surface(Modifier.fillMaxSize(), color = palette.bg) {
-            val pager = rememberPagerState { WELCOME_PAGES }
-            val scope = rememberCoroutineScope()
-            val last = WELCOME_PAGES - 1
-            fun goTo(page: Int) { scope.launch { pager.animateScrollToPage(page) } }
             Column(Modifier.fillMaxSize()) {
                 HorizontalPager(pager, Modifier.weight(1f)) { page ->
                     Column(
@@ -260,14 +263,14 @@ private fun BurnupDemo(active: Boolean) {
     val grid = palette.divider
     val textMuted = muted
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(surface).padding(16.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(surface).padding(16.dp)
+            .clearAndSetSemantics {
+                contentDescription = "Example burnup chart: points earned rise day by day, then a dashed forecast continues to the end of the run."
+            },
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Points burnup", color = ink, style = MaterialTheme.typography.titleMedium)
-        Canvas(
-            Modifier.fillMaxWidth().height(150.dp)
-                .semantics { contentDescription = "Example burnup chart: earned points rise day by day, then a dashed forecast continues to the end of the run" },
-        ) {
+        Canvas(Modifier.fillMaxWidth().height(150.dp)) {
             val left = 4.dp.toPx(); val right = size.width - 8.dp.toPx()
             val top = 8.dp.toPx(); val bottom = size.height - 6.dp.toPx()
             fun point(day: Int, points: Float) = Offset(
@@ -341,20 +344,21 @@ private fun QuickLogDemo(active: Boolean) {
     val current = DEMO_STEPS[step]
     val stampAlpha = (kotlin.math.abs(drag.value) / 0.4f).coerceIn(0f, 1f)
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(surface).padding(16.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(surface).padding(16.dp)
+            .clearAndSetSemantics {
+                contentDescription = "Example of Quick Log: swiping a habit card right marks it done and earns its points; swiping left skips it and earns none."
+            },
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Quick Log · today", color = ink, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             Text("$earned pts earned", color = green, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
-        BoxWithConstraints(Modifier.fillMaxWidth().height(110.dp).semantics {
-            contentDescription = "Example: swiping a habit card right marks it done and earns its points, swiping left skips it"
-        }) {
+        BoxWithConstraints(Modifier.fillMaxWidth().heightIn(min = 110.dp)) {
             val travel = maxWidth
             Spacer(Modifier.fillMaxWidth().height(96.dp).padding(horizontal = 10.dp).offset(y = 12.dp).clip(RoundedCornerShape(18.dp)).background(palette.tile))
             Column(
-                Modifier.fillMaxWidth().height(96.dp)
+                Modifier.fillMaxWidth().heightIn(min = 96.dp)
                     .offset(x = travel * drag.value)
                     .graphicsLayer { rotationZ = drag.value * 10f }
                     .clip(RoundedCornerShape(18.dp)).background(palette.surfaceAlt).padding(16.dp),

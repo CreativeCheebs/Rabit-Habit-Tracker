@@ -109,6 +109,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
         showSignIn = true
     }
     val syncScope = rememberCoroutineScope()
+    var pendingSwitch by remember { mutableStateOf<Pair<SignInProblem.SwitchNeedsConfirmation, (Boolean) -> Unit>?>(null) }
     fun describeOutcome(outcome: SyncOutcome): String = when (outcome) {
         is SyncOutcome.Success -> "Synced · ${outcome.sent} sent · ${outcome.received} received"
         SyncOutcome.NotConfigured -> "Sync is not set up."
@@ -134,6 +135,24 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     fun noteLocalChange() {
         syncDirty = true
         doSync()
+    }
+    fun attemptSignIn(url: String, username: String, password: String, create: Boolean, replaceLocalData: Boolean) {
+        syncScope.launch {
+            try {
+                syncClient.signIn(url, username, password, create, replaceLocalData)
+                syncMode = SYNC_MODE_SERVER
+                signInError = null
+                showSignIn = false
+                if (replaceLocalData) runsRevision++
+                doSync()
+            } catch (e: SignInProblem.SwitchNeedsConfirmation) {
+                pendingSwitch = e to { replace -> attemptSignIn(url, username, password, create, replace) }
+            } catch (e: SignInProblem) {
+                signInError = e.message
+            } catch (e: IllegalArgumentException) {
+                signInError = e.message
+            }
+        }
     }
     LaunchedEffect(syncMode) {
         if (syncMode != SYNC_MODE_SERVER) return@LaunchedEffect
@@ -232,27 +251,37 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     initialUrl = syncClient.serverUrl() ?: "",
                     initialUsername = syncClient.account() ?: "",
                     error = signInError,
-                    onSignIn = { url, username, password, create ->
-                        syncScope.launch {
-                            try {
-                                syncClient.signIn(url, username, password, create)
-                                syncMode = SYNC_MODE_SERVER
-                                signInError = null
-                                showSignIn = false
-                            } catch (e: SignInProblem) {
-                                signInError = e.message
-                            } catch (e: IllegalArgumentException) {
-                                signInError = e.message
-                            }
-                        }
-                    },
+                    onSignIn = { url, username, password, create -> attemptSignIn(url, username, password, create, false) },
                     onOffline = {
                         syncClient.setMode(SYNC_MODE_OFFLINE)
                         syncMode = SYNC_MODE_OFFLINE
                         showSignIn = false
                         showFirstStart = false
                     },
-                    onDismiss = { showSignIn = false }
+                    onDismiss = {
+                        showSignIn = false
+                        // Nothing was chosen yet: go back to the welcome instead of leaving the choice unset.
+                        if (syncClient.mode() == null) showFirstStart = true
+                    }
+                )
+            }
+            pendingSwitch?.let { (problem, attempt) ->
+                AlertDialog(
+                    onDismissRequest = { pendingSwitch = null },
+                    title = { Text("Switch account?") },
+                    text = {
+                        Text(
+                            "This phone is connected to ${problem.account} at ${problem.url}. Switching removes that account's habits from this phone " +
+                                "(they stay on that server) and downloads the new account's."
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            pendingSwitch = null
+                            attempt(true)
+                        }) { Text("Switch") }
+                    },
+                    dismissButton = { TextButton(onClick = { pendingSwitch = null }) { Text("Cancel") } }
                 )
             }
         }
