@@ -218,20 +218,13 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                 }
             }
             if (showFirstStart) {
-                AlertDialog(
-                    onDismissRequest = {},
-                    title = { Text("Sync your habits?") },
-                    text = { Text("Connect to your sync server to keep every device up to date, or keep using this phone offline. You can change this later.") },
-                    confirmButton = {
-                        TextButton(onClick = { openSignIn() }) { Text("Connect to a server") }
+                WelcomeScreen(
+                    onConnect = { openSignIn() },
+                    onOffline = {
+                        syncClient.setMode(SYNC_MODE_OFFLINE)
+                        syncMode = SYNC_MODE_OFFLINE
+                        showFirstStart = false
                     },
-                    dismissButton = {
-                        TextButton(onClick = {
-                            syncClient.setMode(SYNC_MODE_OFFLINE)
-                            syncMode = SYNC_MODE_OFFLINE
-                            showFirstStart = false
-                        }) { Text("Use offline") }
-                    }
                 )
             }
             if (showSignIn) {
