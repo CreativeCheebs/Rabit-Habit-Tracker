@@ -18,6 +18,4 @@ internal fun HabitDatabase.setHabitIcon(habitUid: String, icon: String) {
 
 private const val COLOR_PREFIX = "habit_color:"
 internal fun HabitDatabase.habitColor(habitUid: String): String = pref(COLOR_PREFIX + habitUid).orEmpty()
-internal fun HabitDatabase.setHabitColor(habitUid: String, color: String) {
-    if (color.isNotBlank()) setPref(COLOR_PREFIX + habitUid, color)
-}
+internal fun HabitDatabase.setHabitColor(habitUid: String, color: String) = setPref(COLOR_PREFIX + habitUid, color)

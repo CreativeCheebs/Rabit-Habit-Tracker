@@ -14,7 +14,6 @@ internal data class YamlRun(val name: String, val days: Int, val start: String, 
     val ok: Boolean get() = errors.isEmpty()
 }
 
-internal val YAML_ICON_KEYS = listOf("sun", "moon", "target", "lines", "heart", "book", "drop", "bolt")
 
 private class HabitDraft(var name: String = "", var group: String = "General", var points: Int = 1, var weekly: Int = 0, var interval: Int = 0, var icon: String = "", val line: Int)
 
@@ -39,7 +38,7 @@ private fun setHabitField(h: HabitDraft, key: String, value: String, errors: Mut
     when (key) {
         "name" -> h.name = value
         "group" -> h.group = value.ifBlank { "General" }
-        "icon" -> if (value.lowercase() in YAML_ICON_KEYS) h.icon = value.lowercase() else errors.add("line $lineNo: icon must be one of ${YAML_ICON_KEYS.joinToString(", ")}")
+        "icon" -> if (isKnownIcon(value.trim().lowercase())) h.icon = value.trim().lowercase() else errors.add("line $lineNo: unknown icon \"$value\" (use a Fluent icon name such as run, heart, book_open)")
         "points" -> value.toIntOrNull()?.takeIf { it >= 0 }?.let { h.points = it } ?: errors.add("line $lineNo: points must be an integer >= 0")
         "days_per_week" -> value.toIntOrNull()?.takeIf { it in 1..7 }?.let { h.weekly = it } ?: errors.add("line $lineNo: days_per_week must be 1..7")
         "every" -> Regex("""^(\d+)\s*days?$""").find(value.trim().lowercase())?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it >= 1 }?.let { h.interval = it }
@@ -117,7 +116,7 @@ internal val YAML_GUIDE_PROMPT: String = listOf(
     "    - name: <habit name, required>",
     "      group: <group label, optional, default General>",
     "      points: <impact points per completion, integer >= 0, optional, default 1>",
-    "      icon: <optional, one of ${YAML_ICON_KEYS.joinToString(", ")}>",
+    "      icon: <optional Fluent icon name, e.g. ${FEATURED_ICON_KEYS.joinToString(", ")}>",
     "      days_per_week: <1..7, weekly target the user hits on any days>",
     "      every: <N days, e.g. \"2 days\"; repeat interval, 1 means daily>",
     "  Give each habit EXACTLY ONE of days_per_week / every.",

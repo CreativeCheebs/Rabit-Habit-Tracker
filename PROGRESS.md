@@ -238,3 +238,20 @@ superseded for this work. Everything below was checked on the ADB phone.
   (cumulative, from `check_in`); sample labels and the forecast line are gone.
 - Local check-ins now bump `runsRevision` so the summary/charts update at once.
 - Tapping a habit calls `onOpenHabit` (detail page lands in the next step).
+
+### Step: habit detail page, icon catalog + picker, habit colors (Android)
+- **Detail page** (`ui/HabitDetail.kt`): tap a habit row. Shows iteration,
+  group, schedule, 3 stats (completion % of elapsed run days, current streak,
+  total done), "Done per week" bars, a 28-day dot grid, and a Look card.
+- **Icons:** `ui/HabitIcons.kt` is GENERATED (171 icons, Fluent System Icons,
+  MIT, Microsoft) by `ui-qa/icon-catalog/gen.mjs` (`npm i @fluentui/svg-icons`
+  in a scratch dir, copy script, `node gen.mjs`, copy output). Edit the list
+  inside `gen.mjs`, never the Kotlin. Paths are parsed at runtime
+  (`PathParser`) and cached. Old keys (`sun`, `moon`, `target`, `lines`,
+  `heart`, `book`, `drop`, `bolt`) are aliased in `HabitIconView.kt`.
+  YAML `icon:` accepts any catalog key (see `FEATURED_ICON_KEYS`).
+- **Picker:** `IconPickerSheet` (bottom sheet, search over label+tags, adaptive
+  56dp grid). Used in the builder and the detail page. `ColorSwatchRow` offers
+  10 habit colors + "accent".
+- Icon/color are device-local prefs (`habit_icon:<uid>`, `habit_color:<uid>`);
+  they do not sync. Habit rows/detail tint with the habit color.

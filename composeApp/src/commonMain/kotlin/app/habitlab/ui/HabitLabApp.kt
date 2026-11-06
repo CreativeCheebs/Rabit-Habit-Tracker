@@ -148,7 +148,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     if (systemDarkState != systemDark) systemDarkState = systemDark
     MaterialTheme(colorScheme = palette.toColorScheme()) {
         Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = {
-            if (builderCopy == null)
+            if (builderCopy == null && detailHabit == null)
             NavigationBar(containerColor = surface) {
                 visibleDestinations.forEach { dest -> NavigationBarItem(selected = page == dest, onClick = { page = dest }, icon = { DockGlyph(dest) }, label = { Text(dest.title) }, alwaysShowLabel = true)
                 }
@@ -201,6 +201,11 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                         onOffline = { syncClient.setMode(SYNC_MODE_OFFLINE); syncMode = SYNC_MODE_OFFLINE }
                     )
                     Destination.Analytics -> ListingScreen("Analytics preview", listOf("Cycle analytics arrive in Phase 2", "Example data is not personal data"), "Analytics is a Phase 2 preview.")
+                }
+            }
+            detailHabit?.let { habit ->
+                Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
+                    HabitDetailPage(database, habit, today, onBack = { detailHabit = null }, onChanged = { runsRevision++ })
                 }
             }
             builderCopy?.let { copy ->
@@ -358,6 +363,8 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     var newHabitPoints by remember { mutableStateOf("1") }
     var newHabitGroup by remember { mutableStateOf("General") }
     var newHabitIcon by remember { mutableStateOf("") }
+    var newHabitColor by remember { mutableStateOf("") }
+    var showIconPicker by remember { mutableStateOf(false) }
     var intervalMode by remember { mutableStateOf(false) }
     var recurrenceValue by remember { mutableStateOf("3") }
     var editingSourceId by remember { mutableStateOf<String?>(null) }
@@ -466,20 +473,21 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     OutlinedTextField(value = newHabitGroup, onValueChange = { newHabitGroup = it }, label = { Text("Group") }, modifier = Modifier.weight(1f), singleLine = true)
                     OutlinedTextField(value = newHabitPoints, onValueChange = { newHabitPoints = it.filter(Char::isDigit).take(3) }, label = { Text("Impact pts") }, modifier = Modifier.weight(1f), singleLine = true)
                 }
-                Text("Icon", style = MaterialTheme.typography.labelLarge)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    YAML_ICON_KEYS.forEach { key ->
-                        val on = newHabitIcon == key
-                        Box(
-                            Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
-                                .background(if (on) palette.accentSoft else surface)
-                                .border(if (on) 2.dp else 1.dp, if (on) green else line, RoundedCornerShape(12.dp))
-                                .clickable { newHabitIcon = if (on) "" else key }
-                                .semantics { contentDescription = "Icon $key" },
-                            contentAlignment = Alignment.Center
-                        ) { HabitGlyph(Habit("", "", 0, "", icon = key), Modifier.size(24.dp), if (on) palette.accentSoft else surface) }
+                Text("Icon and color", style = MaterialTheme.typography.labelLarge)
+                val pickTint = habitColorOf(newHabitColor) ?: green
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        Modifier.size(56.dp).clip(RoundedCornerShape(16.dp)).background(pickTint.copy(alpha = .2f))
+                            .clickable { showIconPicker = true }.semantics { contentDescription = "Choose icon" },
+                        contentAlignment = Alignment.Center
+                    ) { IconGlyph(newHabitIcon.ifBlank { "checkmark_circle" }, Modifier.size(30.dp), pickTint) }
+                    Column(Modifier.weight(1f)) {
+                        Text(if (newHabitIcon.isBlank()) "Tap to choose an icon" else newHabitIcon.replace('_', ' '), style = MaterialTheme.typography.bodyMedium)
+                        Text("Search 170+ icons", style = MaterialTheme.typography.labelSmall, color = muted)
                     }
                 }
+                ColorSwatchRow(newHabitColor) { newHabitColor = it }
+                if (showIconPicker) IconPickerSheet(newHabitIcon, pickTint, onPick = { newHabitIcon = it; showIconPicker = false }, onDismiss = { showIconPicker = false })
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FilterChip(selected = !intervalMode, onClick = { intervalMode = false }, label = { Text("Days per week") })
                     FilterChip(selected = intervalMode, onClick = { intervalMode = true }, label = { Text("Every N days") })
@@ -491,9 +499,10 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                         editingSourceId?.let { selected.remove(it) }
                         val id = "habit-${Random.nextLong().toULong().toString(16)}"
                         val count = recurrenceValue.toIntOrNull()?.coerceIn(1, if (intervalMode) 365 else 7) ?: 3
-                        addedHabits.add(Habit(habitName, newHabitGroup.ifBlank { "General" }, newHabitPoints.toIntOrNull()?.coerceAtLeast(0) ?: 1, if (intervalMode) "Every $count days" else "$count days per week", "I", id, newHabitIcon))
+                        addedHabits.add(Habit(habitName, newHabitGroup.ifBlank { "General" }, newHabitPoints.toIntOrNull()?.coerceAtLeast(0) ?: 1, if (intervalMode) "Every $count days" else "$count days per week", "I", id, newHabitIcon, newHabitColor))
                         newHabitName = ""
                         newHabitIcon = ""
+                        newHabitColor = ""
                         editingSourceId = null
                     }
                 }, enabled = newHabitName.isNotBlank()) { Text("＋ Add habit to this run") }
@@ -517,6 +526,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                                 val count = Regex("\\d+").find(habit.recurrence)?.value?.toLongOrNull() ?: 3L
                                 database.schemaQueries.insertHabit(habit.uid(), habit.name, habit.group, 1L, habit.points.toLong(), if (habit.recurrence.startsWith("Every ")) "interval" else "weekly", count)
                                 database.setHabitIcon(habit.uid(), habit.icon)
+                                database.setHabitColor(habit.uid(), habit.color)
                             }
                             selected.forEach { database.schemaQueries.attachHabitToRun("$runId:$it", runId, it) }
                             addedHabits.forEach { database.schemaQueries.attachHabitToRun("$runId:${it.uid()}", runId, it.uid()) }
@@ -890,86 +900,11 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
     }
 }
 
-@Composable internal fun HabitGlyph(habit: Habit, modifier: Modifier = Modifier, cutoutColor: androidx.compose.ui.graphics.Color = hero, tint: androidx.compose.ui.graphics.Color = green) {
-    Canvas(modifier) {
-        val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
-        val unit = size.minDimension / 48f
-        when (habit.icon.ifBlank { legacyIcon(habit.name) }) {
-            "sun" -> {
-                for (i in 0..7) {
-                    val angle = i * (kotlin.math.PI / 4.0)
-                    val inner = 15f * unit; val outer = 21f * unit
-                    drawLine(tint, androidx.compose.ui.geometry.Offset(center.x + kotlin.math.cos(angle).toFloat() * inner, center.y + kotlin.math.sin(angle).toFloat() * inner), androidx.compose.ui.geometry.Offset(center.x + kotlin.math.cos(angle).toFloat() * outer, center.y + kotlin.math.sin(angle).toFloat() * outer), strokeWidth = 3.2f * unit, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                }
-                drawCircle(tint, radius = 9f * unit, center = center)
-            }
-            "moon" -> {
-                drawCircle(tint, radius = 19f * unit, center = center)
-                drawCircle(cutoutColor, radius = 16f * unit, center = androidx.compose.ui.geometry.Offset(center.x + 9f * unit, center.y - 5f * unit))
-            }
-            "target" -> {
-                drawCircle(tint, radius = 19f * unit, center = center, style = Stroke(width = 3f * unit))
-                drawCircle(tint, radius = 10f * unit, center = center, style = Stroke(width = 3f * unit))
-                drawCircle(tint, radius = 2.5f * unit, center = center)
-            }
-            "heart" -> {
-                val p = Path().apply {
-                    moveTo(24f * unit, 40f * unit)
-                    cubicTo(2f * unit, 26f * unit, 6f * unit, 8f * unit, 24f * unit, 17f * unit)
-                    cubicTo(42f * unit, 8f * unit, 46f * unit, 26f * unit, 24f * unit, 40f * unit)
-                    close()
-                }
-                drawPath(p, tint)
-            }
-            "book" -> {
-                val s = Stroke(width = 3f * unit, join = androidx.compose.ui.graphics.StrokeJoin.Round)
-                drawRoundRect(tint, androidx.compose.ui.geometry.Offset(7f * unit, 9f * unit), androidx.compose.ui.geometry.Size(34f * unit, 30f * unit), androidx.compose.ui.geometry.CornerRadius(4f * unit), style = s)
-                drawLine(tint, androidx.compose.ui.geometry.Offset(24f * unit, 9f * unit), androidx.compose.ui.geometry.Offset(24f * unit, 39f * unit), strokeWidth = 3f * unit)
-            }
-            "drop" -> {
-                val p = Path().apply {
-                    moveTo(24f * unit, 6f * unit)
-                    cubicTo(24f * unit, 6f * unit, 10f * unit, 22f * unit, 10f * unit, 30f * unit)
-                    cubicTo(10f * unit, 38f * unit, 17f * unit, 43f * unit, 24f * unit, 43f * unit)
-                    cubicTo(31f * unit, 43f * unit, 38f * unit, 38f * unit, 38f * unit, 30f * unit)
-                    cubicTo(38f * unit, 22f * unit, 24f * unit, 6f * unit, 24f * unit, 6f * unit)
-                    close()
-                }
-                drawPath(p, tint)
-            }
-            "bolt" -> {
-                val p = Path().apply {
-                    moveTo(27f * unit, 5f * unit)
-                    lineTo(11f * unit, 27f * unit)
-                    lineTo(22f * unit, 27f * unit)
-                    lineTo(20f * unit, 43f * unit)
-                    lineTo(37f * unit, 20f * unit)
-                    lineTo(26f * unit, 20f * unit)
-                    close()
-                }
-                drawPath(p, tint)
-            }
-            else -> {
-                drawLine(tint, androidx.compose.ui.geometry.Offset(8f * unit, 26f * unit), androidx.compose.ui.geometry.Offset(40f * unit, 22f * unit), strokeWidth = 3f * unit, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                drawLine(tint, androidx.compose.ui.geometry.Offset(8f * unit, 34f * unit), androidx.compose.ui.geometry.Offset(40f * unit, 30f * unit), strokeWidth = 3f * unit, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-            }
-        }
-    }
-}
-
 @Composable private fun ListingScreen(title: String, rows: List<String>, note: String) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text(title, style = MaterialTheme.typography.headlineSmall); Text(note, color = muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp)) }
         items(rows) { row -> Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(18.dp)) { Text(row, Modifier.fillMaxWidth().padding(18.dp), style = MaterialTheme.typography.titleMedium) } }
     }
-}
-
-/** Habits created before icons existed keep the glyph their name always implied. */
-internal fun legacyIcon(name: String): String = when (name) {
-    "Morning light" -> "sun"
-    "Sleep before 11:30 PM" -> "moon"
-    "Plan the day" -> "target"
-    else -> "lines"
 }
 
 @Composable private fun SettingsScreen(
