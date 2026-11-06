@@ -11,7 +11,7 @@ Open the project in Android Studio or build with the Gradle wrapper:
 adb install -r composeApp/build/outputs/apk/debug/composeApp-debug.apk
 ```
 
-The first launch seeds a sample 21-day run and four habits in the local SQLite database. Quick Log writes dated Done, Partial, and Skipped check-ins and comments locally. The current screens are an early UI slice; run editing, goal/tracker editing, due-rule evaluation, charts, and background sync still need implementation. Weekly-target and partial/effort scoring remain open per the product spec.
+The first launch seeds a sample 21-day run and four habits in the local SQLite database. Quick Log writes dated Done, Partial, and Skipped check-ins and comments locally. The app shows Runs (swipe-to-reveal habit cards, week strip, real points charts, per-habit detail page), Quick Log, Goals (create/edit/delete) and Settings (sync server, light/dark/system theme, accent color, dense layout, hide points). Analytics and Trackers stay in the code but are hidden from the dock. Weekly-target and partial/effort scoring remain open per the product spec; PROGRESS.md has the change log.
 
 ## Sync server (Linux)
 
