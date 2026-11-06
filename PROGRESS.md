@@ -343,3 +343,20 @@ superseded for this work. Everything below was checked on the ADB phone.
 - Test accounts created on 8788 by those checks: `qa_…` (throwaway).
 - The 8789 owner account created earlier is still an env account; creating a
   new account there works too. Remove it from `habitlab.env` if unwanted.
+
+### Web Settings page (theme, accent, dense, hide points) — deployed
+- New "Settings" nav entry (`v-settings`, `renderSettings()` in `app.js`):
+  Theme (System/Light/Dark), 8 accent colors, Dense layout, Hide points, and
+  the sync-server address + sign out. Stored in this browser only
+  (`localStorage` key `habitlab.prefs`, kept across sign-out); the Android
+  app has its own copy of the same settings.
+- `buildPalette(dark, seed)` in `app.js` is the same recipe as Android's
+  `Theme.kt` and writes the CSS variables on `:root`. **`styles.css` no longer
+  contains hard-coded colors** (new vars: `--page --soft --soft2 --on-soft
+  --divider --dim --track --skipped --skip-soft --partial-soft …`); SVG chart
+  strokes use `style="stroke:var(--…)"`. Use variables for any new UI.
+- Dense = compact rows, no icon/meta line, small round dots. Hide points hides
+  `.point`, the metrics card, and `.pts-card` charts (CSS body classes
+  `dense` / `hide-points`).
+- Verified live on 8788 with Playwright: switch to Light + Blue, dense on,
+  persisted across reload, no JS errors. Deployed to 8788 and 8789.

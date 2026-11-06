@@ -246,7 +246,7 @@ function linkUid(runUid, habitUid) {
 }
 
 /* ---------- navigation ---------- */
-const TITLES = { runs: 'Runs & Habits', analytics: 'Analytics', goals: 'Goals', trackers: 'Trackers', quicklog: 'Quick Log', builder: 'New run', edit: 'Edit run' };
+const TITLES = { settings: 'Settings', runs: 'Runs & Habits', analytics: 'Analytics', goals: 'Goals', trackers: 'Trackers', quicklog: 'Quick Log', builder: 'New run', edit: 'Edit run' };
 let currentView = 'runs';
 function showView(id) {
   currentView = id;
@@ -265,6 +265,7 @@ function renderCurrent() {
   else if (currentView === 'quicklog') renderQuick();
   else if (currentView === 'builder') renderBuilder();
   else if (currentView === 'edit') renderEdit();
+  else if (currentView === 'settings') renderSettings();
 }
 document.querySelectorAll('.sidenav [data-view]').forEach((b) => b.addEventListener('click', () => showView(b.dataset.view)));
 
@@ -331,8 +332,76 @@ async function onLogin(e) {
     $('loginBtn').disabled = false;
   }
 }
+
+/* ---------- Appearance settings (this browser only) ---------- */
+const PREF_KEY = 'habitlab.prefs';
+const ACCENTS = [['green', 'Green', '#a4d0ad'], ['teal', 'Teal', '#8fd3cf'], ['blue', 'Blue', '#a9c7ff'], ['purple', 'Purple', '#cdb7f5'],
+  ['pink', 'Pink', '#f2b1c9'], ['orange', 'Orange', '#f5bc8a'], ['yellow', 'Yellow', '#e3ce7a'], ['red', 'Red', '#f0a9a0']];
+let prefs = { mode: 'system', accent: 'green', dense: false, hidePoints: false };
+try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem(PREF_KEY) || '{}') }; } catch (e) { /* keep defaults */ }
+function savePrefs() { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) { /* private mode */ } }
+const hexToRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+function mix(a, b, t) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+/* Same recipe as the Android palette so both clients look alike. */
+function buildPalette(dark, seed) {
+  if (dark) {
+    const surface = mix('#161b17', seed, .05);
+    const s1 = mix(surface, '#ffffff', .03);
+    return { bg: mix('#101311', seed, .04), page: mix('#0b0e0c', seed, .03), surface, surface1: s1, surface2: mix(surface, '#ffffff', .07), surface3: mix(surface, '#ffffff', .11),
+      ink: '#e5ece6', muted: '#a3afa6', outline: mix(surface, '#ffffff', .22), primary: seed, 'on-primary': mix(seed, '#000000', .78), secondary: '#b9cbbd',
+      tertiary: '#dfbd82', error: '#ffb4ab', partial: '#efcf90', soft: mix(surface, seed, .26), soft2: mix(surface, seed, .14), 'on-soft': mix(seed, '#ffffff', .6),
+      track: mix(surface, seed, .32), divider: mix(surface, '#ffffff', .1), line2: mix(surface, '#ffffff', .07), dim: mix(surface, '#ffffff', .12),
+      skipped: '#8a5757', 'skip-soft': '#342927', 'skip-border': '#60423e', 'partial-soft': '#3c3424', 'partial-border': '#655633' };
+  }
+  const accent = mix(seed, '#000000', .42);
+  const surface = '#ffffff';
+  return { bg: mix('#f6f7f5', seed, .06), page: mix('#eef0ed', seed, .08), surface, surface1: mix('#ffffff', seed, .06), surface2: mix('#ffffff', seed, .14), surface3: mix('#ffffff', seed, .22),
+    ink: '#191c1a', muted: '#5a635d', outline: mix('#ffffff', '#000000', .22), primary: accent, 'on-primary': '#ffffff', secondary: '#4b554e',
+    tertiary: '#9a6b10', error: '#b3261e', partial: '#b77b10', soft: mix('#ffffff', seed, .55), soft2: mix('#ffffff', seed, .28), 'on-soft': '#191c1a',
+    track: mix('#ffffff', seed, .5), divider: mix('#ffffff', '#000000', .1), line2: mix('#ffffff', '#000000', .08), dim: mix('#ffffff', '#000000', .08),
+    skipped: '#d08c87', 'skip-soft': '#f7d9d6', 'skip-border': '#e3a8a3', 'partial-soft': '#f6e3be', 'partial-border': '#e0c185' };
+}
+function applyPrefs() {
+  const dark = prefs.mode === 'dark' || (prefs.mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const seed = (ACCENTS.find((a) => a[0] === prefs.accent) || ACCENTS[0])[2];
+  const root = document.documentElement;
+  for (const [k, v] of Object.entries(buildPalette(dark, seed))) root.style.setProperty('--' + k, v);
+  root.style.colorScheme = dark ? 'dark' : 'light';
+  document.body.classList.toggle('dense', !!prefs.dense);
+  document.body.classList.toggle('hide-points', !!prefs.hidePoints);
+}
+function habitMeta(h) {
+  const rec = esc(recurrenceLabel(h).toLowerCase());
+  return prefs.hidePoints ? rec : `${h.impact_points} impact pts · ${rec}`;
+}
+function renderSettings() {
+  const body = $('settingsBody');
+  const account = localStorage.getItem(LS.account) || '';
+  body.innerHTML = `<div class="set-card"><h3>Appearance</h3><div class="caption">Saved in this browser. The Android app has its own copy of these settings.</div>
+    <label class="field-label" style="margin-top:0">Theme</label>
+    <div class="chip-row">${[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<button class="duration-chip${prefs.mode === k ? ' selected' : ''}" data-mode="${k}">${l}</button>`).join('')}</div>
+    <label class="field-label">Accent color</label>
+    <div class="swatch-row">${ACCENTS.map(([k, l, c]) => `<button class="swatch${prefs.accent === k ? ' on' : ''}" data-accent="${k}" style="background:${c}" aria-label="Accent ${l}" title="${l}">${prefs.accent === k ? '✓' : ''}</button>`).join('')}</div></div>
+    <div class="set-card"><h3>Habit list</h3>
+    <div class="set-row"><div><b>Dense layout</b><div class="caption">One compact line per habit, small round day dots. For long lists.</div></div>
+      <label class="switch"><input type="checkbox" id="setDense" aria-label="Dense layout"${prefs.dense ? ' checked' : ''}><i></i></label></div>
+    <div class="set-row"><div><b>Hide points</b><div class="caption">Hides impact points on habits, the run summary and the points charts.</div></div>
+      <label class="switch"><input type="checkbox" id="setHide" aria-label="Hide points"${prefs.hidePoints ? ' checked' : ''}><i></i></label></div></div>
+    <div class="set-card"><h3>Sync server</h3><div class="caption">This page is served by your sync server, so it is the same address the Android app connects to.</div>
+    <div class="set-row"><div><b>${esc(location.origin)}</b><div class="caption">Signed in as ${esc(account)}</div></div><button class="btn" id="setSignOut">Sign out</button></div></div>`;
+  body.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { prefs.mode = b.dataset.mode; savePrefs(); applyPrefs(); renderSettings(); }));
+  body.querySelectorAll('[data-accent]').forEach((b) => b.addEventListener('click', () => { prefs.accent = b.dataset.accent; savePrefs(); applyPrefs(); renderSettings(); }));
+  $('setDense').addEventListener('change', (e) => { prefs.dense = e.target.checked; savePrefs(); applyPrefs(); });
+  $('setHide').addEventListener('change', (e) => { prefs.hidePoints = e.target.checked; savePrefs(); applyPrefs(); });
+  $('setSignOut').addEventListener('click', () => signOut());
+}
 function boot() {
   loadMirror();
+  applyPrefs();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyPrefs);
   $('loginForm').addEventListener('submit', onLogin);
   $('loginSwitch').addEventListener('click', () => setCreateMode(!creating));
   // Hide "Create an account" when the server has sign-up turned off.
@@ -389,10 +458,10 @@ function burnupSvg(id, values, elapsed, dur, baseDay) {
     dots += `<circle class="dot-pt" cx="${b.X(i)}" cy="${b.Y(v)}" r="11" data-day="${baseDay + i}" data-val="${Math.round(v)}" data-label="forecast"/>`;
   }
   return `<svg id="${id}" viewBox="0 0 330 148" style="width:100%;height:auto;margin-top:8px" role="img" aria-label="Points burnup">
-    <line x1="20" y1="116" x2="320" y2="116" stroke="#465349"/><line x1="20" y1="14" x2="20" y2="116" stroke="#465349"/>
-    <path d="${b.actual}" fill="none" stroke="#a4d0ad" stroke-width="3" stroke-linecap="round"/>
-    <path d="${b.forecast}" fill="none" stroke="#dfbd82" stroke-width="3" stroke-dasharray="6 5" stroke-linecap="round"/>
-    <text x="20" y="136" fill="#a3afa6" font-size="9">Day ${baseDay}</text><text x="285" y="136" fill="#a3afa6" font-size="9">Day ${baseDay + dur - 1}</text>${dots}</svg>`;
+    <line x1="20" y1="116" x2="320" y2="116" style="stroke:var(--outline)"/><line x1="20" y1="14" x2="20" y2="116" style="stroke:var(--outline)"/>
+    <path d="${b.actual}" fill="none" style="stroke:var(--primary)" stroke-width="3" stroke-linecap="round"/>
+    <path d="${b.forecast}" fill="none" style="stroke:var(--tertiary)" stroke-width="3" stroke-dasharray="6 5" stroke-linecap="round"/>
+    <text x="20" y="136" style="fill:var(--muted)" font-size="9">Day ${baseDay}</text><text x="285" y="136" style="fill:var(--muted)" font-size="9">Day ${baseDay + dur - 1}</text>${dots}</svg>`;
 }
 function wireBurnupTips(scope) {
   scope.querySelectorAll('.dot-pt').forEach((c) => {
@@ -431,7 +500,7 @@ function habitTable(habits, startDate, count, todayIso, numberedBase) {
   for (const h of habits) {
     body += `<div class="hrow"><div class="symbol">${groupIcon(h.group_name)}</div>
       <div><div class="habit-name">${esc(h.title)}<span class="iteration">${roman(h.iteration || 1)}</span></div>
-      <div class="habit-meta">${h.impact_points} impact pts · ${esc(recurrenceLabel(h).toLowerCase())}</div></div>
+      <div class="habit-meta">${habitMeta(h)}</div></div>
       <div class="dots" style="${cols}">`;
     for (let d = 0; d < count; d++) {
       const day = addDays(startDate, d);
@@ -462,7 +531,7 @@ function standaloneSection() {
     const c = checkInsByDay(today)[h.uid];
     html += `<div class="hrow" style="grid-template-columns:34px minmax(170px,1.1fr) minmax(0,2fr) 44px"><div class="symbol">${groupIcon(h.group_name)}</div>
       <div><div class="habit-name">${esc(h.title)}<span class="iteration">${roman(h.iteration || 1)}</span></div>
-      <div class="habit-meta">${h.impact_points} impact pts · ${esc(recurrenceLabel(h).toLowerCase())}</div></div>
+      <div class="habit-meta">${habitMeta(h)}</div></div>
       <div><button class="btn${c && c.state === 'done' ? ' primary' : ''}" onclick="toggleDay('${h.uid}','${today}')">${c && c.state === 'done' ? '✓ Done today' : c ? esc(c.state) + ' · tap for done' : 'Log today'}</button></div>
       <div class="point">${h.impact_points}</div></div>`;
   }
@@ -496,7 +565,7 @@ function renderRuns() {
   let html = `<div class="run-hero"><div><div class="run-dates">${fmtDay(run.start_date)} — ${fmtDay(endDay)} · ${habits.length} habits</div>
     <div style="display:flex;align-items:baseline;gap:12px;margin-top:10px"><span class="big-pct">${pct}%</span></div>
     <div class="track"><i style="width:${pct}%"></i></div>
-    <div class="caption" style="margin-top:8px;color:#c4d2c7">${earned} / ${possible}</div></div>
+    <div class="caption" style="margin-top:8px;color:var(--on-soft)">${earned} / ${possible}</div></div>
     <div class="metrics-card"><div class="metrics">
     <div class="metric"><small>Total impact</small><b>${earned} pts</b></div>
     <div class="metric"><small>Average impact</small><b>${elapsed ? (earned / elapsed).toFixed(1) : '0.0'} / day</b></div>
@@ -506,10 +575,10 @@ function renderRuns() {
     <div class="section-head"><h3>Habits</h3><span class="head-btns"><button class="btn" onclick="openBuilder()">＋ New run</button><button class="btn" onclick="openEdit('${run.uid}')">Edit run</button></span></div>
     ${habitTable(habits, run.start_date, dur, today, 1)}
     <div class="charts-2">
-    <div class="card"><div class="chart-title">Points per day</div><div class="caption">Whole run · hover a bar for values</div>
+    <div class="card pts-card"><div class="chart-title">Points per day</div><div class="caption">Whole run · hover a bar for values</div>
     ${barChart(perDay.concat(Array(Math.max(0, dur - elapsed)).fill(0)), elapsed - 1)}
     <div class="chart-key"><span>Earned impact points</span><span>${fmtDay(run.start_date)} – ${fmtDay(endDay)}</span></div></div>
-    <div class="card"><div class="chart-title">Points burnup</div><div class="caption">Cumulative actual and predicted · hover the line for values</div>
+    <div class="card pts-card"><div class="chart-title">Points burnup</div><div class="caption">Cumulative actual and predicted · hover the line for values</div>
     ${burnupSvg('burnSvg', perDay, elapsed, dur, 1)}
     <div class="chart-key"><span>━ Actual</span><span>┄ Predicted</span></div></div>
     </div>
@@ -542,10 +611,10 @@ function infiniteView(today) {
     html += habitTable(list, start, 21, today, daysBetween(start, today) + 1 - 20);
   }
   html += `<div class="charts-2">
-    <div class="card"><div class="chart-title">Points per day</div><div class="caption">Last 21 days · hover a bar for values</div>
+    <div class="card pts-card"><div class="chart-title">Points per day</div><div class="caption">Last 21 days · hover a bar for values</div>
     ${barChart(perDay, 20)}
     <div class="chart-key"><span>Earned impact points</span><span>${fmtDay(start)} – ${fmtDay(today)}</span></div></div>
-    <div class="card"><div class="chart-title">Points burnup</div><div class="caption">Last 21 days from a ${baseline}-point baseline · hover for values</div>
+    <div class="card pts-card"><div class="chart-title">Points burnup</div><div class="caption">Last 21 days from a ${baseline}-point baseline · hover for values</div>
     ${infiniteBurnup(perDay, baseline)}
     <div class="chart-key"><span>━ Actual</span><span>┄ Pace</span></div></div>
     </div>
@@ -570,10 +639,10 @@ function infiniteBurnup(perDay, baseline) {
   let dots = '';
   cum.forEach((v, i) => { dots += `<circle class="dot-pt" cx="${X(i)}" cy="${Y(v)}" r="11" data-day="D-${20 - i}" data-val="${Math.round(v)}" data-label="total"/>`; });
   return `<svg viewBox="0 0 330 148" style="width:100%;height:auto;margin-top:8px" role="img" aria-label="Points burnup">
-    <line x1="20" y1="116" x2="320" y2="116" stroke="#465349"/><line x1="20" y1="14" x2="20" y2="116" stroke="#465349"/>
-    <path d="${actual}" fill="none" stroke="#a4d0ad" stroke-width="3" stroke-linecap="round"/>
-    <path d="${forecast}" fill="none" stroke="#dfbd82" stroke-width="3" stroke-dasharray="6 5" stroke-linecap="round"/>
-    <text x="20" y="136" fill="#a3afa6" font-size="9">${fmtDay(addDays(todayLocal(), -20))}</text><text x="285" y="136" fill="#a3afa6" font-size="9">Today</text>${dots}</svg>`;
+    <line x1="20" y1="116" x2="320" y2="116" style="stroke:var(--outline)"/><line x1="20" y1="14" x2="20" y2="116" style="stroke:var(--outline)"/>
+    <path d="${actual}" fill="none" style="stroke:var(--primary)" stroke-width="3" stroke-linecap="round"/>
+    <path d="${forecast}" fill="none" style="stroke:var(--tertiary)" stroke-width="3" stroke-dasharray="6 5" stroke-linecap="round"/>
+    <text x="20" y="136" style="fill:var(--muted)" font-size="9">${fmtDay(addDays(todayLocal(), -20))}</text><text x="285" y="136" style="fill:var(--muted)" font-size="9">Today</text>${dots}</svg>`;
 }
 
 /* ---------- Quick Log (kept, nav hidden) ---------- */
