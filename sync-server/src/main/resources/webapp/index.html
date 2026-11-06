@@ -36,16 +36,19 @@
 <div class="login-wrap" id="loginWrap" style="display:none">
 <div class="login-card">
 <div class="brand"><div class="brand-mark">H</div><h1>Habit Lab</h1></div>
-<div class="sub">Sign in to sync your runs across devices.</div>
+<div class="sub" id="loginSub">Sign in to sync your runs across devices.</div>
 <form id="loginForm" autocomplete="on">
 <label class="field-label" for="loginUser">Username</label>
 <input class="field" id="loginUser" name="username" autocomplete="username" placeholder="you@example.com">
 <label class="field-label" for="loginPass">Password</label>
 <input class="field" id="loginPass" type="password" name="password" autocomplete="current-password" placeholder="Your password">
+<div id="confirmWrap" style="display:none"><label class="field-label" for="loginPass2">Repeat password</label>
+<input class="field" id="loginPass2" type="password" autocomplete="new-password" placeholder="Repeat password"></div>
 <div class="login-error" id="loginError" role="alert"></div>
 <button class="build-button" type="submit" id="loginBtn">Sign in</button>
 </form>
-<div class="login-hint">Your data stays on your own sync server.<br>Use the account set up on it.</div>
+<button class="login-switch" type="button" id="loginSwitch">New here? Create an account</button>
+<div class="login-hint">Your data stays on your own sync server.</div>
 </div>
 </div>
 <script type="module" src="app.js"></script>

@@ -239,10 +239,10 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     initialUrl = syncClient.serverUrl() ?: "",
                     initialUsername = syncClient.account() ?: "",
                     error = signInError,
-                    onSignIn = { url, username, password ->
+                    onSignIn = { url, username, password, create ->
                         syncScope.launch {
                             try {
-                                syncClient.signIn(url, username, password)
+                                syncClient.signIn(url, username, password, create)
                                 syncMode = SYNC_MODE_SERVER
                                 signInError = null
                                 showSignIn = false
@@ -270,30 +270,35 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     initialUrl: String,
     initialUsername: String,
     error: String?,
-    onSignIn: (String, String, String) -> Unit,
+    onSignIn: (String, String, String, Boolean) -> Unit,
     onOffline: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var url by remember { mutableStateOf(initialUrl) }
     var username by remember { mutableStateOf(initialUsername) }
     var password by remember { mutableStateOf("") }
+    var repeat by remember { mutableStateOf("") }
+    var creating by remember { mutableStateOf(false) }
+    val mismatch = creating && repeat.isNotEmpty() && repeat != password
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Connect to sync server") },
+        title = { Text(if (creating) "Create an account" else "Connect to sync server") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("Server address") }, placeholder = { Text("http://192.168.0.8:8788") }, singleLine = true)
                 OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true)
-                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
+                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text(if (creating) "Password (8+ characters)" else "Password") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
+                if (creating) OutlinedTextField(value = repeat, onValueChange = { repeat = it }, label = { Text("Repeat password") }, singleLine = true, isError = mismatch, supportingText = { if (mismatch) Text("Passwords do not match") }, visualTransformation = PasswordVisualTransformation())
+                TextButton(onClick = { creating = !creating; repeat = "" }) { Text(if (creating) "I already have an account" else "New here? Create an account") }
                 if (error != null) Text(error, color = palette.error, style = MaterialTheme.typography.bodySmall)
                 Text("First connection downloads everything; later syncs are small and silent.", color = muted, style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onSignIn(url.trim(), username.trim(), password) },
-                enabled = url.isNotBlank() && username.isNotBlank() && password.isNotEmpty()
-            ) { Text("Connect") }
+                onClick = { onSignIn(url.trim(), username.trim(), password, creating) },
+                enabled = url.isNotBlank() && username.isNotBlank() && password.isNotEmpty() && (!creating || (repeat == password && password.length >= 8))
+            ) { Text(if (creating) "Create account" else "Connect") }
         },
         dismissButton = { TextButton(onClick = onOffline) { Text("Use offline") } }
     )

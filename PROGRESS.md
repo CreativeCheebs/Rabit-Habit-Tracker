@@ -317,3 +317,29 @@ superseded for this work. Everything below was checked on the ADB phone.
   --timeout 300 --run 'python3 ~/JitterBug/habitlab_deploy.py'`.
 - Deployed `86d7355` (YAML create fix) to both; verified on the live 8788
   page without any route override.
+
+### Account creation (server + web + Android), deployed to 8788 and 8789
+- **Accounts no longer have to be pre-made.** New `sync-server/.../Accounts.kt`:
+  `POST /api/register {username,password}` → same response as sign-in
+  (`{account, accessToken}`), so the client is signed in immediately.
+  `GET /api/config` → `{signup: bool}`. Rules: username 3-64 chars
+  `[A-Za-z0-9._@+-]`, unique case-insensitively (409 if taken, 400 with a
+  message if invalid), password 8-200 chars. Rate limit: 8 attempts per client
+  address per 10 minutes (429). Turn it off with `HABITLAB_SYNC_ALLOW_SIGNUP=false`
+  in `habitlab.env` (default on).
+- Storage: `<HABITLAB_SYNC_DATA>/accounts.sqlite` (`account` table: username,
+  random salt, PBKDF2-HMAC-SHA256 120k hash — never plain passwords). Sign-in
+  for these accounts is case-insensitive and returns the canonical name.
+  `HABITLAB_SYNC_USERS` accounts keep working and are now optional.
+  `/api/sync` accepts any account that exists in either place.
+- Web: login card has "New here? Create an account" (adds Repeat password,
+  shows server messages; hidden if signup is off). Android: the Connect dialog
+  has the same toggle (`SyncClient.signIn(..., create = true)`; server
+  explanations surface via `SignInProblem.Refused`).
+- Verified: curl on a local jar (short pw, bad name, duplicate in another case,
+  wrong pw, sync auth, unknown account, 429), Playwright on the live 8788
+  page (mismatch, too short, create, duplicate, sign in again), Android dialog
+  on the phone (no account was created from the phone).
+- Test accounts created on 8788 by those checks: `qa_…` (throwaway).
+- The 8789 owner account created earlier is still an env account; creating a
+  new account there works too. Remove it from `habitlab.env` if unwanted.

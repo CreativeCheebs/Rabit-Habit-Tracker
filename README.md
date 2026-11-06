@@ -17,7 +17,7 @@ The first launch seeds a sample 21-day run and four habits in the local SQLite d
 
 The standalone project is in `sync-server/`. It is built on the Linux host using the included Gradle wrapper; the resulting fat JAR is `build/libs/HabitLabSyncServer-all.jar` on that host. The provided signed transfer scripts can upload the project archive and run the Linux build in `~/HabitLab-sync`, separate from JitterBug.
 
-Configure credentials outside the repository before starting the service:
+People create their own accounts (web login card or the phone's Connect dialog; `POST /api/register`); passwords are stored as salted PBKDF2 hashes in `accounts.sqlite` under the data directory, and `HABITLAB_SYNC_ALLOW_SIGNUP=false` turns sign-up off. Accounts pre-listed in `HABITLAB_SYNC_USERS` still work but are optional. Configure the server outside the repository before starting the service:
 
 ```sh
 export HABITLAB_SYNC_USERS='{"account@example.com":"replace-with-a-long-password"}'

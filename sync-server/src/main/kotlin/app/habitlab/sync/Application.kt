@@ -60,21 +60,33 @@ private fun Application.syncModule() {
         get("/health") { call.respond(mapOf("status" to "ok", "service" to "habitlab-sync")) }
         post("/api/sign-in") {
             val credentials = call.receive<SignInRequest>()
-            val users = wireJson.parseToJsonElement(System.getenv("HABITLAB_SYNC_USERS") ?: "{}").let { it as? JsonObject ?: JsonObject(emptyMap()) }
-            val expected = (users[credentials.username] as? JsonPrimitive)?.content
-            if (expected == null || !java.security.MessageDigest.isEqual(expected.toByteArray(), credentials.password.toByteArray())) {
+            val account = Accounts.verify(credentials.username, credentials.password)
+            if (account == null) {
                 call.respond(io.ktor.http.HttpStatusCode.Unauthorized, mapOf("error" to "Invalid username or password")); return@post
             }
-            val secret = requireSyncSecret()
-            call.respond(SignInResponse(credentials.username, bearerFor(secret, credentials.username)))
+            call.respond(SignInResponse(account, bearerFor(requireSyncSecret(), account)))
+        }
+        get("/api/config") { call.respond(mapOf("signup" to Accounts.signupAllowed())) }
+        post("/api/register") {
+            if (!Accounts.signupAllowed()) {
+                call.respond(io.ktor.http.HttpStatusCode.Forbidden, mapOf("error" to "Account creation is turned off on this server.")); return@post
+            }
+            if (!SignupLimiter.allow(call.request.local.remoteAddress)) {
+                call.respond(io.ktor.http.HttpStatusCode.TooManyRequests, mapOf("error" to "Too many attempts. Try again in a few minutes.")); return@post
+            }
+            val request = call.receive<SignInRequest>()
+            when (val result = Accounts.register(request.username, request.password)) {
+                is RegisterResult.Created -> call.respond(SignInResponse(result.account, bearerFor(requireSyncSecret(), result.account)))
+                RegisterResult.Taken -> call.respond(io.ktor.http.HttpStatusCode.Conflict, mapOf("error" to "That username is taken."))
+                is RegisterResult.Invalid -> call.respond(io.ktor.http.HttpStatusCode.BadRequest, mapOf("error" to result.message))
+            }
         }
         post("/api/sync") {
             val account = call.request.headers["X-Account-Id"]?.takeIf(::isValidAccountId)
             val bearer = call.request.headers["Authorization"]?.removePrefix("Bearer ")
             val secret = requireSyncSecret()
             val expectedToken = account?.let { user -> bearerFor(secret, user) }
-            val users = wireJson.parseToJsonElement(System.getenv("HABITLAB_SYNC_USERS") ?: "{}").let { it as? JsonObject ?: JsonObject(emptyMap()) }
-            if (account == null || account !in users || bearer == null || expectedToken == null || !java.security.MessageDigest.isEqual(expectedToken.toByteArray(), bearer.toByteArray())) {
+            if (account == null || !Accounts.exists(account) || bearer == null || expectedToken == null || !java.security.MessageDigest.isEqual(expectedToken.toByteArray(), bearer.toByteArray())) {
                 call.respond(io.ktor.http.HttpStatusCode.Unauthorized, mapOf("error" to "Sign in required")); return@post
             }
             val req = call.receive<SyncRequest>()

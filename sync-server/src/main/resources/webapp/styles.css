@@ -181,6 +181,8 @@ pre.prompt{background:var(--surface2);border:1px solid var(--outline);border-rad
 .login-error{display:none;background:#342927;border:1px solid #60423e;color:var(--error);border-radius:12px;padding:10px 12px;font-size:12px;margin-top:12px}
 .login-error.show{display:block}
 .login-card .build-button{width:100%;margin:16px 0 4px}
+.login-switch{display:block;width:100%;background:none;border:0;color:var(--primary,#a4d0ad);font:inherit;font-size:12px;padding:8px 0;cursor:pointer}
+.login-switch[hidden]{display:none}
 .login-hint{font-size:10px;color:var(--muted);text-align:center;line-height:1.5}
 /* ---------- responsive ---------- */
 @media(max-width:1100px){.run-hero{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(4,1fr)}.charts-2{grid-template-columns:1fr}.ana-grid{grid-template-columns:1fr}.cards-3{grid-template-columns:repeat(2,1fr)}.builder-source{grid-template-columns:1fr 1fr}}

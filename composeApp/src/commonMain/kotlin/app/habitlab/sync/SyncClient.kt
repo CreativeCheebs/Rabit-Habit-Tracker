@@ -35,6 +35,8 @@ sealed class SignInProblem(message: String) : Exception(message) {
     class Rejected : SignInProblem("The server did not accept that username or password.")
     class Unreachable(val url: String) : SignInProblem("Can't reach the sync server at $url.")
     class ServerError(val status: Int) : SignInProblem("The server answered $status.")
+    /** The server explained itself, e.g. "That username is taken." */
+    class Refused(message: String) : SignInProblem(message)
 }
 
 /**
@@ -48,7 +50,8 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
     fun serverUrl(): String? = db.metaValue(SYNC_URL_KEY)
     fun account(): String? = db.metaValue(SYNC_ACCOUNT_KEY)
 
-    suspend fun signIn(url: String, username: String, password: String): String {
+    /** Signs in, or with [create] first creates the account on the server (which also signs in). */
+    suspend fun signIn(url: String, username: String, password: String, create: Boolean = false): String {
         val base = url.trim().trimEnd('/')
         require(base.startsWith("http://") || base.startsWith("https://")) {
             "The server address must start with http:// or https://."
@@ -57,7 +60,7 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
             mapOf("username" to JsonPrimitive(username), "password" to JsonPrimitive(password)),
         )
         val response = try {
-            http.post("$base/api/sign-in") {
+            http.post("$base/api/${if (create) "register" else "sign-in"}") {
                 contentType(ContentType.Application.Json)
                 setBody(body.toString())
             }
@@ -66,6 +69,8 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
         }
         if (!response.status.isSuccess()) {
             if (response.status.value == 401) throw SignInProblem.Rejected()
+            val detail = try { ((syncJson.parseToJsonElement(response.bodyAsText()) as? JsonObject)?.get("error") as? JsonPrimitive)?.content } catch (e: Exception) { null }
+            if (create && detail != null) throw SignInProblem.Refused(detail)
             throw SignInProblem.ServerError(response.status.value)
         }
         val parsed = syncJson.parseToJsonElement(response.bodyAsText()) as JsonObject

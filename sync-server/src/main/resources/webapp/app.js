@@ -128,7 +128,10 @@ async function api(path, body, authed) {
   }
   const res = await fetch(path, { method: 'POST', headers, body: JSON.stringify(body) });
   if (res.status === 401) throw new Error('auth');
-  if (!res.ok) throw new Error('http ' + res.status);
+  if (!res.ok) {
+    const detail = await res.json().then((j) => (j && j.error) || '', () => '');
+    throw Object.assign(new Error('http ' + res.status), { status: res.status, detail });
+  }
   return res.json();
 }
 let syncing = false, syncQueued = false;
@@ -290,15 +293,28 @@ function signOut() {
   setLoggedIn(false);
   $('loginPass').value = '';
 }
+let creating = false;
+function setCreateMode(on) {
+  creating = on;
+  $('confirmWrap').style.display = on ? '' : 'none';
+  $('loginBtn').textContent = on ? 'Create account' : 'Sign in';
+  $('loginSub').textContent = on ? 'Create an account on this sync server. Use the same one on your phone.' : 'Sign in to sync your runs across devices.';
+  $('loginSwitch').textContent = on ? 'Already have an account? Sign in' : 'New here? Create an account';
+  $('loginPass').autocomplete = on ? 'new-password' : 'current-password';
+  $('loginError').classList.remove('show');
+}
 async function onLogin(e) {
   e.preventDefault();
   const user = $('loginUser').value.trim(), pass = $('loginPass').value;
   const err = $('loginError');
   err.classList.remove('show');
-  if (!user || !pass) { err.textContent = 'Enter your username and password.'; err.classList.add('show'); return; }
+  const fail = (m) => { err.textContent = m; err.classList.add('show'); };
+  if (!user || !pass) return fail(creating ? 'Choose a username and a password.' : 'Enter your username and password.');
+  if (creating && pass !== $('loginPass2').value) return fail('The two passwords do not match.');
   $('loginBtn').disabled = true;
   try {
-    const resp = await api('/api/sign-in', { username: user, password: pass }, false);
+    const resp = await api(creating ? '/api/register' : '/api/sign-in', { username: user, password: pass }, false);
+    $('loginPass2').value = '';
     localStorage.setItem(LS.account, resp.account);
     localStorage.setItem(LS.key, resp.accessToken);
     if (!localStorage.getItem(LS.token)) localStorage.setItem(LS.token, '0');
@@ -308,7 +324,8 @@ async function onLogin(e) {
     showView('runs');
     sync();
   } catch (ex) {
-    err.textContent = ex.message === 'auth' ? 'Invalid username or password.' : 'Cannot reach the sync server. Check your connection.';
+    err.textContent = ex.message === 'auth' ? 'Invalid username or password.'
+      : ex.detail ? ex.detail : 'Cannot reach the sync server. Check your connection.';
     err.classList.add('show');
   } finally {
     $('loginBtn').disabled = false;
@@ -317,6 +334,9 @@ async function onLogin(e) {
 function boot() {
   loadMirror();
   $('loginForm').addEventListener('submit', onLogin);
+  $('loginSwitch').addEventListener('click', () => setCreateMode(!creating));
+  // Hide "Create an account" when the server has sign-up turned off.
+  fetch('/api/config').then((r) => r.json()).then((c) => { if (c && c.signup === false) $('loginSwitch').hidden = true; }).catch(() => {});
   $('acctBtn').addEventListener('click', (e) => { e.stopPropagation(); $('acctMenu').classList.toggle('open'); });
   document.addEventListener('click', (e) => { if (!e.target.closest('.acct-wrap')) $('acctMenu').classList.remove('open'); });
   if (localStorage.getItem(LS.key)) {
