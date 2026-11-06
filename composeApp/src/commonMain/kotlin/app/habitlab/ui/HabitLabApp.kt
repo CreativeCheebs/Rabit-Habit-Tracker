@@ -59,18 +59,18 @@ import app.habitlab.sync.SyncClient
 import app.habitlab.sync.SyncOutcome
 import app.habitlab.sync.createHttpClient
 
-private val ink get() = palette.ink
-private val muted get() = palette.muted
-private val surface get() = palette.surface
-private val green get() = palette.accent
-private val hero get() = palette.hero
-private data class Habit(val name: String, val group: String, val points: Int, val recurrence: String, val iteration: String = "I", val id: String = "", val icon: String = "")
-private val sampleHabits = listOf(
+internal val ink get() = palette.ink
+internal val muted get() = palette.muted
+internal val surface get() = palette.surface
+internal val green get() = palette.accent
+internal val hero get() = palette.hero
+internal data class Habit(val name: String, val group: String, val points: Int, val recurrence: String, val iteration: String = "I", val id: String = "", val icon: String = "", val color: String = "")
+internal val sampleHabits = listOf(
     Habit("Morning light", "Wellbeing", 2, "Daily"), Habit("Sleep before 11:30 PM", "Wellbeing", 2, "Every 3 days", "II"),
     Habit("Plan the day", "Focus", 3, "3 days per week"), Habit("Focused work block", "Focus", 4, "3 days per week")
 )
-private fun Habit.uid(): String = id.ifBlank { when (name) { "Morning light" -> "morning-light"; "Sleep before 11:30 PM" -> "sleep-routine"; "Plan the day" -> "plan-day"; else -> "focus-block" } }
-private fun addIsoDays(date: String, amount: Int): String {
+internal fun Habit.uid(): String = id.ifBlank { when (name) { "Morning light" -> "morning-light"; "Sleep before 11:30 PM" -> "sleep-routine"; "Plan the day" -> "plan-day"; else -> "focus-block" } }
+internal fun addIsoDays(date: String, amount: Int): String {
     val parts = date.split("-")
     var year = parts.getOrNull(0)?.toIntOrNull() ?: return date
     var month = parts.getOrNull(1)?.toIntOrNull() ?: return date
@@ -90,7 +90,7 @@ private val visibleDestinations = listOf(Destination.Runs, Destination.QuickLog,
 @Composable
 fun HabitLabApp(database: HabitDatabase, today: String) {
     var page by remember { mutableStateOf(Destination.Runs) }
-    var week by remember { mutableIntStateOf(0) }
+    var detailHabit by remember { mutableStateOf<Habit?>(null) }
     var dense by remember(database) { mutableStateOf(database.pref(PREF_DENSE_LAYOUT) == "1") }
     var runsRevision by remember { mutableIntStateOf(0) }
     var builderCopy by remember { mutableStateOf<Boolean?>(null) }
@@ -189,7 +189,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     }
                 }
                 when (page) {
-                    Destination.Runs -> RunsScreen(database, runsRevision, today, week, dense, onWeekChange = { week = (week + it).coerceIn(0, 3) }, onLocalChange = { noteLocalChange() })
+                    Destination.Runs -> RunsScreen(database, runsRevision, today, dense, onOpenHabit = { detailHabit = it }, onLocalChange = { runsRevision++; noteLocalChange() })
                     Destination.QuickLog -> QuickLogScreen(database, today, runsRevision, onLocalChange = { noteLocalChange() })
                     Destination.Goals -> ListingScreen("Your goals", listOf("Start focused work by 9:30", "Build a steady sleep routine", "Run 5 km comfortably"), "Progress history starts from each goal’s start date.")
                     Destination.Trackers -> ListingScreen("Personal measurements", listOf("Sleep quality · /10", "Daily energy · /10", "Body weight · kg"), "Dated entries and simple history graphs.")
@@ -530,262 +530,6 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     }
 }
 
-@Composable private fun RunsScreen(database: HabitDatabase, revision: Int, today: String, week: Int, dense: Boolean, onWeekChange: (Int) -> Unit, onLocalChange: () -> Unit = {}) {
-    val latestRun = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList().firstOrNull() }
-    val currentHabits = remember(database, revision, latestRun) {
-        latestRun?.let { run -> database.schemaQueries.selectHabitsForRun(run.uid).executeAsList().map { row ->
-            val recur = if (row.recurrence_type == "interval") "Every ${row.recurrence_value} days" else "${row.recurrence_value} days per week"
-            Habit(row.title, row.group_name, row.impact_points.toInt(), recur, "I", row.uid, database.habitIcon(row.uid))
-        } }?.takeIf { it.isNotEmpty() } ?: sampleHabits
-    }
-    val runName = latestRun?.name ?: "21-day habit run"
-    val runDays = latestRun?.duration_days?.toInt() ?: 21
-    val maxWeek = ((runDays - 1) / 7).coerceIn(0, 3)
-    val runStart = latestRun?.start_date ?: today
-    val elapsed = (0 until runDays).count { addIsoDays(runStart, it) <= today }.coerceIn(1, runDays)
-    val earnedPoints = remember(database, revision, latestRun, currentHabits, today) {
-        val pointsById = currentHabits.associate { it.uid() to it.points }
-        (0 until runDays).sumOf { dayOffset ->
-            database.schemaQueries.selectCheckInsForDay(addIsoDays(runStart, dayOffset)).executeAsList()
-                .filter { it.state == "done" && it.habit_uid in pointsById }
-                .sumOf { pointsById[it.habit_uid] ?: 0 }
-        }
-    }
-    val avgImpact = earnedPoints.toFloat() / elapsed
-    var selectedDay by remember(week) { mutableIntStateOf(0) }
-    var openRow by remember { mutableStateOf<String?>(null) }
-    var dragTotal by remember { mutableFloatStateOf(0f) }
-    val runScope = rememberCoroutineScope()
-    LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { CompactRunSummaryCard(runName, runDays, currentHabits.size, earnedPoints, avgImpact, elapsed) }
-        item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text("Run Habits", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f)); Text("21 days", style = MaterialTheme.typography.labelSmall, color = muted) } }
-        item { Row(Modifier.fillMaxWidth().pointerInput(week, maxWeek) { detectHorizontalDragGestures(onHorizontalDrag = { change, amount -> change.consume(); dragTotal += amount }, onDragEnd = { if (dragTotal < -55f && week < maxWeek) onWeekChange(1) else if (dragTotal > 55f && week > 0) onWeekChange(-1); dragTotal = 0f }) }, horizontalArrangement = Arrangement.spacedBy(6.dp)) { (0..3).forEach { i -> FilterChip(selected = week == i, enabled = i <= maxWeek, onClick = { onWeekChange(i - week) }, label = { Text("Week ${i + 1}") }, modifier = Modifier.weight(1f)) } } }
-        if (dense) item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                (0..6).forEach { i ->
-                    val inRun = week * 7 + i < runDays
-                    FilterChip(selected = selectedDay == i, enabled = inRun, onClick = { selectedDay = i }, label = { Text("${week * 7 + i + 1}", modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }, modifier = Modifier.weight(1f).semantics { contentDescription = "Day ${week * 7 + i + 1}" })
-                }
-            }
-        }
-        item { Text(if (dense) "Pick a day above, then swipe a habit: right for done · left for skipped" else "Select a day, then swipe a habit: right for done · left for skipped · Partial for partial", color = muted, style = MaterialTheme.typography.labelSmall) }
-        items(currentHabits.groupBy { it.group }.toList()) { (group, habits) ->
-            Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) { Column(Modifier.padding(14.dp)) {
-                Text("${group.uppercase()} · ${habits.size} HABITS", style = MaterialTheme.typography.labelMedium, color = green)
-                habits.forEachIndexed { index, h ->
-                    if (index > 0) HorizontalDivider(color = palette.divider, modifier = Modifier.padding(start = if (dense) 0.dp else 48.dp, top = 7.dp))
-                    val runStart = latestRun?.start_date ?: today
-                    val days = remember(h.uid(), week, revision, today) { mutableStateListOf<Int>().apply {
-                        repeat(7) { dayIndex ->
-                            val offset = week * 7 + dayIndex
-                            if (offset >= runDays) add(-1) else {
-                                val date = addIsoDays(runStart, offset)
-                                val logged = database.schemaQueries.selectCheckInsForDay(date).executeAsList().firstOrNull { it.habit_uid == h.uid() }
-                                add(when (logged?.state) { "done" -> 1; "partial" -> 2; "skipped" -> 3; else -> if (date < today) 3 else 0 })
-                            }
-                        }
-                    } }
-                    val runSwipeOffset = remember(h.uid(), week) { Animatable(0f) }
-                    fun commitSwipe(state: Int) {
-                        val day = selectedDay.coerceIn(0, days.lastIndex)
-                        if (days[day] >= 0) {
-                            val firstLog = days[day] == 0
-                            days[day] = state
-                            val date = addIsoDays(runStart, week * 7 + day)
-                            val dbState = when (state) { 1 -> "done"; 2 -> "partial"; else -> "skipped" }
-                            if (firstLog) {
-                                database.schemaQueries.insertCheckIn("${h.uid()}:$date", h.uid(), date, dbState, null)
-                            } else {
-                                database.schemaQueries.updateCheckIn(dbState, null, h.uid(), date)
-                            }
-                            onLocalChange()
-                        }
-                    }
-                    val runButtonPx = with(LocalDensity.current) { 76.dp.toPx() }
-                    val flingPx = with(LocalDensity.current) { 700.dp.toPx() }
-                    val haptics = LocalHapticFeedback.current
-                    val commitLatest by rememberUpdatedState<(Int) -> Unit> { commitSwipe(it) }
-                    var rowWidthPx by remember { mutableFloatStateOf(0f) }
-                    val runTrayOpen by remember(runSwipeOffset) { derivedStateOf { kotlin.math.abs(runSwipeOffset.value) >= runButtonPx - 1f } }
-                    val runCommitting by remember(runSwipeOffset) { derivedStateOf { rowWidthPx > 0f && kotlin.math.abs(runSwipeOffset.value) >= rowWidthPx * REVEAL_COMMIT_FRACTION } }
-                    LaunchedEffect(runCommitting) { if (runCommitting) haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
-                    LaunchedEffect(openRow) { if (openRow != h.uid() && runSwipeOffset.value != 0f) runSwipeOffset.animateTo(0f, spring(dampingRatio = .85f, stiffness = 500f)) }
-                    fun settleRow(target: Float, velocity: Float) {
-                        runScope.launch { runSwipeOffset.animateTo(target, spring(dampingRatio = .82f, stiffness = 520f), initialVelocity = velocity) }
-                    }
-                    Box(Modifier.fillMaxWidth().padding(top = if (dense) 8.dp else 11.dp, bottom = if (dense) 6.dp else 7.dp).onSizeChanged { rowWidthPx = it.width.toFloat() }) {
-                        SwipeRevealPanel(
-                            rightActions = listOf(QuickSwipeAction.Done),
-                            leftActions = listOf(QuickSwipeAction.Skipped),
-                            offset = runSwipeOffset,
-                            panelEnabled = runTrayOpen,
-                            committing = runCommitting,
-                            onAction = { action ->
-                                commitSwipe(if (action == QuickSwipeAction.Done) 1 else 3)
-                                settleRow(0f, 0f)
-                            }
-                        )
-                    Column(Modifier.fillMaxWidth()
-                        .graphicsLayer { translationX = runSwipeOffset.value }
-                        .then(if (runTrayOpen) Modifier.clickable { settleRow(0f, 0f) }.semantics { contentDescription = "Close actions" } else Modifier)
-                        .semantics { customActions = listOf(
-                            CustomAccessibilityAction("Mark done") { commitSwipe(1); runScope.launch { runSwipeOffset.snapTo(0f) }; true },
-                            CustomAccessibilityAction("Mark skipped") { commitSwipe(3); runScope.launch { runSwipeOffset.snapTo(0f) }; true }
-                        ) }
-                        .horizontalSwipe(
-                            key = runSwipeOffset,
-                            onStart = { openRow = h.uid() },
-                            onDrag = { dx, _ ->
-                                val limit = if (rowWidthPx > 0f) rowWidthPx else Float.MAX_VALUE
-                                val next = (runSwipeOffset.value + dx).coerceIn(-limit, limit)
-                                runScope.launch(start = CoroutineStart.UNDISPATCHED) { runSwipeOffset.snapTo(next) }
-                            },
-                            onRelease = { velocity ->
-                                when (revealSettle(runSwipeOffset.value, velocity, runButtonPx, rowWidthPx, flingPx)) {
-                                    RevealSettle.Closed -> settleRow(0f, velocity)
-                                    RevealSettle.OpenRight -> settleRow(runButtonPx, velocity)
-                                    RevealSettle.OpenLeft -> settleRow(-runButtonPx, velocity)
-                                    RevealSettle.CommitRight -> { commitLatest(1); settleRow(0f, velocity) }
-                                    RevealSettle.CommitLeft -> { commitLatest(3); settleRow(0f, velocity) }
-                                }
-                            }
-                        )) {
-                        if (dense) {
-                            // Dense layout: small, non-clickable day marks lead the row; the day is picked in the strip above the list.
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    days.forEachIndexed { day, state ->
-                                        Box(Modifier.size(11.dp).clip(RoundedCornerShape(3.dp)).then(if (selectedDay == day && state >= 0) Modifier.border(1.5.dp, ink, RoundedCornerShape(3.dp)) else Modifier).then(when (state) { 1 -> Modifier.background(green); 2 -> Modifier.background(palette.partial); 3 -> Modifier.background(palette.skipped); -1 -> Modifier.background(palette.emptyDay); else -> Modifier.border(1.dp, muted, RoundedCornerShape(3.dp)) }))
-                                    }
-                                }
-                                Text(h.name, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.weight(1f))
-                                Text("${h.points} pts", style = MaterialTheme.typography.labelSmall, color = muted)
-                            }
-                        } else {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                            Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(palette.tile), contentAlignment = Alignment.Center) { HabitGlyph(h, Modifier.size(22.dp), palette.tile) }
-                            Column(Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(h.name, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
-                                    Text(h.iteration, modifier = Modifier.clip(RoundedCornerShape(5.dp)).background(palette.accentSoft).padding(horizontal = 4.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = green)
-                                }
-                                Text("${h.points} impact pts · ${h.recurrence}", style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1)
-                            }
-                            TextButton(onClick = { commitSwipe(2) }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("Partial", style = MaterialTheme.typography.labelSmall, color = palette.partial) }
-                        }
-                        Row(Modifier.fillMaxWidth().padding(start = 49.dp, top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            days.forEachIndexed { day, state ->
-                                Box(Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)).then(if (selectedDay == day && state >= 0) Modifier.border(2.dp, ink, RoundedCornerShape(6.dp)) else Modifier).then(when (state) { 1 -> Modifier.background(green); 2 -> Modifier.background(palette.partial); 3 -> Modifier.background(palette.skipped); -1 -> Modifier.background(palette.emptyDay); else -> Modifier.border(1.dp, muted, RoundedCornerShape(6.dp)) }).clickable(enabled = state >= 0) { selectedDay = day })
-                            }
-                        }
-                        }
-                        }
-                    }
-                }
-            } }
-        }
-        item { ImpactByDayCard() }
-        item { BurnupCard() }
-    }
-}
-
-@Composable private fun CompactRunSummaryCard(runName: String, days: Int, habitCount: Int, earned: Int, average: Float, elapsed: Int) {
-    Card(colors = CardDefaults.cardColors(containerColor = palette.accentSoft2), shape = RoundedCornerShape(20.dp)) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 11.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("ACTIVE RUN", style = MaterialTheme.typography.labelSmall, color = green)
-                    Text(runName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 2.dp), maxLines = 1)
-                    Text("Day $elapsed of $days · $habitCount habits", style = MaterialTheme.typography.labelSmall, color = muted)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("$earned pts", style = MaterialTheme.typography.titleMedium, color = green)
-                    Text("${"%.1f".format(average)} avg / day", style = MaterialTheme.typography.labelSmall, color = muted)
-                }
-            }
-            LinearProgressIndicator(progress = { (elapsed.toFloat() / days.coerceAtLeast(1)).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = green, trackColor = palette.track)
-        }
-    }
-}
-
-@Composable private fun SectionCard(title: String, subtitle: String, detail: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) { Column(Modifier.fillMaxWidth().padding(16.dp)) { Text(title, style = MaterialTheme.typography.titleSmall); Text(subtitle, style = MaterialTheme.typography.bodySmall, color = muted, modifier = Modifier.padding(top = 4.dp)); Text(detail, color = green, modifier = Modifier.padding(top = 12.dp)) } }
-}
-
-@Composable private fun ImpactByDayCard() {
-    Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Impact points by day", style = MaterialTheme.typography.titleSmall)
-                Text("SAMPLE", style = MaterialTheme.typography.labelSmall, color = muted)
-            }
-            Text("Earned impact points · this week", style = MaterialTheme.typography.bodySmall, color = muted, modifier = Modifier.padding(top = 3.dp))
-            val values = listOf(4f, 7f, 3f, 8f, 6f, 9f, 5f)
-            Canvas(Modifier.fillMaxWidth().height(112.dp).padding(top = 12.dp)) {
-                val max = 10f
-                val slot = size.width / values.size
-                val barWidth = slot * .46f
-                for (line in 1..3) {
-                    val y = size.height * line / 4f
-                    drawLine(palette.divider, androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 1.dp.toPx())
-                }
-                values.forEachIndexed { i, value ->
-                    val height = (size.height - 8.dp.toPx()) * value / max
-                    drawRoundRect(green, androidx.compose.ui.geometry.Offset(i * slot + (slot - barWidth) / 2, size.height - height), androidx.compose.ui.geometry.Size(barWidth, height), androidx.compose.ui.geometry.CornerRadius(5.dp.toPx()))
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { listOf("M", "T", "W", "T", "F", "S", "S").forEach { Text(it, style = MaterialTheme.typography.labelSmall, color = muted) } }
-        }
-    }
-}
-
-@Composable private fun BurnupCard() {
-    Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Impact points burnup", style = MaterialTheme.typography.titleSmall)
-                Text("EXAMPLE FORECAST", style = MaterialTheme.typography.labelSmall, color = muted)
-            }
-            Text("Cumulative points · actual and predicted", style = MaterialTheme.typography.bodySmall, color = muted, modifier = Modifier.padding(top = 3.dp))
-            Canvas(Modifier.fillMaxWidth().height(130.dp).padding(top = 12.dp)) {
-                val left = 8.dp.toPx(); val right = size.width - 6.dp.toPx(); val top = 5.dp.toPx(); val bottom = size.height - 8.dp.toPx()
-                val actual = listOf(4f, 9f, 16f, 22f, 28f, 35f, 42f)
-                val predicted = listOf(42f, 48f, 53f, 59f, 64f, 69f, 74f)
-                fun point(i: Int, value: Float, n: Int, end: Float = 1f): androidx.compose.ui.geometry.Offset {
-                    val x = left + (right - left) * end * i / (n - 1).toFloat()
-                    val y = bottom - (bottom - top) * value / 80f
-                    return androidx.compose.ui.geometry.Offset(x, y)
-                }
-                for (line in 1..3) { val y = top + (bottom - top) * line / 4f; drawLine(palette.divider, androidx.compose.ui.geometry.Offset(left, y), androidx.compose.ui.geometry.Offset(right, y), 1.dp.toPx()) }
-                val actualPath = Path().apply { actual.forEachIndexed { i, value -> val p = point(i, value, 7, .62f); if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) } }
-                drawPath(actualPath, green, style = Stroke(width = 3.dp.toPx()))
-                val forecastPath = Path().apply { predicted.forEachIndexed { i, value -> val x = left + (right-left) * (.62f + .38f * i / 6f); val y = bottom - (bottom-top) * value / 80f; if (i == 0) moveTo(x, y) else lineTo(x, y) } }
-                drawPath(forecastPath, palette.partial, style = Stroke(width = 3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(7.dp.toPx(), 5.dp.toPx()))))
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("━ Actual", style = MaterialTheme.typography.labelSmall, color = green); Text("┄ Predicted · sample", style = MaterialTheme.typography.labelSmall, color = palette.partial) }
-        }
-    }
-}
-
-@Composable private fun RunSummaryCard() {
-    Card(colors = CardDefaults.cardColors(containerColor = palette.accentSoft2), shape = RoundedCornerShape(22.dp)) {
-        Column(Modifier.fillMaxWidth().padding(18.dp)) {
-            Text("ACTIVE RUN · EXAMPLE DATA", style = MaterialTheme.typography.labelMedium, color = green)
-            Text("21-day habit run", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 7.dp))
-            Text("Day 13 of 21 · 4 habits", style = MaterialTheme.typography.bodySmall, color = muted)
-            Row(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) { Text("42 / 68 points", style = MaterialTheme.typography.titleMedium); Text("62%", style = MaterialTheme.typography.titleLarge, color = green) }
-            LinearProgressIndicator(progress = { .62f }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = green, trackColor = palette.track)
-            Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                SummaryMetric("Total impact", "42 pts"); SummaryMetric("Avg. impact", "3.2 / day"); SummaryMetric("Effort", "Setup pending")
-            }
-        }
-    }
-}
-
-@Composable private fun RowScope.SummaryMetric(label: String, value: String) {
-    Column(Modifier.weight(1f)) { Text(label, style = MaterialTheme.typography.labelSmall, color = muted); Text(value, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(top = 3.dp)) }
-}
-
 private fun loadQuickSwipeAction(database: HabitDatabase, key: String, fallback: QuickSwipeAction): QuickSwipeAction =
     try {
         QuickSwipeAction.parse(database.schemaQueries.selectMetaValue(key).executeAsOneOrNull(), fallback)
@@ -800,7 +544,7 @@ private fun saveQuickSwipeAction(database: HabitDatabase, key: String, action: Q
     }
 }
 
-private fun swipeActionGlyph(action: QuickSwipeAction): String =
+internal fun swipeActionGlyph(action: QuickSwipeAction): String =
     when (action) {
         QuickSwipeAction.Done -> "✓"
         QuickSwipeAction.Partial -> "◐"
@@ -808,7 +552,7 @@ private fun swipeActionGlyph(action: QuickSwipeAction): String =
         QuickSwipeAction.Comment -> "✎"
     }
 
-private fun swipeActionLabel(action: QuickSwipeAction): String =
+internal fun swipeActionLabel(action: QuickSwipeAction): String =
     when (action) {
         QuickSwipeAction.Done -> "Done"
         QuickSwipeAction.Partial -> "Partial"
@@ -816,7 +560,7 @@ private fun swipeActionLabel(action: QuickSwipeAction): String =
         QuickSwipeAction.Comment -> "Comment"
     }
 
-private fun swipeActionContainer(action: QuickSwipeAction): androidx.compose.ui.graphics.Color =
+internal fun swipeActionContainer(action: QuickSwipeAction): androidx.compose.ui.graphics.Color =
     when (action) {
         QuickSwipeAction.Done -> palette.accentSoft
         QuickSwipeAction.Partial -> palette.partialSoft
@@ -824,7 +568,7 @@ private fun swipeActionContainer(action: QuickSwipeAction): androidx.compose.ui.
         QuickSwipeAction.Comment -> palette.accentSoft2
     }
 
-private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.graphics.Color =
+internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.graphics.Color =
     when (action) {
         QuickSwipeAction.Done -> palette.accent
         QuickSwipeAction.Partial -> palette.partial
@@ -855,57 +599,6 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-        }
-    }
-}
-
-/**
- * Swipe-to-reveal rails: real action buttons resting behind the card. The
- * card uncovers them while dragging and stays open on release; a full swipe
- * fires the first action. Buttons accept clicks only while the tray is open.
- */
-@Composable private fun SwipeRevealPanel(
-    rightActions: List<QuickSwipeAction>,
-    leftActions: List<QuickSwipeAction>,
-    offset: Animatable<Float, AnimationVector1D>,
-    panelEnabled: Boolean,
-    committing: Boolean,
-    onAction: (QuickSwipeAction) -> Unit,
-) {
-    // Only the drag side triggers recomposition; per-frame alpha stays in the draw layer.
-    val side by remember(offset) { derivedStateOf { kotlin.math.sign(offset.value).toInt() } }
-    val actions = when (side) { 1 -> rightActions; -1 -> leftActions; else -> emptyList() }
-    if (actions.isEmpty()) return
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = swipeProgress(offset.value, 60f) }) {
-        if (committing) {
-            Box(Modifier.fillMaxSize().padding(vertical = 8.dp).clip(RoundedCornerShape(18.dp)).background(swipeActionContainer(actions.first())))
-        }
-        Row(
-            Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = if (side > 0) Arrangement.Start else Arrangement.End
-        ) {
-            actions.forEach { action -> SwipeRevealButton(action, panelEnabled, onAction) }
-        }
-    }
-}
-
-@Composable private fun RowScope.SwipeRevealButton(
-    action: QuickSwipeAction,
-    panelEnabled: Boolean,
-    onAction: (QuickSwipeAction) -> Unit,
-) {
-    Box(
-        Modifier.width(76.dp).fillMaxHeight().padding(vertical = 8.dp, horizontal = 4.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(swipeActionContainer(action))
-            .clickable(enabled = panelEnabled) { onAction(action) }
-            .semantics { contentDescription = swipeActionLabel(action) },
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(swipeActionGlyph(action), color = swipeActionContent(action), style = MaterialTheme.typography.titleLarge)
-            Text(swipeActionLabel(action), color = swipeActionContent(action), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }
@@ -1197,7 +890,7 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
     }
 }
 
-@Composable private fun HabitGlyph(habit: Habit, modifier: Modifier = Modifier, cutoutColor: androidx.compose.ui.graphics.Color = hero, tint: androidx.compose.ui.graphics.Color = green) {
+@Composable internal fun HabitGlyph(habit: Habit, modifier: Modifier = Modifier, cutoutColor: androidx.compose.ui.graphics.Color = hero, tint: androidx.compose.ui.graphics.Color = green) {
     Canvas(modifier) {
         val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
         val unit = size.minDimension / 48f
@@ -1272,7 +965,7 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
 }
 
 /** Habits created before icons existed keep the glyph their name always implied. */
-private fun legacyIcon(name: String): String = when (name) {
+internal fun legacyIcon(name: String): String = when (name) {
     "Morning light" -> "sun"
     "Sleep before 11:30 PM" -> "moon"
     "Plan the day" -> "target"

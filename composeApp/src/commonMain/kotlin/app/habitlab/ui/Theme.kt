@@ -73,7 +73,7 @@ internal fun buildPalette(dark: Boolean, accentKey: String): Palette {
             skipped = Color(0xFF8A5757), skippedSoft = Color(0xFF5A3532), error = Color(0xFFE7B4AD),
         )
     } else {
-        val accent = lerp(seed, Color.Black, .5f)
+        val accent = lerp(seed, Color.Black, .42f)
         val bg = lerp(Color(0xFFF6F7F5), seed, .06f)
         val surface = lerp(Color.White, seed, .05f)
         Palette(

@@ -221,3 +221,20 @@ superseded for this work. Everything below was checked on the ADB phone.
   list cards. `MainActivity` syncs status/nav bar colors and icon contrast.
 - Hide-points is stored and exposed; row/summary hiding lands with the Runs
   redesign step.
+
+### Step: Runs screen redesign (Android)
+- New `ui/RunsScreen.kt` (old RunsScreen/summary/chart code removed from
+  `HabitLabApp.kt`). Each habit is its own rounded surface card. Swiping
+  moves the card (shadow lifts) and uncovers a filled action area whose
+  buttons hang off the card's moving edge (pattern from saket/swipe, Apache-2.0):
+  right = Done, left = Partial + Skipped. Release past 50% width fires
+  Done/Skipped; shorter swipes open the tray; tap closes it. The reveal logic
+  (`horizontalSwipe`, `revealSettle`) is unchanged and unit-tested.
+- Week selector: stepper `‹ Week n of N ›` (any run length, not capped at 4)
+  over a weekday-letter + date strip. Default is the week/day containing today.
+- Day marks are circular, non-clickable, trailing the name (both layouts).
+  "Hide points" setting removes points from rows and the run summary.
+- Charts are now real: "Points per day" (selected week) and "Points burnup"
+  (cumulative, from `check_in`); sample labels and the forecast line are gone.
+- Local check-ins now bump `runsRevision` so the summary/charts update at once.
+- Tapping a habit calls `onOpenHabit` (detail page lands in the next step).
