@@ -43,7 +43,7 @@ import app.habitlab.db.HabitDatabase
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
-private val GOAL_TINTS = listOf<() -> Color>({ green }, { Color(0xFF9BB6DF) }, { palette.partial })
+private val GOAL_TINTS = listOf<() -> Color>({ green }, { androidx.compose.ui.graphics.lerp(green, palette.partial, .5f) }, { palette.partial })
 
 /** Mirrors the web app's Goals view: a card per goal with progress from its start date, plus "New goal". */
 @Composable internal fun GoalsScreen(database: HabitDatabase, today: String, onLocalChange: () -> Unit) {

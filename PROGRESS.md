@@ -169,7 +169,7 @@ databases on the server.
   by reading code. Screenshots are checked with the image reader, not by
   file size. A self-authored green check that replays your own assumption
   proves nothing — the E2E wipe-and-redownload exists for exactly this.
-- Current head: `da911be` (desktop webapp). Server process is detached
+- Desktop webapp last shipped at `da911be`; Android UI work since then is logged in the sections below (see `git log`). Server process is detached
   (`setsid`, PPID 1) and survives session end; confirm with `/health`.
 
 ## Open / next
@@ -267,3 +267,17 @@ superseded for this work. Everything below was checked on the ADB phone.
   also sit at 0% unless edited here).
 - Verified on device: create → edit progress → delete round trip; the test
   goal was deleted afterwards (a tombstone for `g-…` remains on the server).
+
+### Cross-client notes (Android UI batch)
+- `yaml.js` now accepts (and ignores) `icon:` so a file written from the
+  Android prompt also loads in the web builder; covered by `yaml-test.mjs`.
+  **Not deployed**: the live server still runs the previous jar until the next
+  `buildFatJar` + ship (see "Deploying").
+- Hide points removes points from rows, summary, Quick Log and both charts.
+- Icon catalog is 171 icons; 11 wanted names do not exist in Fluent (yoga,
+  meditation, bell, vacuum, mountain, mood_happy, alarm_on, …). Extend by
+  editing the list in `ui-qa/icon-catalog/gen.mjs`. License notice sits next
+  to it.
+- Sizes used: 48dp touch targets for week stepper/back buttons, 40dp date
+  circles, 56dp minimum habit row, 24dp-class icons (Material's 48dp minimum
+  interactive size). Day dots are display-only, so they are 10–12dp.

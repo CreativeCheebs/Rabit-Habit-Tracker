@@ -197,8 +197,8 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
                 )
             }
         }
-        item { PointsPerDayCard(pointsPerRunDay, week, runStart, runDays) }
-        item { PointsBurnupCard(pointsPerRunDay, elapsed) }
+        if (!hidePointsPref) item { PointsPerDayCard(pointsPerRunDay, week, runStart, runDays) }
+        if (!hidePointsPref) item { PointsBurnupCard(pointsPerRunDay, elapsed) }
     }
 }
 

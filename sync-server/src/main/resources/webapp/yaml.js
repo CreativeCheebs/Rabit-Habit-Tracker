@@ -7,6 +7,7 @@
  *     - name: Morning light # required per habit
  *       group: Wellbeing    # optional (default General)
  *       points: 2           # optional int >= 0 (default 1)
+ *       icon: run           # optional; the Android app picks the icon, the web app ignores it
  *       days_per_week: 5    # weekly target 1..7, OR:
  *       every: 2 days       # repeat interval N day(s), N >= 1
  * Blank lines and `#` comments are ignored. Indentation is 2 spaces
@@ -96,6 +97,7 @@ export function parseRunYaml(src) {
 function setHabitField(h, key, val, errors, lineNo) {
   if (key === 'name') h.name = val;
   else if (key === 'group') h.group = val || 'General';
+  else if (key === 'icon') h.icon = val; // Android-only icon key; accepted so one file works on both clients
   else if (key === 'points') {
     const n = Number(val);
     if (!Number.isInteger(n) || n < 0) errors.push(`line ${lineNo}: points must be an integer >= 0`);

@@ -629,7 +629,7 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
             Text("${h.recurrence}  ·  due today", color = muted, style = MaterialTheme.typography.labelMedium)
             Text(h.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 8.dp))
             Text("${h.iteration}  ·  ${h.recurrence}", color = muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 5.dp))
-            Text("${h.points} impact points", color = green, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
+            if (!hidePointsPref) Text("${h.points} impact points", color = green, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 12.dp))
             Text(hint, color = muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 14.dp))
         }
     }
@@ -980,7 +980,7 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Hide points", style = MaterialTheme.typography.titleSmall)
-                        Text("Hide impact points on habit rows and the run summary.", style = MaterialTheme.typography.bodySmall, color = muted)
+                        Text("Hide impact points on habit rows, the run summary, Quick Log and the points charts.", style = MaterialTheme.typography.bodySmall, color = muted)
                     }
                     Switch(checked = hidePointsPref, onCheckedChange = { hidePointsPref = it; database.setPref(PREF_HIDE_POINTS, if (it) "1" else "0") }, modifier = Modifier.padding(start = 12.dp).semantics { contentDescription = "Hide points" })
                 }
