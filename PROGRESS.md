@@ -297,3 +297,23 @@ superseded for this work. Everything below was checked on the ADB phone.
   (the last starts 2030-01-01, so it is now the *latest* run) in the throwaway
   `webtest` account. Reset that DB before the next `webapp-check.mjs` run
   (see "Test accounts and verification").
+
+### Two server instances + deploy helper (2026-11-06)
+- **8788 `~/HabitLab-sync` is the TEST instance** (contains `webtest`, whose
+  password is in the gitignored `TEST-CREDS.md`). **8789 `~/HabitLab-prod` is
+  the owner's own copy**: same jar, own `data/`, own signing secret, no
+  `webtest`, generated owner password. Its credentials live only in the
+  gitignored `send_tool/ship/prod-creds.txt` and the server's
+  `habitlab.env` (mode 600). Point real clients at 8789; run automated tests
+  only at 8788.
+- 8789 starts empty. Signing in from the phone uploads the phone's data.
+- **Standing rule: rebuild and restart after every commit/change touching
+  `sync-server/`.** `send_tool/ship/habitlab_deploy.py` (runs on the host)
+  installs the uploaded jar into both dirs, stops each by exact PID (matched by
+  working directory), restarts, and health-checks both. Run it with:
+  `cd sync-server && ./gradlew.bat buildFatJar`, copy the jar to
+  `send_tool/ship/out/habitlab-web.jar`, then from `send_tool/ship/out`:
+  `python ../send.py 192.168.0.8 habitlab-web.jar ../habitlab_deploy.py
+  --timeout 300 --run 'python3 ~/JitterBug/habitlab_deploy.py'`.
+- Deployed `86d7355` (YAML create fix) to both; verified on the live 8788
+  page without any route override.
