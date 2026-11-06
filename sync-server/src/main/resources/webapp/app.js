@@ -134,6 +134,31 @@ async function api(path, body, authed) {
   }
   return res.json();
 }
+/** Same winner rule as the server and the app: higher clock, then device id, then value. */
+function fieldWins(inc, cur, incValue, curValue) {
+  if (!cur) return true;
+  if (inc.c !== cur.c) return inc.c > cur.c;
+  if (inc.d !== cur.d) return inc.d > cur.d;
+  return JSON.stringify(incValue ?? null) > JSON.stringify(curValue ?? null);
+}
+/**
+ * The server answers with only the fields another device changed, so a row
+ * is merged field by field; replacing it would drop every untouched field.
+ * A field edited here after the request was built keeps its newer stamp.
+ */
+function mergeIncoming(r) {
+  if (!mirror[r.t]) mirror[r.t] = {};
+  if (r.v && r.v._deleted === true) { delete mirror[r.t][r.u]; return; }
+  const cur = mirror[r.t][r.u] || { v: {}, s: {} };
+  const v = { ...cur.v }, s = { ...cur.s };
+  for (const [field, value] of Object.entries(r.v || {})) {
+    const stamp = (r.s || {})[field];
+    if (stamp && !fieldWins(stamp, cur.s[field], value, cur.v[field])) continue;
+    v[field] = value;
+    if (stamp) s[field] = stamp;
+  }
+  mirror[r.t][r.u] = { v, s };
+}
 let syncing = false, syncQueued = false;
 function setSync(state, label) {
   const dot = $('syncDot');
@@ -158,11 +183,7 @@ async function sync() {
       return r ? { t, u, v: r.v, s: r.s } : null;
     }).filter(Boolean);
     const resp = await api('/api/sync', { device: deviceId(), token: Number(localStorage.getItem(LS.token) || 0), changes });
-    for (const r of resp.changes || []) {
-      if (!mirror[r.t]) mirror[r.t] = {};
-      if (r.v && r.v._deleted === true) delete mirror[r.t][r.u];
-      else mirror[r.t][r.u] = { v: r.v, s: r.s };
-    }
+    for (const r of resp.changes || []) mergeIncoming(r);
     localStorage.setItem(LS.token, String(resp.token));
     for (const [k, s] of snap) if (dirty.get(k) === s) dirty.delete(k);
     saveMirror();

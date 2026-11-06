@@ -54,7 +54,30 @@ class SyncClientTest {
     }
 
     @Test
-    fun signInRejectsBadPasswordWithoutStoring() = kotlinx.coroutines.test.runTest {
+    fun signInToDifferentServerResetsSyncPosition() = kotlinx.coroutines.test.runTest {
+        val db = freshDb()
+        db.schemaQueries.upsertMetaValue("sync_url", "http://sync.test:8788")
+        db.schemaQueries.upsertMetaValue("sync_account", "user@example.com")
+        db.schemaQueries.upsertMetaValue("token", "40")
+        db.schemaQueries.upsertMetaValue("pushed", "12")
+        val client = SyncClient(db, HttpClient(MockEngine {
+            respond(
+                """{"account":"user@example.com","accessToken":"tok"}""",
+                HttpStatusCode.OK,
+                headersOf("Content-Type" to listOf("application/json")),
+            )
+        }))
+        client.signIn("http://sync.test:8789", "user@example.com", "secret")
+        assertEquals("0", db.schemaQueries.selectMetaValue("token").executeAsOne())
+        assertEquals("0", db.schemaQueries.selectMetaValue("pushed").executeAsOne())
+
+        db.schemaQueries.upsertMetaValue("token", "7")
+        client.signIn("http://sync.test:8789", "user@example.com", "secret")
+        assertEquals("7", db.schemaQueries.selectMetaValue("token").executeAsOne())
+    }
+
+    @Test
+    fun signInRejectsBadPasswordWithoutStoring()= kotlinx.coroutines.test.runTest {
         val db = freshDb()
         val client = SyncClient(db, HttpClient(MockEngine {
             respond("""{"error":"nope"}""", HttpStatusCode.Unauthorized)

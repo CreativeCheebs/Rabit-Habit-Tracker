@@ -76,6 +76,12 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
         val parsed = syncJson.parseToJsonElement(response.bodyAsText()) as JsonObject
         val account = (parsed["account"] as JsonPrimitive).content
         val token = (parsed["accessToken"] as JsonPrimitive).content
+        // Sync positions belong to one server+account. Keeping the old token
+        // would ask a different server for "changes after N" and get nothing.
+        if (db.metaValue(SYNC_URL_KEY) != base || db.metaValue(SYNC_ACCOUNT_KEY) != account) {
+            db.setMetaValue("token", "0")
+            db.setMetaValue("pushed", "0")
+        }
         db.setMetaValue(SYNC_URL_KEY, base)
         db.setMetaValue(SYNC_ACCOUNT_KEY, account)
         db.setMetaValue(SYNC_TOKEN_KEY, token)
