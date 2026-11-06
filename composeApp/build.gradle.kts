@@ -4,6 +4,13 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.android.application)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.ktlint)
+}
+ktlint {
+    // Generated SQLDelight code is not ours to format; existing violations are baselined so only new ones fail.
+    filter { exclude { it.file.invariantSeparatorsPath.contains("/build/") } }
+    baseline.set(file("config/ktlint/baseline.xml"))
 }
 kotlin {
     androidTarget()
