@@ -140,10 +140,10 @@ databases on the server.
 
 ## Test accounts and verification
 
-- Throwaway webapp account: username `webtest`, password `cEtxziDBk8st3HmB`
-  (throwaway — safe to keep here; created for Playwright E2E). Owner's
-  account(s) are unknown to agents — never touch `data/bcf6acb0…sqlite`
-  or infer other passwords.
+- Throwaway webapp account: username `webtest` (created for Playwright E2E;
+  password lives only in the gitignored `TEST-CREDS.md`, never here).
+  Owner's account(s) are unknown to agents — never touch
+  `data/bcf6acb0…sqlite` or infer other passwords.
 - `webapp-check.mjs` needs a deterministic "latest run", so reset the
   throwaway DB before authed runs: stop server, `rm
   data/2cae3fde…f6.sqlite` (full hash in `ui-qa/README.md`), start, rerun.
@@ -163,8 +163,8 @@ databases on the server.
 - `muse.powershell` runs Windows PowerShell: no `&&`, no `tail`, redirect
   with `Select-Object`, quote remote `--run` bodies with single quotes.
 - Real secrets (server env values, owner credentials) stay out of the repo,
-  memory, and commit messages. Only the throwaway `webtest` password above
-  is recorded here, by owner instruction.
+  memory, and commit messages. Even the throwaway `webtest` password lives
+  only in the gitignored `TEST-CREDS.md`, never in a commit.
 - Verify on the real target (device ADB / live server / browser), not just
   by reading code. Screenshots are checked with the image reader, not by
   file size. A self-authored green check that replays your own assumption
