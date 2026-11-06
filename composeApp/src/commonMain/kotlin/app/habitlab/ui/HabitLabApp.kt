@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
@@ -58,11 +59,11 @@ import app.habitlab.sync.SyncClient
 import app.habitlab.sync.SyncOutcome
 import app.habitlab.sync.createHttpClient
 
-private val ink = androidx.compose.ui.graphics.Color(0xFFE5ECE6)
-private val muted = androidx.compose.ui.graphics.Color(0xFFA3AFA6)
-private val surface = androidx.compose.ui.graphics.Color(0xFF1C241E)
-private val green = androidx.compose.ui.graphics.Color(0xFFA4D0AD)
-private val hero = androidx.compose.ui.graphics.Color(0xFF18231B)
+private val ink get() = palette.ink
+private val muted get() = palette.muted
+private val surface get() = palette.surface
+private val green get() = palette.accent
+private val hero get() = palette.hero
 private data class Habit(val name: String, val group: String, val points: Int, val recurrence: String, val iteration: String = "I", val id: String = "", val icon: String = "")
 private val sampleHabits = listOf(
     Habit("Morning light", "Wellbeing", 2, "Daily"), Habit("Sleep before 11:30 PM", "Wellbeing", 2, "Every 3 days", "II"),
@@ -142,7 +143,10 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
             if (syncDirty) doSync()
         }
     }
-    MaterialTheme(colorScheme = darkColorScheme(primary = green, onPrimary = androidx.compose.ui.graphics.Color(0xFF173721), background = androidx.compose.ui.graphics.Color(0xFF111713), surface = surface, onSurface = ink, onSurfaceVariant = muted, secondary = androidx.compose.ui.graphics.Color(0xFFB9CBBE), secondaryContainer = androidx.compose.ui.graphics.Color(0xFF344C39), onSecondaryContainer = ink)) {
+    remember(database) { themeModePref = database.pref(PREF_THEME_MODE) ?: "system"; accentPref = database.pref(PREF_ACCENT) ?: "green"; hidePointsPref = database.pref(PREF_HIDE_POINTS) == "1"; 0 }
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    if (systemDarkState != systemDark) systemDarkState = systemDark
+    MaterialTheme(colorScheme = palette.toColorScheme()) {
         Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = {
             if (builderCopy == null)
             NavigationBar(containerColor = surface) {
@@ -180,7 +184,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                         LinearProgressIndicator(
                             progress = { (progress.first.toFloat() / progress.second!!.toFloat()).coerceIn(0f, 1f) },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            color = green, trackColor = androidx.compose.ui.graphics.Color(0xFF3B5141)
+                            color = green, trackColor = palette.track
                         )
                     }
                 }
@@ -190,6 +194,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     Destination.Goals -> ListingScreen("Your goals", listOf("Start focused work by 9:30", "Build a steady sleep routine", "Run 5 km comfortably"), "Progress history starts from each goal’s start date.")
                     Destination.Trackers -> ListingScreen("Personal measurements", listOf("Sleep quality · /10", "Daily energy · /10", "Body weight · kg"), "Dated entries and simple history graphs.")
                     Destination.Settings -> SettingsScreen(
+                        database = database,
                         syncClient = syncClient, syncMode = syncMode, dense = dense, syncing = syncing, syncStatus = syncStatus,
                         onDense = { dense = it; database.setPref(PREF_DENSE_LAYOUT, if (it) "1" else "0") },
                         onConnect = { openSignIn() }, onSyncNow = { doSync() },
@@ -275,7 +280,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                 OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("Server address") }, placeholder = { Text("http://192.168.0.8:8788") }, singleLine = true)
                 OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true)
                 OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
-                if (error != null) Text(error, color = androidx.compose.ui.graphics.Color(0xFFE7B4AD), style = MaterialTheme.typography.bodySmall)
+                if (error != null) Text(error, color = palette.error, style = MaterialTheme.typography.bodySmall)
                 Text("First connection downloads everything; later syncs are small and silent.", color = muted, style = MaterialTheme.typography.bodySmall)
             }
         },
@@ -360,7 +365,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     var yamlErrors by remember { mutableStateOf<List<String>>(emptyList()) }
     var promptCopied by remember { mutableStateOf(false) }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-    val line = androidx.compose.ui.graphics.Color(0xFF303A32)
+    val line = palette.divider
 
     fun chooseSource(next: Int) {
         source = next
@@ -402,7 +407,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                             modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp),
                             placeholder = { Text("name: Reset week\ndays: 14\nhabits:\n  - name: Morning light\n    every: 1 day") }
                         )
-                        yamlErrors.forEach { Text(it, color = androidx.compose.ui.graphics.Color(0xFFE7B4AD), style = MaterialTheme.typography.bodySmall) }
+                        yamlErrors.forEach { Text(it, color = palette.error, style = MaterialTheme.typography.bodySmall) }
                         Button(
                             enabled = yamlText.isNotBlank(),
                             onClick = {
@@ -467,12 +472,12 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                         val on = newHabitIcon == key
                         Box(
                             Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
-                                .background(if (on) androidx.compose.ui.graphics.Color(0xFF344C39) else surface)
+                                .background(if (on) palette.accentSoft else surface)
                                 .border(if (on) 2.dp else 1.dp, if (on) green else line, RoundedCornerShape(12.dp))
                                 .clickable { newHabitIcon = if (on) "" else key }
                                 .semantics { contentDescription = "Icon $key" },
                             contentAlignment = Alignment.Center
-                        ) { HabitGlyph(Habit("", "", 0, "", icon = key), Modifier.size(24.dp), if (on) androidx.compose.ui.graphics.Color(0xFF344C39) else surface) }
+                        ) { HabitGlyph(Habit("", "", 0, "", icon = key), Modifier.size(24.dp), if (on) palette.accentSoft else surface) }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -568,7 +573,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
             Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) { Column(Modifier.padding(14.dp)) {
                 Text("${group.uppercase()} · ${habits.size} HABITS", style = MaterialTheme.typography.labelMedium, color = green)
                 habits.forEachIndexed { index, h ->
-                    if (index > 0) HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF303A32), modifier = Modifier.padding(start = if (dense) 0.dp else 48.dp, top = 7.dp))
+                    if (index > 0) HorizontalDivider(color = palette.divider, modifier = Modifier.padding(start = if (dense) 0.dp else 48.dp, top = 7.dp))
                     val runStart = latestRun?.start_date ?: today
                     val days = remember(h.uid(), week, revision, today) { mutableStateListOf<Int>().apply {
                         repeat(7) { dayIndex ->
@@ -650,7 +655,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                     days.forEachIndexed { day, state ->
-                                        Box(Modifier.size(11.dp).clip(RoundedCornerShape(3.dp)).then(if (selectedDay == day && state >= 0) Modifier.border(1.5.dp, ink, RoundedCornerShape(3.dp)) else Modifier).then(when (state) { 1 -> Modifier.background(green); 2 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFFE6BD76)); 3 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFF754B4B)); -1 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFF252C27)); else -> Modifier.border(1.dp, muted, RoundedCornerShape(3.dp)) }))
+                                        Box(Modifier.size(11.dp).clip(RoundedCornerShape(3.dp)).then(if (selectedDay == day && state >= 0) Modifier.border(1.5.dp, ink, RoundedCornerShape(3.dp)) else Modifier).then(when (state) { 1 -> Modifier.background(green); 2 -> Modifier.background(palette.partial); 3 -> Modifier.background(palette.skipped); -1 -> Modifier.background(palette.emptyDay); else -> Modifier.border(1.dp, muted, RoundedCornerShape(3.dp)) }))
                                     }
                                 }
                                 Text(h.name, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.weight(1f))
@@ -658,19 +663,19 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                             }
                         } else {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                            Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(androidx.compose.ui.graphics.Color(0xFF29352D)), contentAlignment = Alignment.Center) { HabitGlyph(h, Modifier.size(22.dp), androidx.compose.ui.graphics.Color(0xFF29352D)) }
+                            Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(palette.tile), contentAlignment = Alignment.Center) { HabitGlyph(h, Modifier.size(22.dp), palette.tile) }
                             Column(Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(h.name, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
-                                    Text(h.iteration, modifier = Modifier.clip(RoundedCornerShape(5.dp)).background(androidx.compose.ui.graphics.Color(0xFF344C39)).padding(horizontal = 4.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = green)
+                                    Text(h.iteration, modifier = Modifier.clip(RoundedCornerShape(5.dp)).background(palette.accentSoft).padding(horizontal = 4.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = green)
                                 }
                                 Text("${h.points} impact pts · ${h.recurrence}", style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1)
                             }
-                            TextButton(onClick = { commitSwipe(2) }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("Partial", style = MaterialTheme.typography.labelSmall, color = androidx.compose.ui.graphics.Color(0xFFE6BD76)) }
+                            TextButton(onClick = { commitSwipe(2) }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("Partial", style = MaterialTheme.typography.labelSmall, color = palette.partial) }
                         }
                         Row(Modifier.fillMaxWidth().padding(start = 49.dp, top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             days.forEachIndexed { day, state ->
-                                Box(Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)).then(if (selectedDay == day && state >= 0) Modifier.border(2.dp, ink, RoundedCornerShape(6.dp)) else Modifier).then(when (state) { 1 -> Modifier.background(green); 2 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFFE6BD76)); 3 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFF754B4B)); -1 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFF252C27)); else -> Modifier.border(1.dp, muted, RoundedCornerShape(6.dp)) }).clickable(enabled = state >= 0) { selectedDay = day })
+                                Box(Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)).then(if (selectedDay == day && state >= 0) Modifier.border(2.dp, ink, RoundedCornerShape(6.dp)) else Modifier).then(when (state) { 1 -> Modifier.background(green); 2 -> Modifier.background(palette.partial); 3 -> Modifier.background(palette.skipped); -1 -> Modifier.background(palette.emptyDay); else -> Modifier.border(1.dp, muted, RoundedCornerShape(6.dp)) }).clickable(enabled = state >= 0) { selectedDay = day })
                             }
                         }
                         }
@@ -685,7 +690,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
 }
 
 @Composable private fun CompactRunSummaryCard(runName: String, days: Int, habitCount: Int, earned: Int, average: Float, elapsed: Int) {
-    Card(colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(0xFF24352A)), shape = RoundedCornerShape(20.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = palette.accentSoft2), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 11.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -698,7 +703,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     Text("${"%.1f".format(average)} avg / day", style = MaterialTheme.typography.labelSmall, color = muted)
                 }
             }
-            LinearProgressIndicator(progress = { (elapsed.toFloat() / days.coerceAtLeast(1)).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = green, trackColor = androidx.compose.ui.graphics.Color(0xFF3B5141))
+            LinearProgressIndicator(progress = { (elapsed.toFloat() / days.coerceAtLeast(1)).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = green, trackColor = palette.track)
         }
     }
 }
@@ -722,7 +727,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                 val barWidth = slot * .46f
                 for (line in 1..3) {
                     val y = size.height * line / 4f
-                    drawLine(androidx.compose.ui.graphics.Color(0xFF303A32), androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 1.dp.toPx())
+                    drawLine(palette.divider, androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 1.dp.toPx())
                 }
                 values.forEachIndexed { i, value ->
                     val height = (size.height - 8.dp.toPx()) * value / max
@@ -751,25 +756,25 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     val y = bottom - (bottom - top) * value / 80f
                     return androidx.compose.ui.geometry.Offset(x, y)
                 }
-                for (line in 1..3) { val y = top + (bottom - top) * line / 4f; drawLine(androidx.compose.ui.graphics.Color(0xFF303A32), androidx.compose.ui.geometry.Offset(left, y), androidx.compose.ui.geometry.Offset(right, y), 1.dp.toPx()) }
+                for (line in 1..3) { val y = top + (bottom - top) * line / 4f; drawLine(palette.divider, androidx.compose.ui.geometry.Offset(left, y), androidx.compose.ui.geometry.Offset(right, y), 1.dp.toPx()) }
                 val actualPath = Path().apply { actual.forEachIndexed { i, value -> val p = point(i, value, 7, .62f); if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) } }
                 drawPath(actualPath, green, style = Stroke(width = 3.dp.toPx()))
                 val forecastPath = Path().apply { predicted.forEachIndexed { i, value -> val x = left + (right-left) * (.62f + .38f * i / 6f); val y = bottom - (bottom-top) * value / 80f; if (i == 0) moveTo(x, y) else lineTo(x, y) } }
-                drawPath(forecastPath, androidx.compose.ui.graphics.Color(0xFFDFBD82), style = Stroke(width = 3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(7.dp.toPx(), 5.dp.toPx()))))
+                drawPath(forecastPath, palette.partial, style = Stroke(width = 3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(7.dp.toPx(), 5.dp.toPx()))))
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("━ Actual", style = MaterialTheme.typography.labelSmall, color = green); Text("┄ Predicted · sample", style = MaterialTheme.typography.labelSmall, color = androidx.compose.ui.graphics.Color(0xFFDFBD82)) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("━ Actual", style = MaterialTheme.typography.labelSmall, color = green); Text("┄ Predicted · sample", style = MaterialTheme.typography.labelSmall, color = palette.partial) }
         }
     }
 }
 
 @Composable private fun RunSummaryCard() {
-    Card(colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(0xFF24352A)), shape = RoundedCornerShape(22.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = palette.accentSoft2), shape = RoundedCornerShape(22.dp)) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Text("ACTIVE RUN · EXAMPLE DATA", style = MaterialTheme.typography.labelMedium, color = green)
             Text("21-day habit run", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 7.dp))
             Text("Day 13 of 21 · 4 habits", style = MaterialTheme.typography.bodySmall, color = muted)
             Row(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) { Text("42 / 68 points", style = MaterialTheme.typography.titleMedium); Text("62%", style = MaterialTheme.typography.titleLarge, color = green) }
-            LinearProgressIndicator(progress = { .62f }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = green, trackColor = androidx.compose.ui.graphics.Color(0xFF3B5141))
+            LinearProgressIndicator(progress = { .62f }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = green, trackColor = palette.track)
             Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 SummaryMetric("Total impact", "42 pts"); SummaryMetric("Avg. impact", "3.2 / day"); SummaryMetric("Effort", "Setup pending")
             }
@@ -813,18 +818,18 @@ private fun swipeActionLabel(action: QuickSwipeAction): String =
 
 private fun swipeActionContainer(action: QuickSwipeAction): androidx.compose.ui.graphics.Color =
     when (action) {
-        QuickSwipeAction.Done -> androidx.compose.ui.graphics.Color(0xFF284632)
-        QuickSwipeAction.Partial -> androidx.compose.ui.graphics.Color(0xFF4A402A)
-        QuickSwipeAction.Skipped -> androidx.compose.ui.graphics.Color(0xFF5A3532)
-        QuickSwipeAction.Comment -> androidx.compose.ui.graphics.Color(0xFF24352A)
+        QuickSwipeAction.Done -> palette.accentSoft
+        QuickSwipeAction.Partial -> palette.partialSoft
+        QuickSwipeAction.Skipped -> palette.skippedSoft
+        QuickSwipeAction.Comment -> palette.accentSoft2
     }
 
 private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.graphics.Color =
     when (action) {
-        QuickSwipeAction.Done -> androidx.compose.ui.graphics.Color(0xFFCBE8D0)
-        QuickSwipeAction.Partial -> androidx.compose.ui.graphics.Color(0xFFFFD18F)
-        QuickSwipeAction.Skipped -> androidx.compose.ui.graphics.Color(0xFFE7B4AD)
-        QuickSwipeAction.Comment -> androidx.compose.ui.graphics.Color(0xFFA4D0AD)
+        QuickSwipeAction.Done -> palette.accent
+        QuickSwipeAction.Partial -> palette.partial
+        QuickSwipeAction.Skipped -> palette.error
+        QuickSwipeAction.Comment -> palette.accent
     }
 
 /** Gmail-style action background revealed behind the last swiped card. Fades in from the draw layer. */
@@ -908,14 +913,14 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
 /** Face of a Quick Log card; the card underneath renders the same face so promotion is seamless. */
 @Composable private fun QuickLogCardFace(h: Habit, hint: String) {
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxWidth().weight(0.45f).background(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF344B3A), androidx.compose.ui.graphics.Color(0xFF1B2A21)))), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().weight(0.45f).background(Brush.verticalGradient(listOf(palette.accentSoft, palette.accentSoft2))), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) {
                 val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
                 val maxRadius = size.minDimension * .47f
-                listOf(.55f, .78f, 1f).forEach { ratio -> drawCircle(androidx.compose.ui.graphics.Color(0xFF53665A).copy(alpha = .28f), radius = maxRadius * ratio, center = center, style = Stroke(width = 1.dp.toPx())) }
+                listOf(.55f, .78f, 1f).forEach { ratio -> drawCircle(palette.muted.copy(alpha = .28f), radius = maxRadius * ratio, center = center, style = Stroke(width = 1.dp.toPx())) }
             }
             Text("${h.group.uppercase()}  ·  DUE", Modifier.align(Alignment.TopStart).padding(start = 17.dp, top = 15.dp), color = green, style = MaterialTheme.typography.labelMedium)
-            Box(Modifier.size(142.dp).clip(RoundedCornerShape(36.dp)).background(green), contentAlignment = Alignment.Center) { HabitGlyph(h, Modifier.size(56.dp), green, androidx.compose.ui.graphics.Color(0xFF173721)) }
+            Box(Modifier.size(142.dp).clip(RoundedCornerShape(36.dp)).background(green), contentAlignment = Alignment.Center) { HabitGlyph(h, Modifier.size(56.dp), green, palette.onAccent) }
         }
         Column(Modifier.fillMaxWidth().weight(0.55f).verticalScroll(rememberScrollState()).padding(horizontal = 23.dp, vertical = 19.dp)) {
             Text("${h.recurrence}  ·  due today", color = muted, style = MaterialTheme.typography.labelMedium)
@@ -1128,8 +1133,8 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { flyOut(QuickSwipeAction.Partial, h, -1) }, enabled = !animating, modifier = Modifier.weight(1f).height(54.dp).semantics { contentDescription = "Partial" }, shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFF4A402A), contentColor = androidx.compose.ui.graphics.Color(0xFFFFD18F))) { Text("◐  Partial") }
-            FilledTonalButton(onClick = { commentOpen = true }, enabled = !animating, modifier = Modifier.weight(1f).height(54.dp).semantics { contentDescription = "Comment" }, shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.filledTonalButtonColors(containerColor = androidx.compose.ui.graphics.Color(0xFF24352A), contentColor = green)) { Text("✎  Comment") }
+            Button(onClick = { flyOut(QuickSwipeAction.Partial, h, -1) }, enabled = !animating, modifier = Modifier.weight(1f).height(54.dp).semantics { contentDescription = "Partial" }, shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = palette.partialSoft, contentColor = palette.partial)) { Text("◐  Partial") }
+            FilledTonalButton(onClick = { commentOpen = true }, enabled = !animating, modifier = Modifier.weight(1f).height(54.dp).semantics { contentDescription = "Comment" }, shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.filledTonalButtonColors(containerColor = palette.accentSoft2, contentColor = green)) { Text("✎  Comment") }
         }
         Text("Swipe right for ${swipeRight.key} · left for ${swipeLeft.key}. Skipped interval habits stay due until completed.", Modifier.fillMaxWidth().padding(horizontal = 12.dp), color = muted, style = MaterialTheme.typography.bodySmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
@@ -1275,6 +1280,7 @@ private fun legacyIcon(name: String): String = when (name) {
 }
 
 @Composable private fun SettingsScreen(
+    database: HabitDatabase,
     syncClient: SyncClient,
     syncMode: String?,
     dense: Boolean,
@@ -1310,13 +1316,46 @@ private fun legacyIcon(name: String): String = when (name) {
             }
         }
         Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
-            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("DISPLAY", style = MaterialTheme.typography.labelMedium, color = green)
-                    Text("Dense layout", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp))
-                    Text("For long habit lists: one line per habit with small day marks in front. Pick the day from the strip above the list; swiping still logs.", style = MaterialTheme.typography.bodySmall, color = muted)
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("APPEARANCE", style = MaterialTheme.typography.labelMedium, color = green)
+                Text("Theme", style = MaterialTheme.typography.titleSmall)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("system" to "System", "light" to "Light", "dark" to "Dark").forEach { (key, label) ->
+                        FilterChip(selected = themeModePref == key, onClick = { themeModePref = key; database.setPref(PREF_THEME_MODE, key) }, label = { Text(label, maxLines = 1) }, modifier = Modifier.weight(1f))
+                    }
                 }
-                Switch(checked = dense, onCheckedChange = onDense, modifier = Modifier.padding(start = 12.dp).semantics { contentDescription = "Dense layout" })
+                Text("Accent color", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    ACCENTS.forEach { option ->
+                        val on = accentPref == option.key
+                        Box(
+                            Modifier.size(34.dp).clip(CircleShape).background(option.seed)
+                                .border(if (on) 3.dp else 0.dp, ink, CircleShape)
+                                .clickable { accentPref = option.key; database.setPref(PREF_ACCENT, option.key) }
+                                .semantics { contentDescription = "Accent ${option.label}" },
+                            contentAlignment = Alignment.Center
+                        ) { if (on) Text("✓", color = androidx.compose.ui.graphics.Color(0xFF111111), style = MaterialTheme.typography.labelLarge) }
+                    }
+                }
+            }
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text("HABIT LIST", style = MaterialTheme.typography.labelMedium, color = green)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Dense layout", style = MaterialTheme.typography.titleSmall)
+                        Text("For long lists: one line per habit with small day dots. Pick the day from the strip above the list; swiping still logs.", style = MaterialTheme.typography.bodySmall, color = muted)
+                    }
+                    Switch(checked = dense, onCheckedChange = onDense, modifier = Modifier.padding(start = 12.dp).semantics { contentDescription = "Dense layout" })
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Hide points", style = MaterialTheme.typography.titleSmall)
+                        Text("Hide impact points on habit rows and the run summary.", style = MaterialTheme.typography.bodySmall, color = muted)
+                    }
+                    Switch(checked = hidePointsPref, onCheckedChange = { hidePointsPref = it; database.setPref(PREF_HIDE_POINTS, if (it) "1" else "0") }, modifier = Modifier.padding(start = 12.dp).semantics { contentDescription = "Hide points" })
+                }
             }
         }
     }

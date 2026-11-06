@@ -4,6 +4,9 @@ import app.habitlab.db.HabitDatabase
 
 /** Device-local UI preferences, kept in sync_meta; these keys are never synced. */
 internal const val PREF_DENSE_LAYOUT = "ui_dense_layout"
+internal const val PREF_THEME_MODE = "ui_theme_mode"
+internal const val PREF_ACCENT = "ui_accent"
+internal const val PREF_HIDE_POINTS = "ui_hide_points"
 private const val ICON_PREFIX = "habit_icon:"
 
 internal fun HabitDatabase.pref(key: String): String? = schemaQueries.selectMetaValue(key).executeAsOneOrNull()

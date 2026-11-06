@@ -3,6 +3,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import app.habitlab.ui.HabitLabApp
+import app.habitlab.ui.palette
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.view.WindowCompat
 import app.habitlab.db.HabitDatabase
 import app.habitlab.sync.ensureSyncTriggers
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
@@ -14,7 +18,17 @@ class MainActivity : ComponentActivity() {
         ensureSyncTriggers(driver)
         val db = HabitDatabase(driver)
         seedIfNeeded(db)
-        setContent { HabitLabApp(db, LocalDate.now().toString()) }
+        setContent {
+            HabitLabApp(db, LocalDate.now().toString())
+            val bars = palette
+            SideEffect {
+                window.statusBarColor = bars.bg.toArgb()
+                window.navigationBarColor = bars.surface.toArgb()
+                val controller = WindowCompat.getInsetsController(window, window.decorView)
+                controller.isAppearanceLightStatusBars = !bars.dark
+                controller.isAppearanceLightNavigationBars = !bars.dark
+            }
+        }
     }
     private fun seedIfNeeded(db: HabitDatabase) {
         if (db.schemaQueries.selectHabits().executeAsList().isNotEmpty()) return

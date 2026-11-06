@@ -209,3 +209,15 @@ superseded for this work. Everything below was checked on the ADB phone.
   choice keep the glyph their name implied (`legacyIcon`).
 - Theme: `secondaryContainer` set so selected chips are green-tinted, not
   Material purple.
+
+### Step: theme system (light/dark/system + accent) — Android
+- `ui/Theme.kt`: `Palette` built from dark/light + accent seed (8 accents).
+  Inputs are snapshot state (`themeModePref`, `accentPref`, `systemDarkState`,
+  `hidePointsPref`) so composables *and* draw lambdas follow changes.
+  `HabitLabApp.kt` no longer has hard-coded colors: use `palette.*` (or the
+  `ink/muted/surface/green/hero` getters). Never add `Color(0xFF…)` literals.
+- Prefs (device-local, `sync_meta`): `ui_theme_mode`, `ui_accent`,
+  `ui_hide_points`, `ui_dense_layout`. Settings page has Appearance + Habit
+  list cards. `MainActivity` syncs status/nav bar colors and icon contrast.
+- Hide-points is stored and exposed; row/summary hiding lands with the Runs
+  redesign step.
