@@ -181,3 +181,31 @@ databases on the server.
 - Phase-2 items per `phase-2-roadmap.md` and `product-spec.md` beyond what
   is live here.
 
+
+## Android app UI changes (2026-11-06, `composeApp/`)
+
+The owner directed these changes directly, so the "read-only" note above is
+superseded for this work. Everything below was checked on the ADB phone.
+
+- **Dock:** Runs, Quick Log, Goals, Settings. `Destination.Analytics` and
+  `Destination.Trackers` stay in the enum and `when` branches but are left out
+  of `visibleDestinations`.
+- **Header:** sync and `+` buttons now have a 12dp gap.
+- **New run is a full page** (`RunBuilderPage`, replaces the dialog + popup).
+  First control: Previous / Scratch / YAML. YAML mode has a "Copy AI prompt"
+  button (`YAML_GUIDE_PROMPT`), a paste box, and "Load into editor".
+  `ui/RunYaml.kt` is a Kotlin port of `webapp/yaml.js` plus an optional
+  per-habit `icon:` key; `RunYamlTest` covers it.
+- **Settings page** (`SettingsScreen`): sync server status/URL/account, change
+  server, sync now, switch to offline, and the web app note (same address as
+  the sync server). Dense layout switch.
+- **Dense layout** (`ui_dense_layout` pref): one line per habit, 11dp
+  non-clickable day marks in front of the name, day picked from a 1..7 strip
+  above the list. Swipe logging is unchanged.
+- **Habit icons:** 8 choices (sun, moon, target, lines, heart, book, drop,
+  bolt) picked in the builder or via YAML. Stored device-locally in
+  `sync_meta` as `habit_icon:<uid>` (`ui/UiPrefs.kt`), **not synced** — adding
+  a synced field needs server and webapp coordination. Habits without a
+  choice keep the glyph their name implied (`legacyIcon`).
+- Theme: `secondaryContainer` set so selected chips are green-tinted, not
+  Material purple.

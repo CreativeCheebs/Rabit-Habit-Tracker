@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -62,7 +63,7 @@ private val muted = androidx.compose.ui.graphics.Color(0xFFA3AFA6)
 private val surface = androidx.compose.ui.graphics.Color(0xFF1C241E)
 private val green = androidx.compose.ui.graphics.Color(0xFFA4D0AD)
 private val hero = androidx.compose.ui.graphics.Color(0xFF18231B)
-private data class Habit(val name: String, val group: String, val points: Int, val recurrence: String, val iteration: String = "I", val id: String = "")
+private data class Habit(val name: String, val group: String, val points: Int, val recurrence: String, val iteration: String = "I", val id: String = "", val icon: String = "")
 private val sampleHabits = listOf(
     Habit("Morning light", "Wellbeing", 2, "Daily"), Habit("Sleep before 11:30 PM", "Wellbeing", 2, "Every 3 days", "II"),
     Habit("Plan the day", "Focus", 3, "3 days per week"), Habit("Focused work block", "Focus", 4, "3 days per week")
@@ -79,14 +80,17 @@ private fun addIsoDays(date: String, amount: Int): String {
     return "%04d-%02d-%02d".format(year, month, day)
 }
 private enum class Destination(val title: String, val glyph: String) {
-    Runs("Runs", "◷"), Analytics("Analytics", "▥"), QuickLog("Quick Log", "⇆"), Goals("Goals", "◎"), Trackers("Trackers", "⌁")
+    Runs("Runs", "◷"), Analytics("Analytics", "▥"), QuickLog("Quick Log", "⇆"), Goals("Goals", "◎"), Trackers("Trackers", "⌁"), Settings("Settings", "⚙")
 }
+
+/** Analytics and Trackers stay in the code but are hidden from the dock for now. */
+private val visibleDestinations = listOf(Destination.Runs, Destination.QuickLog, Destination.Goals, Destination.Settings)
 
 @Composable
 fun HabitLabApp(database: HabitDatabase, today: String) {
     var page by remember { mutableStateOf(Destination.Runs) }
     var week by remember { mutableIntStateOf(0) }
-    var showNewRun by remember { mutableStateOf(false) }
+    var dense by remember(database) { mutableStateOf(database.pref(PREF_DENSE_LAYOUT) == "1") }
     var runsRevision by remember { mutableIntStateOf(0) }
     var builderCopy by remember { mutableStateOf<Boolean?>(null) }
     val syncClient = remember(database) { SyncClient(database, createHttpClient()) }
@@ -138,10 +142,11 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
             if (syncDirty) doSync()
         }
     }
-    MaterialTheme(colorScheme = darkColorScheme(primary = green, onPrimary = androidx.compose.ui.graphics.Color(0xFF173721), background = androidx.compose.ui.graphics.Color(0xFF111713), surface = surface, onSurface = ink, onSurfaceVariant = muted, secondary = androidx.compose.ui.graphics.Color(0xFFB9CBBE))) {
+    MaterialTheme(colorScheme = darkColorScheme(primary = green, onPrimary = androidx.compose.ui.graphics.Color(0xFF173721), background = androidx.compose.ui.graphics.Color(0xFF111713), surface = surface, onSurface = ink, onSurfaceVariant = muted, secondary = androidx.compose.ui.graphics.Color(0xFFB9CBBE), secondaryContainer = androidx.compose.ui.graphics.Color(0xFF344C39), onSecondaryContainer = ink)) {
         Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = {
+            if (builderCopy == null)
             NavigationBar(containerColor = surface) {
-                Destination.entries.forEach { dest -> NavigationBarItem(selected = page == dest, onClick = { page = dest }, icon = { DockGlyph(dest) }, label = { Text(dest.title) }, alwaysShowLabel = true)
+                visibleDestinations.forEach { dest -> NavigationBarItem(selected = page == dest, onClick = { page = dest }, icon = { DockGlyph(dest) }, label = { Text(dest.title) }, alwaysShowLabel = true)
                 }
             }
         }) { padding ->
@@ -154,7 +159,8 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                         modifier = Modifier.size(42.dp).clip(RoundedCornerShape(50)).background(surface)
                             .semantics { contentDescription = "Sync now" }
                     ) { Text(if (syncing) "…" else "⟳", color = green, style = MaterialTheme.typography.headlineMedium) }
-                    if (page == Destination.Runs) IconButton(onClick = { showNewRun = true }, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(50)).background(surface)) { Text("＋", color = green, style = MaterialTheme.typography.headlineMedium) }
+                    if (page == Destination.Runs) Spacer(Modifier.width(12.dp))
+                    if (page == Destination.Runs) IconButton(onClick = { builderCopy = true }, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(50)).background(surface)) { Text("＋", color = green, style = MaterialTheme.typography.headlineMedium) }
                     if (page == Destination.Runs && syncMode == SYNC_MODE_OFFLINE) TextButton(
                         onClick = { openSignIn() },
                         modifier = Modifier.semantics { contentDescription = "Connect to sync server" }
@@ -179,26 +185,27 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     }
                 }
                 when (page) {
-                    Destination.Runs -> RunsScreen(database, runsRevision, today, week, onWeekChange = { week = (week + it).coerceIn(0, 3) }, onLocalChange = { noteLocalChange() })
+                    Destination.Runs -> RunsScreen(database, runsRevision, today, week, dense, onWeekChange = { week = (week + it).coerceIn(0, 3) }, onLocalChange = { noteLocalChange() })
                     Destination.QuickLog -> QuickLogScreen(database, today, runsRevision, onLocalChange = { noteLocalChange() })
                     Destination.Goals -> ListingScreen("Your goals", listOf("Start focused work by 9:30", "Build a steady sleep routine", "Run 5 km comfortably"), "Progress history starts from each goal’s start date.")
                     Destination.Trackers -> ListingScreen("Personal measurements", listOf("Sleep quality · /10", "Daily energy · /10", "Body weight · kg"), "Dated entries and simple history graphs.")
+                    Destination.Settings -> SettingsScreen(
+                        syncClient = syncClient, syncMode = syncMode, dense = dense, syncing = syncing, syncStatus = syncStatus,
+                        onDense = { dense = it; database.setPref(PREF_DENSE_LAYOUT, if (it) "1" else "0") },
+                        onConnect = { openSignIn() }, onSyncNow = { doSync() },
+                        onOffline = { syncClient.setMode(SYNC_MODE_OFFLINE); syncMode = SYNC_MODE_OFFLINE }
+                    )
                     Destination.Analytics -> ListingScreen("Analytics preview", listOf("Cycle analytics arrive in Phase 2", "Example data is not personal data"), "Analytics is a Phase 2 preview.")
                 }
             }
-            if (showNewRun) AlertDialog(
-                onDismissRequest = { showNewRun = false },
-                title = { Text("Build a new run") },
-                text = { Text("Start with a blank run or copy the latest run’s habits and settings.") },
-                confirmButton = { TextButton(onClick = { showNewRun = false; builderCopy = false }) { Text("Start from scratch") } },
-                dismissButton = { TextButton(onClick = { showNewRun = false; builderCopy = true }) { Text("Copy previous") } }
-            )
             builderCopy?.let { copy ->
-                RunBuilderDialog(
-                    database, today, copy,
-                    onCreated = { runsRevision++; noteLocalChange() },
-                    onDismiss = { builderCopy = null }
-                )
+                Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
+                    RunBuilderPage(
+                        database, today, copy,
+                        onCreated = { runsRevision++; noteLocalChange() },
+                        onDismiss = { builderCopy = null }
+                    )
+                }
             }
             if (showFirstStart) {
                 AlertDialog(
@@ -311,6 +318,14 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                 drawCircle(tint, 5f*u, c, style = stroke)
                 drawCircle(tint, 1.7f*u, c)
             }
+            Destination.Settings -> {
+                drawCircle(tint, 3f*u, c, style = stroke)
+                for (i in 0 until 8) {
+                    val a = i * (kotlin.math.PI / 4.0)
+                    drawLine(tint, androidx.compose.ui.geometry.Offset(c.x + kotlin.math.cos(a).toFloat() * 7.5f*u, c.y + kotlin.math.sin(a).toFloat() * 7.5f*u), androidx.compose.ui.geometry.Offset(c.x + kotlin.math.cos(a).toFloat() * 10.5f*u, c.y + kotlin.math.sin(a).toFloat() * 10.5f*u), 2.4f*u, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                }
+                drawCircle(tint, 7.5f*u, c, style = stroke)
+            }
             Destination.Trackers -> {
                 val path = Path().apply { moveTo(3f*u, 15f*u); lineTo(8f*u, 10f*u); lineTo(12f*u, 13f*u); lineTo(18f*u, 5f*u); lineTo(21f*u, 7f*u) }
                 drawPath(path, tint, style = Stroke(width = 2f*u, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
@@ -319,29 +334,97 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     }
 }
 
-@Composable private fun RunBuilderDialog(database: HabitDatabase, today: String, copyPrevious: Boolean, onCreated: () -> Unit, onDismiss: () -> Unit) {
+/** Full-page run builder. The first choice on the page is where the habits come from: previous run, scratch, or YAML. */
+@Composable private fun RunBuilderPage(database: HabitDatabase, today: String, startWithCopy: Boolean, onCreated: () -> Unit, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var duration by remember { mutableIntStateOf(21) }
     var custom by remember { mutableStateOf(false) }
     var customDays by remember { mutableStateOf("28") }
+    var startDate by remember { mutableStateOf(today) }
     val existing = remember(database) { database.schemaQueries.selectHabits().executeAsList() }
     val latestRun = remember(database) { database.schemaQueries.selectRuns().executeAsList().firstOrNull() }
     val previousHabitIds = remember(database, latestRun) { latestRun?.let { database.schemaQueries.selectHabitsForRun(it.uid).executeAsList().map { row -> row.uid } }.orEmpty() }
-    val selected = remember { mutableStateListOf<String>().apply { if (copyPrevious) addAll(previousHabitIds.ifEmpty { sampleHabits.map { it.uid() } }) } }
+    val hasPrevious = previousHabitIds.isNotEmpty()
+    // 0 = copy previous run, 1 = start from scratch, 2 = from YAML
+    var source by remember { mutableIntStateOf(if (startWithCopy && hasPrevious) 0 else 1) }
+    val selected = remember { mutableStateListOf<String>().apply { if (startWithCopy && hasPrevious) addAll(previousHabitIds) } }
     val addedHabits = remember { mutableStateListOf<Habit>() }
     var newHabitName by remember { mutableStateOf("") }
     var newHabitPoints by remember { mutableStateOf("1") }
     var newHabitGroup by remember { mutableStateOf("General") }
+    var newHabitIcon by remember { mutableStateOf("") }
     var intervalMode by remember { mutableStateOf(false) }
     var recurrenceValue by remember { mutableStateOf("3") }
     var editingSourceId by remember { mutableStateOf<String?>(null) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Build a new run") },
-        text = {
-            Column(Modifier.heightIn(max = 500.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(if (copyPrevious) "Copy previous · choose habits to reuse" else "Start from scratch · add habits", color = muted, style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Run name") }, singleLine = true)
+    var yamlText by remember { mutableStateOf("") }
+    var yamlErrors by remember { mutableStateOf<List<String>>(emptyList()) }
+    var promptCopied by remember { mutableStateOf(false) }
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    val line = androidx.compose.ui.graphics.Color(0xFF303A32)
+
+    fun chooseSource(next: Int) {
+        source = next
+        selected.clear()
+        if (next == 0) selected.addAll(previousHabitIds)
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onDismiss, modifier = Modifier.semantics { contentDescription = "Back" }) { Text("←", style = MaterialTheme.typography.titleLarge) }
+            Text("New run", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Where do the habits come from?", style = MaterialTheme.typography.labelLarge)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = source == 0, enabled = hasPrevious, onClick = { chooseSource(0) }, label = { Text("Previous", maxLines = 1) }, modifier = Modifier.weight(1f))
+                FilterChip(selected = source == 1, onClick = { chooseSource(1) }, label = { Text("Scratch", maxLines = 1) }, modifier = Modifier.weight(1f))
+                FilterChip(selected = source == 2, onClick = { chooseSource(2) }, label = { Text("YAML", maxLines = 1) }, modifier = Modifier.weight(1f))
+            }
+            Text(
+                when (source) {
+                    0 -> "Reuses ${latestRun?.name ?: "the latest run"}’s habits. Untick any you want to leave out."
+                    1 -> "Start with an empty run and add habits below."
+                    else -> "Ask any AI chat for a run file, paste it here, and load it into the editor."
+                },
+                color = muted, style = MaterialTheme.typography.bodySmall
+            )
+            if (source == 2) {
+                Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("1 · Copy this prompt into an AI chat", style = MaterialTheme.typography.labelLarge)
+                        Text(YAML_GUIDE_PROMPT.lines().take(3).joinToString("\n") + "\n…", color = muted, style = MaterialTheme.typography.bodySmall, maxLines = 4)
+                        OutlinedButton(onClick = { clipboard.setText(androidx.compose.ui.text.AnnotatedString(YAML_GUIDE_PROMPT)); promptCopied = true }) {
+                            Text(if (promptCopied) "Copied ✓" else "Copy AI prompt")
+                        }
+                        Text("2 · Paste the YAML it gives you", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))
+                        OutlinedTextField(
+                            value = yamlText, onValueChange = { yamlText = it; yamlErrors = emptyList() },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp),
+                            placeholder = { Text("name: Reset week\ndays: 14\nhabits:\n  - name: Morning light\n    every: 1 day") }
+                        )
+                        yamlErrors.forEach { Text(it, color = androidx.compose.ui.graphics.Color(0xFFE7B4AD), style = MaterialTheme.typography.bodySmall) }
+                        Button(
+                            enabled = yamlText.isNotBlank(),
+                            onClick = {
+                                val parsed = parseRunYaml(yamlText)
+                                if (!parsed.ok) { yamlErrors = parsed.errors.take(5); return@Button }
+                                name = parsed.name
+                                if (parsed.start.isNotEmpty()) startDate = parsed.start
+                                if (parsed.days in listOf(7, 14, 21)) { duration = parsed.days; custom = false } else { custom = true; customDays = parsed.days.toString() }
+                                selected.clear()
+                                addedHabits.clear()
+                                parsed.habits.forEach { y ->
+                                    val recurrence = if (y.weekly > 0) "${y.weekly} days per week" else "Every ${y.interval} days"
+                                    addedHabits.add(Habit(y.name, y.group, y.points, recurrence, "I", "habit-${Random.nextLong().toULong().toString(16)}", y.icon))
+                                }
+                                yamlErrors = emptyList()
+                                source = 1
+                            }
+                        ) { Text("Load into editor") }
+                    }
+                }
+            } else {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Run name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Text("Run length", style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(7, 14, 21).forEach { days -> FilterChip(selected = !custom && duration == days, onClick = { duration = days; custom = false }, label = { Text("$days d") }) }
@@ -358,65 +441,96 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                             newHabitName = row.title
                             newHabitGroup = row.group_name
                             newHabitPoints = row.impact_points.toString()
+                            newHabitIcon = database.habitIcon(row.uid)
                             intervalMode = row.recurrence_type == "interval"
                             recurrenceValue = row.recurrence_value.toString()
                         }) { Text("Edit") }
                     }
                 }
-                addedHabits.forEach { Text("${it.name} · ${it.points} pts · ${it.recurrence}", style = MaterialTheme.typography.bodySmall, color = green) }
-                HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF303A32))
+                addedHabits.forEach { added ->
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HabitGlyph(added, Modifier.size(20.dp), surface)
+                        Text("${added.name} · ${added.points} pts · ${added.recurrence}", style = MaterialTheme.typography.bodySmall, color = green, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { addedHabits.remove(added) }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Remove", style = MaterialTheme.typography.labelSmall) }
+                    }
+                }
+                HorizontalDivider(color = line)
                 Text("Add a habit", style = MaterialTheme.typography.labelLarge)
-                OutlinedTextField(value = newHabitName, onValueChange = { newHabitName = it }, label = { Text("Habit name") }, singleLine = true)
+                OutlinedTextField(value = newHabitName, onValueChange = { newHabitName = it }, label = { Text("Habit name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = newHabitGroup, onValueChange = { newHabitGroup = it }, label = { Text("Group") }, modifier = Modifier.weight(1f), singleLine = true)
                     OutlinedTextField(value = newHabitPoints, onValueChange = { newHabitPoints = it.filter(Char::isDigit).take(3) }, label = { Text("Impact pts") }, modifier = Modifier.weight(1f), singleLine = true)
+                }
+                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    YAML_ICON_KEYS.forEach { key ->
+                        val on = newHabitIcon == key
+                        Box(
+                            Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+                                .background(if (on) androidx.compose.ui.graphics.Color(0xFF344C39) else surface)
+                                .border(if (on) 2.dp else 1.dp, if (on) green else line, RoundedCornerShape(12.dp))
+                                .clickable { newHabitIcon = if (on) "" else key }
+                                .semantics { contentDescription = "Icon $key" },
+                            contentAlignment = Alignment.Center
+                        ) { HabitGlyph(Habit("", "", 0, "", icon = key), Modifier.size(24.dp), if (on) androidx.compose.ui.graphics.Color(0xFF344C39) else surface) }
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FilterChip(selected = !intervalMode, onClick = { intervalMode = false }, label = { Text("Days per week") })
                     FilterChip(selected = intervalMode, onClick = { intervalMode = true }, label = { Text("Every N days") })
                 }
-                OutlinedTextField(value = recurrenceValue, onValueChange = { recurrenceValue = it.filter(Char::isDigit).take(2) }, label = { Text(if (intervalMode) "Interval days" else "Target days per week") }, singleLine = true)
+                OutlinedTextField(value = recurrenceValue, onValueChange = { recurrenceValue = it.filter(Char::isDigit).take(3) }, label = { Text(if (intervalMode) "Interval days" else "Target days per week") }, singleLine = true)
                 TextButton(onClick = {
                     val habitName = newHabitName.trim()
                     if (habitName.isNotEmpty()) {
                         editingSourceId?.let { selected.remove(it) }
                         val id = "habit-${Random.nextLong().toULong().toString(16)}"
                         val count = recurrenceValue.toIntOrNull()?.coerceIn(1, if (intervalMode) 365 else 7) ?: 3
-                        addedHabits.add(Habit(habitName, newHabitGroup.ifBlank { "General" }, newHabitPoints.toIntOrNull()?.coerceAtLeast(0) ?: 1, if (intervalMode) "Every $count days" else "$count days per week", "I", id))
+                        addedHabits.add(Habit(habitName, newHabitGroup.ifBlank { "General" }, newHabitPoints.toIntOrNull()?.coerceAtLeast(0) ?: 1, if (intervalMode) "Every $count days" else "$count days per week", "I", id, newHabitIcon))
                         newHabitName = ""
+                        newHabitIcon = ""
                         editingSourceId = null
                     }
                 }, enabled = newHabitName.isNotBlank()) { Text("＋ Add habit to this run") }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val days = if (custom) customDays.toLongOrNull()?.coerceIn(1, 365) ?: 21L else duration.toLong()
-                val runName = name.ifBlank { "${days}-day run" }
-                val runId = "run-$today-${Random.nextLong().toULong().toString(16)}"
-                database.transaction {
-                    database.schemaQueries.insertRun(runId, runName, today, days)
-                    addedHabits.forEach { habit ->
-                        val count = Regex("\\d+").find(habit.recurrence)?.value?.toLongOrNull() ?: 3L
-        database.schemaQueries.insertHabit(habit.uid(), habit.name, habit.group, 1L, habit.points.toLong(), if (habit.recurrence.startsWith("Every ")) "interval" else "weekly", count)
+            Spacer(Modifier.height(8.dp))
+        }
+        if (source != 2) {
+            HorizontalDivider(color = line)
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text("Cancel") }
+                Button(
+                    modifier = Modifier.weight(2f),
+                    enabled = selected.isNotEmpty() || addedHabits.isNotEmpty(),
+                    onClick = {
+                        val days = if (custom) customDays.toLongOrNull()?.coerceIn(1, 365) ?: 21L else duration.toLong()
+                        val runName = name.ifBlank { "${days}-day run" }
+                        val runId = "run-$startDate-${Random.nextLong().toULong().toString(16)}"
+                        database.transaction {
+                            database.schemaQueries.insertRun(runId, runName, startDate, days)
+                            addedHabits.forEach { habit ->
+                                val count = Regex("\\d+").find(habit.recurrence)?.value?.toLongOrNull() ?: 3L
+                                database.schemaQueries.insertHabit(habit.uid(), habit.name, habit.group, 1L, habit.points.toLong(), if (habit.recurrence.startsWith("Every ")) "interval" else "weekly", count)
+                                database.setHabitIcon(habit.uid(), habit.icon)
+                            }
+                            selected.forEach { database.schemaQueries.attachHabitToRun("$runId:$it", runId, it) }
+                            addedHabits.forEach { database.schemaQueries.attachHabitToRun("$runId:${it.uid()}", runId, it.uid()) }
+                        }
+                        onCreated()
+                        onDismiss()
                     }
-                    selected.forEach { database.schemaQueries.attachHabitToRun("$runId:$it", runId, it) }
-                    addedHabits.forEach { database.schemaQueries.attachHabitToRun("$runId:${it.uid()}", runId, it.uid()) }
-                }
-                onCreated()
-                onDismiss()
-            }) { Text("Create run") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+                ) { Text("Create run") }
+            }
+        }
+    }
 }
 
-@Composable private fun RunsScreen(database: HabitDatabase, revision: Int, today: String, week: Int, onWeekChange: (Int) -> Unit, onLocalChange: () -> Unit = {}) {
+@Composable private fun RunsScreen(database: HabitDatabase, revision: Int, today: String, week: Int, dense: Boolean, onWeekChange: (Int) -> Unit, onLocalChange: () -> Unit = {}) {
     val latestRun = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList().firstOrNull() }
     val currentHabits = remember(database, revision, latestRun) {
         latestRun?.let { run -> database.schemaQueries.selectHabitsForRun(run.uid).executeAsList().map { row ->
             val recur = if (row.recurrence_type == "interval") "Every ${row.recurrence_value} days" else "${row.recurrence_value} days per week"
-            Habit(row.title, row.group_name, row.impact_points.toInt(), recur, "I", row.uid)
+            Habit(row.title, row.group_name, row.impact_points.toInt(), recur, "I", row.uid, database.habitIcon(row.uid))
         } }?.takeIf { it.isNotEmpty() } ?: sampleHabits
     }
     val runName = latestRun?.name ?: "21-day habit run"
@@ -441,12 +555,20 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
         item { CompactRunSummaryCard(runName, runDays, currentHabits.size, earnedPoints, avgImpact, elapsed) }
         item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text("Run Habits", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f)); Text("21 days", style = MaterialTheme.typography.labelSmall, color = muted) } }
         item { Row(Modifier.fillMaxWidth().pointerInput(week, maxWeek) { detectHorizontalDragGestures(onHorizontalDrag = { change, amount -> change.consume(); dragTotal += amount }, onDragEnd = { if (dragTotal < -55f && week < maxWeek) onWeekChange(1) else if (dragTotal > 55f && week > 0) onWeekChange(-1); dragTotal = 0f }) }, horizontalArrangement = Arrangement.spacedBy(6.dp)) { (0..3).forEach { i -> FilterChip(selected = week == i, enabled = i <= maxWeek, onClick = { onWeekChange(i - week) }, label = { Text("Week ${i + 1}") }, modifier = Modifier.weight(1f)) } } }
-        item { Text("Select a day, then swipe a habit: right for done · left for skipped · Partial for partial", color = muted, style = MaterialTheme.typography.labelSmall) }
+        if (dense) item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                (0..6).forEach { i ->
+                    val inRun = week * 7 + i < runDays
+                    FilterChip(selected = selectedDay == i, enabled = inRun, onClick = { selectedDay = i }, label = { Text("${week * 7 + i + 1}", modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }, modifier = Modifier.weight(1f).semantics { contentDescription = "Day ${week * 7 + i + 1}" })
+                }
+            }
+        }
+        item { Text(if (dense) "Pick a day above, then swipe a habit: right for done · left for skipped" else "Select a day, then swipe a habit: right for done · left for skipped · Partial for partial", color = muted, style = MaterialTheme.typography.labelSmall) }
         items(currentHabits.groupBy { it.group }.toList()) { (group, habits) ->
             Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) { Column(Modifier.padding(14.dp)) {
                 Text("${group.uppercase()} · ${habits.size} HABITS", style = MaterialTheme.typography.labelMedium, color = green)
                 habits.forEachIndexed { index, h ->
-                    if (index > 0) HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF303A32), modifier = Modifier.padding(start = 48.dp, top = 7.dp))
+                    if (index > 0) HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF303A32), modifier = Modifier.padding(start = if (dense) 0.dp else 48.dp, top = 7.dp))
                     val runStart = latestRun?.start_date ?: today
                     val days = remember(h.uid(), week, revision, today) { mutableStateListOf<Int>().apply {
                         repeat(7) { dayIndex ->
@@ -486,7 +608,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     fun settleRow(target: Float, velocity: Float) {
                         runScope.launch { runSwipeOffset.animateTo(target, spring(dampingRatio = .82f, stiffness = 520f), initialVelocity = velocity) }
                     }
-                    Box(Modifier.fillMaxWidth().padding(top = 11.dp, bottom = 7.dp).onSizeChanged { rowWidthPx = it.width.toFloat() }) {
+                    Box(Modifier.fillMaxWidth().padding(top = if (dense) 8.dp else 11.dp, bottom = if (dense) 6.dp else 7.dp).onSizeChanged { rowWidthPx = it.width.toFloat() }) {
                         SwipeRevealPanel(
                             rightActions = listOf(QuickSwipeAction.Done),
                             leftActions = listOf(QuickSwipeAction.Skipped),
@@ -523,6 +645,18 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                                 }
                             }
                         )) {
+                        if (dense) {
+                            // Dense layout: small, non-clickable day marks lead the row; the day is picked in the strip above the list.
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    days.forEachIndexed { day, state ->
+                                        Box(Modifier.size(11.dp).clip(RoundedCornerShape(3.dp)).then(if (selectedDay == day && state >= 0) Modifier.border(1.5.dp, ink, RoundedCornerShape(3.dp)) else Modifier).then(when (state) { 1 -> Modifier.background(green); 2 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFFE6BD76)); 3 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFF754B4B)); -1 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFF252C27)); else -> Modifier.border(1.dp, muted, RoundedCornerShape(3.dp)) }))
+                                    }
+                                }
+                                Text(h.name, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.weight(1f))
+                                Text("${h.points} pts", style = MaterialTheme.typography.labelSmall, color = muted)
+                            }
+                        } else {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                             Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(androidx.compose.ui.graphics.Color(0xFF29352D)), contentAlignment = Alignment.Center) { HabitGlyph(h, Modifier.size(22.dp), androidx.compose.ui.graphics.Color(0xFF29352D)) }
                             Column(Modifier.weight(1f)) {
@@ -538,6 +672,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                             days.forEachIndexed { day, state ->
                                 Box(Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)).then(if (selectedDay == day && state >= 0) Modifier.border(2.dp, ink, RoundedCornerShape(6.dp)) else Modifier).then(when (state) { 1 -> Modifier.background(green); 2 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFFE6BD76)); 3 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFF754B4B)); -1 -> Modifier.background(androidx.compose.ui.graphics.Color(0xFF252C27)); else -> Modifier.border(1.dp, muted, RoundedCornerShape(6.dp)) }).clickable(enabled = state >= 0) { selectedDay = day })
                             }
+                        }
                         }
                         }
                     }
@@ -869,7 +1004,7 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
         val latestRun = database.schemaQueries.selectRuns().executeAsList().firstOrNull()
         latestRun?.let { database.schemaQueries.selectHabitsForRun(it.uid).executeAsList().map { row ->
             val recurrence = if (row.recurrence_type == "interval") "Every ${row.recurrence_value} days" else "${row.recurrence_value} days per week"
-            Habit(row.title, row.group_name, row.impact_points.toInt(), recurrence, "I", row.uid)
+            Habit(row.title, row.group_name, row.impact_points.toInt(), recurrence, "I", row.uid, database.habitIcon(row.uid))
         } }?.takeIf { it.isNotEmpty() } ?: sampleHabits
     }
     val due = remember(database, today, runHabits) {
@@ -1061,8 +1196,8 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
     Canvas(modifier) {
         val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
         val unit = size.minDimension / 48f
-        when (habit.name) {
-            "Morning light" -> {
+        when (habit.icon.ifBlank { legacyIcon(habit.name) }) {
+            "sun" -> {
                 for (i in 0..7) {
                     val angle = i * (kotlin.math.PI / 4.0)
                     val inner = 15f * unit; val outer = 21f * unit
@@ -1070,14 +1205,51 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
                 }
                 drawCircle(tint, radius = 9f * unit, center = center)
             }
-            "Sleep before 11:30 PM" -> {
+            "moon" -> {
                 drawCircle(tint, radius = 19f * unit, center = center)
                 drawCircle(cutoutColor, radius = 16f * unit, center = androidx.compose.ui.geometry.Offset(center.x + 9f * unit, center.y - 5f * unit))
             }
-            "Plan the day" -> {
+            "target" -> {
                 drawCircle(tint, radius = 19f * unit, center = center, style = Stroke(width = 3f * unit))
                 drawCircle(tint, radius = 10f * unit, center = center, style = Stroke(width = 3f * unit))
                 drawCircle(tint, radius = 2.5f * unit, center = center)
+            }
+            "heart" -> {
+                val p = Path().apply {
+                    moveTo(24f * unit, 40f * unit)
+                    cubicTo(2f * unit, 26f * unit, 6f * unit, 8f * unit, 24f * unit, 17f * unit)
+                    cubicTo(42f * unit, 8f * unit, 46f * unit, 26f * unit, 24f * unit, 40f * unit)
+                    close()
+                }
+                drawPath(p, tint)
+            }
+            "book" -> {
+                val s = Stroke(width = 3f * unit, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+                drawRoundRect(tint, androidx.compose.ui.geometry.Offset(7f * unit, 9f * unit), androidx.compose.ui.geometry.Size(34f * unit, 30f * unit), androidx.compose.ui.geometry.CornerRadius(4f * unit), style = s)
+                drawLine(tint, androidx.compose.ui.geometry.Offset(24f * unit, 9f * unit), androidx.compose.ui.geometry.Offset(24f * unit, 39f * unit), strokeWidth = 3f * unit)
+            }
+            "drop" -> {
+                val p = Path().apply {
+                    moveTo(24f * unit, 6f * unit)
+                    cubicTo(24f * unit, 6f * unit, 10f * unit, 22f * unit, 10f * unit, 30f * unit)
+                    cubicTo(10f * unit, 38f * unit, 17f * unit, 43f * unit, 24f * unit, 43f * unit)
+                    cubicTo(31f * unit, 43f * unit, 38f * unit, 38f * unit, 38f * unit, 30f * unit)
+                    cubicTo(38f * unit, 22f * unit, 24f * unit, 6f * unit, 24f * unit, 6f * unit)
+                    close()
+                }
+                drawPath(p, tint)
+            }
+            "bolt" -> {
+                val p = Path().apply {
+                    moveTo(27f * unit, 5f * unit)
+                    lineTo(11f * unit, 27f * unit)
+                    lineTo(22f * unit, 27f * unit)
+                    lineTo(20f * unit, 43f * unit)
+                    lineTo(37f * unit, 20f * unit)
+                    lineTo(26f * unit, 20f * unit)
+                    close()
+                }
+                drawPath(p, tint)
             }
             else -> {
                 drawLine(tint, androidx.compose.ui.geometry.Offset(8f * unit, 26f * unit), androidx.compose.ui.geometry.Offset(40f * unit, 22f * unit), strokeWidth = 3f * unit, cap = androidx.compose.ui.graphics.StrokeCap.Round)
@@ -1091,5 +1263,61 @@ private fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.gr
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text(title, style = MaterialTheme.typography.headlineSmall); Text(note, color = muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp)) }
         items(rows) { row -> Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(18.dp)) { Text(row, Modifier.fillMaxWidth().padding(18.dp), style = MaterialTheme.typography.titleMedium) } }
+    }
+}
+
+/** Habits created before icons existed keep the glyph their name always implied. */
+private fun legacyIcon(name: String): String = when (name) {
+    "Morning light" -> "sun"
+    "Sleep before 11:30 PM" -> "moon"
+    "Plan the day" -> "target"
+    else -> "lines"
+}
+
+@Composable private fun SettingsScreen(
+    syncClient: SyncClient,
+    syncMode: String?,
+    dense: Boolean,
+    syncing: Boolean,
+    syncStatus: String?,
+    onDense: (Boolean) -> Unit,
+    onConnect: () -> Unit,
+    onSyncNow: () -> Unit,
+    onOffline: () -> Unit,
+) {
+    val connected = syncMode == SYNC_MODE_SERVER
+    val url = syncClient.serverUrl()
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("SYNC SERVER", style = MaterialTheme.typography.labelMedium, color = green)
+                Text(if (connected) "Connected" else "Offline — data stays on this phone", style = MaterialTheme.typography.titleSmall)
+                if (connected && url != null) {
+                    Text(url, style = MaterialTheme.typography.bodySmall, color = muted)
+                    syncClient.account()?.let { Text("Signed in as $it", style = MaterialTheme.typography.bodySmall, color = muted) }
+                    Text("The web app lives at the same address: open it in any browser and sign in with this account.", style = MaterialTheme.typography.bodySmall, color = muted)
+                    syncStatus?.let { Text(if (syncing) "Syncing…" else it, style = MaterialTheme.typography.labelSmall, color = muted) }
+                } else {
+                    Text("Connect to your sync server to share runs with your other devices and the web app.", style = MaterialTheme.typography.bodySmall, color = muted)
+                }
+                Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onConnect) { Text(if (connected) "Change server" else "Connect") }
+                    if (connected) {
+                        OutlinedButton(onClick = onSyncNow, enabled = !syncing) { Text("Sync now") }
+                    }
+                }
+                if (connected) TextButton(onClick = onOffline) { Text("Switch to offline mode") }
+            }
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("DISPLAY", style = MaterialTheme.typography.labelMedium, color = green)
+                    Text("Dense layout", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp))
+                    Text("For long habit lists: one line per habit with small day marks in front. Pick the day from the strip above the list; swiping still logs.", style = MaterialTheme.typography.bodySmall, color = muted)
+                }
+                Switch(checked = dense, onCheckedChange = onDense, modifier = Modifier.padding(start = 12.dp).semantics { contentDescription = "Dense layout" })
+            }
+        }
     }
 }
