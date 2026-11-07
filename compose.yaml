@@ -1,0 +1,16 @@
+services:
+  habitlab:
+    build:
+      context: ./sync-server
+    image: habitlab-sync:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      HABITLAB_SYNC_SECRET: ${HABITLAB_SYNC_SECRET:?Set HABITLAB_SYNC_SECRET to a random secret of at least 32 bytes}
+      HABITLAB_SYNC_ALLOW_SIGNUP: ${HABITLAB_SYNC_ALLOW_SIGNUP:-true}
+    volumes:
+      - habitlab-data:/data
+
+volumes:
+  habitlab-data:

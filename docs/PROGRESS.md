@@ -9,6 +9,11 @@ finish a step (the owner commits after every step).
 - Moved project documents to `docs/`, mockups to `docs/mockups/`, and root screenshots to `docs/screenshots/`; the root README remains the project entry point. UI quality scripts now use the new paths.
 - Removed the broad documentation exclusion from `.gitleaks.toml` so future scans include Markdown files. A full local Git history scan with default Gitleaks rules found no matches. A working-directory scan flagged an ignored local test-credentials file; no credential value was displayed.
 
+## Docker packaging
+
+- Added a multi-stage server image recipe and a Compose configuration with a persistent data volume, externally supplied secret, and loopback-only host port. The image includes the existing hosted web app; Android remains a separate APK. Setup and Docker Hub publishing instructions are in `docs/docker.md`.
+- Built `habitlab-sync:local` and checked a disposable container's health, web page, and SQLite-backed account registration. The Compose service was also started locally on `127.0.0.1:8787`, and its health endpoint and web page responded successfully. Its generated local secret is in the Git-ignored `.env`; its persistent named volume is `rabit_habitlab-data`.
+
 ## What this is
 
 Habit Lab is a personal habit tracker: an Android app (Compose Multiplatform,
