@@ -41,6 +41,8 @@ Start with `PROGRESS.md`: live deployment, sync contract, webapp architecture, t
 
 ## Engineering quality gates
 
+Codex project instructions are in `AGENTS.md`; Codex skills are in `.agents/skills/`, alongside the existing Claude setup in `.claude/`. Ask Codex to use `$kmp-feature`, `$ui-quality-review`, `$sql-delight-change`, `$release-readiness`, `$engineering-review`, or `$project-quality`. For example: “Use $project-quality to check the relevant tools, then $engineering-review to review the changed server and web code.” The seven Claude review roles are preserved as references in the engineering-review skill; they do not automatically launch subagents. These skills reuse the existing tools and CI rather than installing programs. Start a new Codex chat in this project if the newly added skills do not appear in the current skill list. Project skill location and format follow the [official Codex skills documentation](https://developers.openai.com/codex/skills).
+
 This repository currently has three distinct runtime surfaces: Android and iOS from `composeApp`, a Kotlin/JVM sync server in `sync-server`, and a separately maintained browser app bundled in the server resources. The browser app is not a Kotlin/Wasm target. Keep dependencies and CI checks scoped to the surface they validate.
 
 The root Gradle catalog (`gradle/libs.versions.toml`) owns KMP, Compose, SQLDelight, and Android/iOS tooling. The smaller `sync-server/gradle/libs.versions.toml` owns only the standalone server. Do not merge the catalogs or add Android/Compose dependencies to the server catalog.
