@@ -4,7 +4,7 @@ description: Implement a Kotlin Multiplatform feature across Android and iOS wit
 ---
 # KMP feature workflow
 
-Respect current ownership restrictions in `PROGRESS.md`; a generic feature request does not authorize editing a module reserved for another agent. Use `$project-quality` for existing check entry points and `$engineering-review` for requested specialist review.
+Respect current ownership restrictions in `docs/PROGRESS.md`; a generic feature request does not authorize editing a module reserved for another agent. Use `$project-quality` for existing check entry points and `$engineering-review` for requested specialist review.
 
 1. Read `AGENTS.md`, `CLAUDE.md`, module Gradle files, design docs, and relevant tests.
 2. Translate the request into acceptance criteria and platform scope.

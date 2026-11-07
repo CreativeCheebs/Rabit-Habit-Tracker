@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { PNG } from 'pngjs';
 
-const image = PNG.sync.read(fs.readFileSync('runs-screen-final.png'));
+const image = PNG.sync.read(fs.readFileSync('docs/screenshots/runs-screen-final.png'));
 const cropHeight = Math.min(160, image.height);
 const cropY = image.height - cropHeight;
 const crop = new PNG({ width: image.width, height: cropHeight });

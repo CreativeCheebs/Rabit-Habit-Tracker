@@ -10,7 +10,7 @@ Build a focused habit tracker for configuring time-bounded runs, logging due hab
 
 The user’s existing tracking model and screenshots are the primary design reference. Loop Habit Tracker and Way of Life are secondary interaction references; Griply contributes goal ideas; the task-manager screenshot is only an integration reference. Use the supplied mockups for current visual direction:
 
-- Mobile screens: `outputs/habit-tracker-mobile-mockups.html`
+- Mobile screens: `docs/mockups/habit-tracker-mobile-mockups.html`
 - Larger-screen screens: `outputs/habit-tracker-mockup.html`
 
 ## Phase 1 scope

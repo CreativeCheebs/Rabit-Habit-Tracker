@@ -18,7 +18,7 @@ npm --prefix ui-qa run capture-device
 npm --prefix ui-qa run compare
 ```
 
-`capture-device` uses ADB to open Runs and Quick Log and writes the screenshots at the project root. It does not submit or modify check-ins.
+`capture-device` uses ADB to open Runs and Quick Log and writes the screenshots to `docs/screenshots/`. It does not submit or modify check-ins.
 
 The comparison outputs are `ui-qa/diff-runs.png` and `ui-qa/diff-quicklog.png`; the raw changed-pixel ratio appears in the terminal.
 

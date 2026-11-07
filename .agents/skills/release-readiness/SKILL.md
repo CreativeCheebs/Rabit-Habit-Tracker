@@ -4,7 +4,7 @@ description: Check release quality for Android, iOS, and hosted browser app arti
 ---
 # Release readiness
 
-Read root `AGENTS.md`, `CLAUDE.md`, and `PROGRESS.md` for platform scope and ownership. Use `$project-quality` for concrete existing check entry points, and `$engineering-review` with the release perspective if a release audit is requested. Treat missing migration snapshots or unconfigured checks as gaps, not passing gates.
+Read root `AGENTS.md`, `CLAUDE.md`, and `docs/PROGRESS.md` for platform scope and ownership. Use `$project-quality` for concrete existing check entry points, and `$engineering-review` with the release perspective if a release audit is requested. Treat missing migration snapshots or unconfigured checks as gaps, not passing gates.
 
 1. Discover and run platform-specific build/test tasks for Android, iOS, JVM server, and hosted browser app.
 2. Confirm SQLDelight schema and migration verification and upgrade tests.

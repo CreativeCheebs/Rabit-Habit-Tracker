@@ -1,6 +1,2 @@
 [extend]
 useDefault = true
-
-[allowlist]
-description = "Documented placeholders and test fixtures only"
-paths = ['''(^|/)(README|CHANGELOG|docs/.*)\.md$''']

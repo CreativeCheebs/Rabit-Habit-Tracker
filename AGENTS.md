@@ -1,6 +1,6 @@
 # Habit Lab project guidance for Codex
 
-Read `PROGRESS.md` first for current work ownership, deployment state, and operational lessons, then read `CLAUDE.md` for shared engineering rules. Respect the ownership restrictions in the progress log (including the current read-only ownership of `composeApp/`) unless the user explicitly authorizes work there. Read the actual build files before assuming a documented task exists.
+Read `docs/PROGRESS.md` first for current work ownership, deployment state, and operational lessons, then read `CLAUDE.md` for shared engineering rules. Respect the ownership restrictions in the progress log (including the current read-only ownership of `composeApp/`) unless the user explicitly authorizes work there. Read the actual build files before assuming a documented task exists.
 
 ## Project boundaries
 
@@ -28,4 +28,4 @@ Use existing Gradle tasks, scripts, and CI in place. Skills provide instructions
 
 The hosted browser E2E suite defaults to a LAN server and its authenticated flows modify data. Before running it, inspect the script, set `HABITLAB_WEB` to an authorized test instance, and use a disposable test account for mutating flows. A request to run checks does not authorize database deletion, resetting accounts, or production deployment. Read `ui-qa/README.md` for prerequisites, not as authorization to execute its reset/deployment examples.
 
-Keep secrets, signing material, production databases, and local transfer tooling out of commits and output. Do not deploy or commit unless requested. Update `PROGRESS.md` and relevant docs when completing an implementation step.
+Keep secrets, signing material, production databases, and local transfer tooling out of commits and output. Do not deploy or commit unless requested. Update `docs/PROGRESS.md` and relevant docs when completing an implementation step.

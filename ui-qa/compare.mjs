@@ -4,7 +4,7 @@ import { PNG } from 'pngjs';
 
 const pairs = [['runs-screen-final.png', 'mock-runs.png', 'diff-runs.png'], ['quicklog-final.png', 'mock-quicklog.png', 'diff-quicklog.png']];
 for (const [actualPath, referencePath, diffPath] of pairs) {
-  const actual = PNG.sync.read(fs.readFileSync(`../${actualPath}`));
+  const actual = PNG.sync.read(fs.readFileSync(`../docs/screenshots/${actualPath}`));
   const reference = PNG.sync.read(fs.readFileSync(referencePath));
   if (actual.width !== reference.width || actual.height !== reference.height) {
     throw new Error(`${actualPath}: ${actual.width}x${actual.height} does not match ${referencePath}: ${reference.width}x${reference.height}`);

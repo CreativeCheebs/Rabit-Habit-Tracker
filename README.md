@@ -2,6 +2,14 @@
 
 Android first, built with Compose Multiplatform, Kotlin, Material 3 dark theme, and SQLDelight. The shared UI and database schema have Android and iOS targets; the web target is intentionally deferred.
 
+## Project documents
+
+- [Progress and operational notes](docs/PROGRESS.md)
+- [Product specification](docs/habit-tracker-product-spec.md) and [roadmap](docs/phase-2-roadmap.md)
+- [Offline sync guide](docs/OFFLINE-SYNC-GUIDE.md)
+- [Mobile mockup](docs/mockups/habit-tracker-mobile-mockups.html) and [desktop mockup](docs/mockups/habit-tracker-desktop-mockups.html)
+- [Screenshots](docs/screenshots/) and [UI quality workflow](ui-qa/README.md)
+
 ## Android
 
 Open the project in Android Studio or build with the Gradle wrapper:
@@ -11,7 +19,7 @@ Open the project in Android Studio or build with the Gradle wrapper:
 adb install -r composeApp/build/outputs/apk/debug/composeApp-debug.apk
 ```
 
-The first launch seeds a sample 21-day run and four habits in the local SQLite database. Quick Log writes dated Done, Partial, and Skipped check-ins and comments locally. The app shows Runs (swipe-to-reveal habit cards, week strip, real points charts, per-habit detail page), Quick Log, Goals (create/edit/delete) and Settings (sync server, light/dark/system theme, accent color, dense layout, hide points). Analytics and Trackers stay in the code but are hidden from the dock. Weekly-target and partial/effort scoring remain open per the product spec; PROGRESS.md has the change log.
+The first launch seeds a sample 21-day run and four habits in the local SQLite database. Quick Log writes dated Done, Partial, and Skipped check-ins and comments locally. The app shows Runs (swipe-to-reveal habit cards, week strip, real points charts, per-habit detail page), Quick Log, Goals (create/edit/delete) and Settings (sync server, light/dark/system theme, accent color, dense layout, hide points). Analytics and Trackers stay in the code but are hidden from the dock. Weekly-target and partial/effort scoring remain open per the product spec; docs/PROGRESS.md has the change log.
 
 ## Sync server (Linux)
 
@@ -37,7 +45,7 @@ The server also hosts the Habit Lab web app at `/` (same origin as the API, so n
 
 ## For agents continuing this work
 
-Start with `PROGRESS.md`: live deployment, sync contract, webapp architecture, test accounts, verification gates, and every operational lesson so far.
+Start with `docs/PROGRESS.md`: live deployment, sync contract, webapp architecture, test accounts, verification gates, and every operational lesson so far.
 
 ## Engineering quality gates
 

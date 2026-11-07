@@ -4,6 +4,11 @@ Running record of what is built, what is live, and every operational lesson
 learned. Read this file first before continuing work; append to it when you
 finish a step (the owner commits after every step).
 
+## Repository organization and secret scan
+
+- Moved project documents to `docs/`, mockups to `docs/mockups/`, and root screenshots to `docs/screenshots/`; the root README remains the project entry point. UI quality scripts now use the new paths.
+- Removed the broad documentation exclusion from `.gitleaks.toml` so future scans include Markdown files. A full local Git history scan with default Gitleaks rules found no matches. A working-directory scan flagged an ignored local test-credentials file; no credential value was displayed.
+
 ## What this is
 
 Habit Lab is a personal habit tracker: an Android app (Compose Multiplatform,
@@ -20,15 +25,15 @@ databases on the server.
   - `src/main/resources/webapp/` — the webapp: `index.html`, `styles.css`,
     `app.js` (ES module), `yaml.js` (run-file parser, shared with tests).
   - Own `gradlew` / `gradle/libs.versions.toml` (Ktor 3.3.1, Kotlin 2.2.20).
-- `habit-tracker-mobile-mockups.html` — phone UI reference (static).
-- `habit-tracker-desktop-mockups.html` — desktop UI reference (static, reviewed).
+- `docs/mockups/habit-tracker-mobile-mockups.html` — phone UI reference (static).
+- `docs/mockups/habit-tracker-desktop-mockups.html` — desktop UI reference (static, reviewed).
 - `ui-qa/` — `webapp-check.mjs` (Playwright E2E, the maintained webapp test),
   `yaml-test.mjs` (`node --test`), `desktop-shots.mjs` (mockup captures),
   Maestro flows for Android, `README.md` with run/test-account docs.
 - `send_tool/ship/` — deploy tooling. **Gitignored.** Holds the ship token,
   upload staging (`out/`), and helper scripts. Never commit its contents.
-- Docs: `README.md` (server + webapp), `OFFLINE-SYNC-GUIDE.md` (protocol),
-  `phase-2-roadmap.md`, `product-spec.md`, this file.
+- Docs: `README.md` (server + webapp), `docs/OFFLINE-SYNC-GUIDE.md` (protocol),
+  `docs/phase-2-roadmap.md`, `docs/habit-tracker-product-spec.md`, this file.
 
 ## Live deployment (Linux 192.168.0.8)
 
@@ -178,7 +183,7 @@ databases on the server.
   undecided).
 - Mockup and app can drift: `desktop-shots.mjs` + `web-*.png` are the way
   to compare after changes.
-- Phase-2 items per `phase-2-roadmap.md` and `product-spec.md` beyond what
+- Phase-2 items per `docs/phase-2-roadmap.md` and `docs/habit-tracker-product-spec.md` beyond what
   is live here.
 
 

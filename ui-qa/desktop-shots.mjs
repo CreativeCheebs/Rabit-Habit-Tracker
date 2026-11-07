@@ -6,7 +6,7 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
-await page.goto(pathToFileURL(resolve('../habit-tracker-desktop-mockups.html')).href, { waitUntil: 'networkidle' });
+await page.goto(pathToFileURL(resolve('../docs/mockups/habit-tracker-desktop-mockups.html')).href, { waitUntil: 'networkidle' });
 for (const v of ['runs', 'goals', 'builder', 'edit']) {
   await page.locator(`.sidenav button[data-view="${v}"]`).click();
   await page.waitForTimeout(350);

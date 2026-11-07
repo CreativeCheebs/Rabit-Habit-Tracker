@@ -16,7 +16,7 @@ await delay(1400);
 async function tapAndCapture(name, xRatio) {
   adb('shell', 'input', 'tap', String(Math.round(width * xRatio)), String(Math.round(height * .93)));
   await delay(500);
-  fs.writeFileSync(`../${name}`, adb('exec-out', 'screencap', '-p'));
+  fs.writeFileSync(`../docs/screenshots/${name}`, adb('exec-out', 'screencap', '-p'));
 }
 
 await tapAndCapture('runs-screen-final.png', .10);
