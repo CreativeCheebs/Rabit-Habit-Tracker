@@ -35,7 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -117,7 +117,7 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
             val recur = if (row.recurrence_type == "interval") "Every ${row.recurrence_value} days" else "${row.recurrence_value} days per week"
             Habit(row.title, row.group_name, row.impact_points.toInt(), recur, romanNumeral(row.iteration.toInt()), row.uid, database.habitIcon(row.uid), database.habitColor(row.uid))
         }
-    } ?: sampleHabits
+    } ?: emptyList()
 
 @Composable internal fun RunsScreen(
     database: HabitDatabase,
@@ -128,6 +128,12 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
     onLocalChange: () -> Unit,
 ) {
     val latestRun = remember(database, revision) { database.currentRun() }
+    if (latestRun == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No runs yet. Tap + to create one.", color = muted)
+        }
+        return
+    }
     val habits = remember(database, revision, latestRun) { loadRunHabits(database, latestRun?.uid) }
     val runName = latestRun?.name ?: "21-day habit run"
     val runDays = latestRun?.duration_days?.toInt() ?: 21
@@ -153,7 +159,9 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
     var selectedDay by remember(latestRun?.uid) { mutableIntStateOf(todayOffset % 7) }
     var openRow by remember { mutableStateOf<String?>(null) }
     var choosingRun by remember { mutableStateOf(false) }
-    val activeRuns = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList().filter { it.status == "active" } }
+    val allRuns = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList() }
+    val activeRuns = allRuns.filter { it.status == "active" }
+    var confirmAction by remember { mutableStateOf("") }
     var restDaysExpanded by remember(latestRun?.uid) { mutableStateOf(false) }
     val runScope = rememberCoroutineScope()
 
@@ -189,6 +197,7 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
     }
 
     fun commit(habit: Habit, state: Int) {
+        if (latestRun.status != "active") return
         val offset = week * 7 + selectedDay
         if (offset >= runDays) return
         val date = addIsoDays(runStart, offset)
@@ -202,12 +211,12 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
     }
 
     LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (activeRuns.size > 1) item {
+        if (allRuns.size > 1) item {
             Box {
                 TextButton(onClick = { choosingRun = true }) { Text("Choose run: $runName ▾") }
                 DropdownMenu(expanded = choosingRun, onDismissRequest = { choosingRun = false }) {
-                    activeRuns.forEach { run ->
-                        DropdownMenuItem(text = { Text("${run.name} · ${run.start_date}") }, onClick = {
+                    allRuns.forEach { run ->
+                        DropdownMenuItem(text = { Text("${run.name} · ${run.start_date} · ${run.status}") }, onClick = {
                             database.setPref(PREF_CURRENT_RUN, run.uid)
                             choosingRun = false
                             onLocalChange()
@@ -216,15 +225,22 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
                 }
             }
         }
-        item { RunSummaryCard(runName, runDays, habits.size, earnedPoints, earnedPoints.toFloat() / elapsed, elapsed) }
+        if (activeRuns.size > 1) item { Text("Multiple runs are active. Stop each one before starting another.", color = palette.error, style = MaterialTheme.typography.bodySmall) }
+        item { RunSummaryCard(runName, runDays, habits.size, earnedPoints, earnedPoints.toFloat() / elapsed, elapsed, latestRun.status) }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (latestRun.status == "active") TextButton(onClick = { confirmAction = "stop" }) { Text("Stop run") }
+                TextButton(onClick = { confirmAction = "delete" }) { Text("Delete run") }
+            }
+        }
         item {
             WeekStrip(
                 week = week, maxWeek = maxWeek, runStart = runStart, runDays = runDays, today = today, selectedDay = selectedDay,
                 onWeek = { changeWeek(it) }, onDay = { selectedDay = it }
             )
         }
-        item { Text("Swipe a habit right for Done, left for Partial or Skipped. Tap it for details.", color = muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 2.dp)) }
-        if (latestRun != null && habits.isEmpty()) {
+        item { Text(if (latestRun.status == "active") "Swipe a habit right for Done, left for Partial or Skipped. Tap it for details." else "This run is stopped. Its existing history remains available.", color = muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 2.dp)) }
+        if (habits.isEmpty()) {
             item { Text("This run has no habits.", color = muted, style = MaterialTheme.typography.bodyMedium) }
         }
         due.groupBy { it.group }.forEach { (group, inGroup) ->
@@ -258,14 +274,25 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
         if (!hidePointsPref) item { PointsPerDayCard(pointsPerRunDay, week, runStart, runDays) }
         if (!hidePointsPref) item { PointsBurnupCard(pointsPerRunDay, elapsed) }
     }
+    if (confirmAction.isNotEmpty()) AlertDialog(
+        onDismissRequest = { confirmAction = "" },
+        title = { Text(if (confirmAction == "stop") "Stop this run?" else "Delete this run?") },
+        text = { Text(if (confirmAction == "stop") "Stop ${latestRun.name}? Its habits and check-ins will be kept." else "Delete ${latestRun.name}? Its habits and check-ins will be kept, including those shared with other runs.") },
+        confirmButton = { TextButton(onClick = {
+            if (confirmAction == "stop") database.schemaQueries.stopRun(latestRun.uid) else database.deleteRunKeepingHabits(latestRun.uid)
+            confirmAction = ""
+            onLocalChange()
+        }) { Text(if (confirmAction == "stop") "Stop run" else "Delete run") } },
+        dismissButton = { TextButton(onClick = { confirmAction = "" }) { Text("Cancel") } }
+    )
 }
 
-@Composable private fun RunSummaryCard(runName: String, days: Int, habitCount: Int, earned: Int, average: Float, elapsed: Int) {
+@Composable private fun RunSummaryCard(runName: String, days: Int, habitCount: Int, earned: Int, average: Float, elapsed: Int, status: String) {
     Card(colors = CardDefaults.cardColors(containerColor = palette.accentSoft2), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 11.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("ACTIVE RUN", style = MaterialTheme.typography.labelSmall, color = green)
+                    Text(if (status == "active") "ACTIVE RUN" else "STOPPED RUN", style = MaterialTheme.typography.labelSmall, color = green)
                     Text(runName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 2.dp), maxLines = 1)
                     Text("Day $elapsed of $days · $habitCount habits", style = MaterialTheme.typography.labelSmall, color = muted)
                 }

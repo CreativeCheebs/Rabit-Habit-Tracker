@@ -10,6 +10,8 @@ All notable changes are documented here. Follow Keep a Changelog and Semantic Ve
 
 ## [Unreleased]
 ### Added
+- Web and Android: run lifecycle controls for selecting stopped runs, stopping the active run, and deleting a run without deleting its habits or check-in history.
+- Browser regression coverage and reviewed desktop/mobile screenshots for run creation, editing, duplicate-name validation, YAML import/export, stop, selection, and deletion.
 - Android: select an active run, edit its settings and habits, and copy its configuration as YAML. Existing check-ins are retained; shared habit changes affect all linked runs.
 - Web: choose an active run, download its current editor as YAML, and expand not-due interval habits to log them manually. Android provides a similar collapsed rest-day section.
 - Web welcome screens for first sign-in and revocable, read-only API integration tokens in Settings.
@@ -21,6 +23,8 @@ All notable changes are documented here. Follow Keep a Changelog and Semantic Ve
 - Web app: ids used in inline handlers and option values are validated before rendering; incoming rows with unsafe ids or field names are ignored.
 - Android: the sign-in box warns when the address is plain `http://` and not on a home/local network, since that traffic would cross the internet unencrypted. Lockout messages from the server are shown as written.
 ### Fixed
+- Web and Android: prevent a second active run and reject duplicate habit names within a run after case and whitespace normalization.
+- Web: keep long run grids aligned and horizontally usable at narrow mobile widths; keep run controls readable instead of overlapping.
 - Web: copied runs no longer include standalone habits unless requested; copied habit edits are saved and run status is preserved when editing.
 - Android: reset builder drafts when changing sources, avoid sample habits in an empty real run, and decode escaped names in YAML exported by the web app.
 - Android: show only the selected source's habits, select a newly created run on this device, and preserve the previous run's duration when copying.

@@ -34,16 +34,46 @@ try {
   await page.getByRole('button', { name: 'Create run' }).click();
   assert.equal(await page.locator('#runsBody').getByText('Scratch habit').count(), 1);
 
+  // Only one run may be active at once.
+  await page.getByRole('button', { name: '＋ New run' }).click();
+  await page.getByRole('button', { name: 'Create run' }).click();
+  assert.match(await page.locator('#builderRunError').textContent(), /Stop the active run/);
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
   await page.getByRole('button', { name: 'Edit run' }).click();
   await page.locator('#editName').fill('Edited run');
   await page.locator('#editBody [aria-label="Habit name"]').fill('Edited habit');
-  const downloadPromise = page.waitForEvent('download');
+  await page.evaluate(() => {
+    const originalClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download) {
+        fetch(this.href).then((response) => response.text()).then((text) => { window.__downloadedYaml = text; });
+        return;
+      }
+      return originalClick.call(this);
+    };
+  });
   await page.getByRole('button', { name: 'Download YAML' }).click();
-  const download = await downloadPromise;
-  const yaml = await readFile(await download.path(), 'utf8');
+  await page.waitForFunction(() => window.__downloadedYaml);
+  const yaml = await page.evaluate(() => window.__downloadedYaml);
   assert.match(yaml, /Edited habit/);
   await page.getByRole('button', { name: 'Save changes' }).click();
   assert.equal(await page.locator('#runsBody').getByText('Edited habit').count(), 1);
+
+  // Names are unique inside a run even when case and whitespace differ.
+  await page.getByRole('button', { name: 'Edit run' }).click();
+  await page.locator('#editBody [data-click="addHabit"][data-a="edit"]').click();
+  await page.locator('#editBody [aria-label="Habit name"]').last().fill('  EDITED   habit  ');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  assert.match(await page.locator('#editRunError').textContent(), /appears more than once/);
+  await page.locator('#editBody [data-click="removeHabit"][data-a="edit"]').last().click();
+  await page.getByRole('button', { name: 'Save changes' }).click();
+
+  // Resolve the active run before copying it into a new run.
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.locator('.run-management summary').click();
+  await page.getByRole('button', { name: 'Stop run' }).click();
+  assert.match(await page.locator('.run-management').textContent(), /Stopped/);
 
   await page.getByRole('button', { name: '＋ New run' }).click();
   assert.equal(await page.locator('#builderHabits [aria-label="Habit name"]').inputValue(), 'Edited habit');
@@ -54,6 +84,10 @@ try {
   await page.locator('#activeRunSelect').selectOption(originalRun);
   assert.equal(await page.locator('#runsBody').getByText('Edited habit').count(), 1);
 
+  await page.getByRole('button', { name: '＋ New run' }).click();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.locator('.run-management summary').click();
+  await page.getByRole('button', { name: 'Stop run' }).click();
   await page.getByRole('button', { name: '＋ New run' }).click();
   await page.getByRole('button', { name: 'From YAML' }).click();
   await page.locator('#yamlText').fill('name: YAML run\ndays: 7\nhabits:\n  - name: YAML habit\n    every: 2 days\n');
@@ -78,6 +112,19 @@ try {
   await resting.getByRole('button', { name: /YAML habit/ }).last().click();
   assert.equal(await page.locator('.not-due').count(), 0);
   assert.equal(await page.locator('#runsBody').getByText('YAML habit').count(), 1);
+
+  // Deleting a stopped run removes only the run and its links, not reusable habits.
+  await page.locator('.run-management summary').click();
+  const editedRow = page.locator('.run-management-row').filter({ hasText: 'Edited run' });
+  await editedRow.getByRole('button', { name: 'Delete run' }).click();
+  assert.equal(await page.locator('#activeRunSelect option').filter({ hasText: 'Edited run' }).count(), 0);
+  assert.equal(await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('habitlab.db'));
+    return Object.values(db.habit).some((entry) => entry.v.title === 'Edited habit' && !entry.d);
+  }), true);
+  await page.screenshot({ path: 'docs/screenshots/web-runs-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: 'docs/screenshots/web-runs-mobile.png', fullPage: true });
   assert.deepEqual(errors, []);
   console.log('PASS offline browser: scratch, edit, YAML download, copy, run selection, YAML creation and optional rest-day logging');
 } finally { await browser.close(); }

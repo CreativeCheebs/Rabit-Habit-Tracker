@@ -403,6 +403,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     var editingDraftId by remember { mutableStateOf<String?>(null) }
     var yamlText by remember { mutableStateOf("") }
     var yamlErrors by remember { mutableStateOf<List<String>>(emptyList()) }
+    var builderError by remember { mutableStateOf<String?>(null) }
     var promptCopied by remember { mutableStateOf(false) }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     val line = palette.divider
@@ -410,6 +411,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     fun chooseSource(next: Int) {
         if (next == source) return
         source = next
+        builderError = null
         selected.clear()
         addedHabits.clear()
         editingSourceId = null
@@ -577,6 +579,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     }
                 }, enabled = newHabitName.isNotBlank()) { Text(if (editingDraftId != null) "Save habit changes" else "＋ Add habit to this run") }
             }
+            builderError?.let { Text(it, color = palette.error, style = MaterialTheme.typography.bodyMedium) }
             Spacer(Modifier.height(8.dp))
         }
         if (source != 2) {
@@ -587,6 +590,16 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     modifier = Modifier.weight(2f),
                     enabled = (selected.isNotEmpty() || addedHabits.isNotEmpty()) && editingDraftId == null && editingSourceId == null,
                     onClick = {
+                        if (!editing && database.activeRuns().isNotEmpty()) {
+                            builderError = "Stop all active runs before starting a new run."
+                            return@Button
+                        }
+                        val draftTitles = addedHabits.map { it.name } + existing.filter { it.uid in selected }.map { it.title }
+                        val duplicate = duplicateHabitTitle(draftTitles)
+                        if (duplicate != null) {
+                            builderError = "Habit ‘$duplicate’ appears more than once. Remove or rename the duplicate."
+                            return@Button
+                        }
                         val days = if (custom) customDays.toLongOrNull()?.coerceIn(1, 365) ?: 21L else duration.toLong()
                         val runName = name.ifBlank { "${days}-day run" }
                         val runId = if (editing) latestRun!!.uid else "run-$startDate-${Random.nextLong().toULong().toString(16)}"
@@ -783,9 +796,11 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
     val pastCommit by remember { derivedStateOf { kotlin.math.abs(offsetX.value) >= commitThresholdPx } }
     LaunchedEffect(pastCommit) { if (pastCommit && !animating) haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
     val hint = "Swipe right for ${swipeRight.key} · left for ${swipeLeft.key}"
+    val activeRun = remember(database, runsRevision) {
+        database.currentRun()?.takeIf { it.status == "active" } ?: database.activeRuns().firstOrNull()
+    }
     val runHabits = remember(database, runsRevision) {
-        val latestRun = database.currentRun()
-        loadRunHabits(database, latestRun?.uid)
+        loadRunHabits(database, activeRun?.uid)
     }
     val due = remember(database, today, runHabits) {
         val completed = database.schemaQueries.selectCheckInsForDay(today).executeAsList().filter { it.state == "done" }.map { it.habit_uid }.toSet()
@@ -837,6 +852,7 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
             animating = false
         }
     }
+    if (activeRun == null) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No active run. Start a run to use Quick Log.", style = MaterialTheme.typography.titleLarge) }; return }
     if (index >= due.size) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Quick Log complete\n$done done · $partial partial · $skipped skipped", style = MaterialTheme.typography.titleLarge) }; return }
     val h = due[index]
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

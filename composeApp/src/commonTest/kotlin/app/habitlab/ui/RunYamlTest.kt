@@ -14,14 +14,18 @@ class RunYamlTest {
         assertEquals("My run", decoded.name)
         assertEquals(7, decoded.days)
     }
+
     @Test fun parsesEscapedStringsFromWebExport() {
-        val run = parseRunYaml("""
-            name: "A \"quoted\" run"
-            habits:
-              - name: "Path C:\\books"
-                group: "Line\nTwo"
-                every: 1 day
-        """.trimIndent())
+        val run =
+            parseRunYaml(
+                """
+                name: "A \"quoted\" run"
+                habits:
+                  - name: "Path C:\\books"
+                    group: "Line\nTwo"
+                    every: 1 day
+                """.trimIndent(),
+            )
         assertTrue(run.ok, run.errors.toString())
         assertEquals("A \"quoted\" run", run.name)
         assertEquals("Path C:\\books", run.habits.single().name)
@@ -29,21 +33,22 @@ class RunYamlTest {
     }
 
     @Test fun parsesRunAndHabits() {
-        val run = parseRunYaml(
-            """
-            name: Reset week
-            days: 14
-            start: 2026-11-06
-            habits:
-              - name: Morning light
-                group: Wellbeing
-                points: 2
-                icon: sun
-                every: 1 day
-              - name: Plan the day
-                days_per_week: 5
-            """.trimIndent()
-        )
+        val run =
+            parseRunYaml(
+                """
+                name: Reset week
+                days: 14
+                start: 2026-11-06
+                habits:
+                  - name: Morning light
+                    group: Wellbeing
+                    points: 2
+                    icon: sun
+                    every: 1 day
+                  - name: Plan the day
+                    days_per_week: 5
+                """.trimIndent(),
+            )
         assertTrue(run.ok, run.errors.toString())
         assertEquals("Reset week", run.name)
         assertEquals(14, run.days)

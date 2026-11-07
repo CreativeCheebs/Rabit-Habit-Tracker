@@ -22,4 +22,11 @@ For performance, measure browser startup, interaction responsiveness, and key jo
 
 For each user-facing screen change, record: route/screen, platform and browser/device, viewport, theme, keyboard/accessibility check, screenshot location, and known deviations. Never call a screenshot test a complete UX review: it cannot assess task clarity or usability by itself.
 
+### 2026-11-08 — Runs and Habits lifecycle
+
+- Hosted browser app, Chromium, light/system palette: reviewed at 1440x900 and 390x844 using disposable in-memory data. Screenshots: `docs/screenshots/web-runs-desktop.png` and `docs/screenshots/web-runs-mobile.png`.
+- Corrected the narrow-screen run selector/action wrapping and prevented long-duration day cells from collapsing into overlapping labels and markers. The day grid remains horizontally scrollable on small screens.
+- Automated role/name interactions covered creation, editing, normalized duplicate rejection, active-run blocking, stop, selection, deletion, YAML download/import, copy, and optional rest-day logging. No page exceptions were observed.
+- Android parity was compiled into the QA APK and exercised by JVM database tests. Physical-device visual/interaction review remains deferred until ADB sees a connected QA device.
+
 The repository already has routes and Playwright checks for the hosted browser app. Keep golden screenshot comparisons curated and review pixel diffs manually because rendering changes can be noisy.

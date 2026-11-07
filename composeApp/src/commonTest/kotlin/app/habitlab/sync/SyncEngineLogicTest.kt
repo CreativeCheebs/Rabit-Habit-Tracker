@@ -35,29 +35,32 @@ class SyncEngineLogicTest {
 
     @Test
     fun wireRoundTripPreservesChange() {
-        val change = SyncChange(
-            table = "check_in",
-            uid = "plan-day:2026-11-04",
-            values = mapOf(
-                "uid" to JsonPrimitive("plan-day:2026-11-04"),
-                "habit_uid" to JsonPrimitive("plan-day"),
-                "day" to JsonPrimitive("2026-11-04"),
-                "state" to JsonPrimitive("done"),
-                "comment" to JsonNull,
-            ),
-            stamps = mapOf("state" to FieldStamp(1000, "abc123")),
-        )
+        val change =
+            SyncChange(
+                table = "check_in",
+                uid = "plan-day:2026-11-04",
+                values =
+                    mapOf(
+                        "uid" to JsonPrimitive("plan-day:2026-11-04"),
+                        "habit_uid" to JsonPrimitive("plan-day"),
+                        "day" to JsonPrimitive("2026-11-04"),
+                        "state" to JsonPrimitive("done"),
+                        "comment" to JsonNull,
+                    ),
+                stamps = mapOf("state" to FieldStamp(1000, "abc123")),
+            )
         assertEquals(change, syncChangeFromWire(change.toWire()))
     }
 
     @Test
     fun wireRoundTripPreservesTombstone() {
-        val change = SyncChange(
-            table = "habit",
-            uid = "gone",
-            values = mapOf("_deleted" to JsonPrimitive(true)),
-            stamps = mapOf("_deleted" to FieldStamp(2000, "abc123")),
-        )
+        val change =
+            SyncChange(
+                table = "habit",
+                uid = "gone",
+                values = mapOf("_deleted" to JsonPrimitive(true)),
+                stamps = mapOf("_deleted" to FieldStamp(2000, "abc123")),
+            )
         val parsed = syncChangeFromWire(change.toWire())
         assertEquals(change, parsed)
         assertEquals(true, (parsed.values["_deleted"] as JsonPrimitive).content.toBoolean())

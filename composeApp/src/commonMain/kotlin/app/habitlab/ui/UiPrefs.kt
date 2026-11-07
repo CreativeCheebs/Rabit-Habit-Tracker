@@ -14,7 +14,26 @@ internal fun HabitDatabase.pref(key: String): String? = schemaQueries.selectMeta
 internal fun HabitDatabase.setPref(key: String, value: String) = schemaQueries.upsertMetaValue(key, value)
 internal fun HabitDatabase.currentRun(): app.habitlab.db.Run? {
     val runs = schemaQueries.selectRuns().executeAsList()
-    return runs.firstOrNull { it.uid == pref(PREF_CURRENT_RUN) } ?: runs.firstOrNull()
+    return runs.firstOrNull { it.uid == pref(PREF_CURRENT_RUN) } ?: runs.firstOrNull { it.status == "active" } ?: runs.firstOrNull()
+}
+internal fun HabitDatabase.activeRuns() = schemaQueries.selectRuns().executeAsList().filter { it.status == "active" }
+
+/** Delete only the run and its links; habits and dated check-ins may be shared. */
+internal fun HabitDatabase.deleteRunKeepingHabits(runUid: String) {
+    transaction {
+        schemaQueries.selectRunLinks(runUid).executeAsList().forEach { schemaQueries.deleteRunHabitRow(it.uid) }
+        schemaQueries.deleteRunRow(runUid)
+        if (pref(PREF_CURRENT_RUN) == runUid) setPref(PREF_CURRENT_RUN, "")
+    }
+}
+
+internal fun duplicateHabitTitle(names: List<String>): String? {
+    val seen = mutableSetOf<String>()
+    for (name in names) {
+        val normalized = name.trim().replace(Regex("\\s+"), " ").lowercase()
+        if (normalized.isNotEmpty() && !seen.add(normalized)) return name.trim()
+    }
+    return null
 }
 internal fun HabitDatabase.habitIcon(habitUid: String): String = pref(ICON_PREFIX + habitUid).orEmpty()
 internal fun HabitDatabase.setHabitIcon(habitUid: String, icon: String) {

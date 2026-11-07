@@ -57,20 +57,26 @@ body{margin:0;background:var(--page);color:var(--ink);font:14px -apple-system,"S
 .metric b{display:block;font-size:19px;font-weight:600;margin-top:4px}
 .section-head{display:flex;align-items:center;justify-content:space-between;margin:26px 2px 10px;gap:10px}
 .section-head h3{font-size:16px;font-weight:500;margin:0}
-.head-btns{display:flex;gap:8px}
+.head-btns{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;min-width:0}
+.head-btns .field{width:auto;max-width:100%;min-width:160px}
+.run-management{margin-top:18px;background:var(--surface1);border-radius:18px;padding:14px 18px;min-width:0}
+.run-management>summary{cursor:pointer;font-weight:600;padding:4px 0}
+.run-management-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;min-width:0;padding:12px 0;border-top:1px solid var(--divider)}
+.run-management-row:first-of-type{margin-top:10px}
 .btn{border:1px solid var(--outline);background:var(--surface2);color:var(--ink);border-radius:100px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
 .btn:hover{border-color:var(--primary)}
 .btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary);font-weight:600}
 .htable{background:var(--surface1);border-radius:18px;padding:8px 18px;overflow-x:auto}
 .hrow{display:grid;grid-template-columns:34px minmax(170px,1.1fr) minmax(0,2fr) 44px;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--divider);min-width:620px}
+.htable[style*="--day-count"] .hrow{min-width:max(620px,calc(292px + var(--day-count) * 22px))}
 .hrow:first-child{border-top:0}
 .hrow.head{border-top:0;padding:4px 0 8px}
-#runTable{border-top:1px solid var(--divider)}
+.run-table{border-top:1px solid var(--divider)}
 .symbol{height:34px;width:34px;border-radius:11px;background:var(--surface3);display:grid;place-items:center;color:var(--primary);font-size:16px;flex:none}
 .habit-name{font-size:13px;font-weight:500}
 .iteration{font:9px ui-monospace,Menlo,monospace;padding:2px 5px;border-radius:5px;background:var(--soft);color:var(--on-soft);margin-left:5px}
 .habit-meta{font-size:10px;color:var(--muted);margin-top:3px}
-.daynums{display:grid;font:8px ui-monospace,Menlo,monospace;color:var(--muted);text-align:center}
+.daynums{display:grid;min-width:0;gap:2px;font:10px ui-monospace,Menlo,monospace;color:var(--muted);text-align:center}
 .daynums span.today{color:var(--primary);font-weight:700}
 .dots{display:grid;min-width:0;gap:2px}
 .dot{width:17px;height:17px;justify-self:center;border:1px solid var(--outline);border-radius:5px;background:none;padding:0;cursor:pointer}
@@ -204,6 +210,14 @@ pre.prompt{background:var(--surface2);border:1px solid var(--outline);border-rad
 /* ---------- responsive ---------- */
 @media(max-width:1100px){.run-hero{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(4,1fr)}.charts-2{grid-template-columns:1fr}.ana-grid{grid-template-columns:1fr}.cards-3{grid-template-columns:repeat(2,1fr)}.builder-source{grid-template-columns:1fr 1fr}}
 @media(max-width:860px){.side{width:76px;padding:16px 10px}.brand b,.brand small{display:none}.sidenav button span.lbl{display:none}.sidenav button{justify-content:center}.side-foot{display:none}.cards-3{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.content{padding:18px 14px 50px}.topbar{padding:0 14px}.builder-source{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}}
+@media(max-width:600px){
+  .section-head:has(.head-btns){align-items:flex-start;flex-direction:column}
+  .head-btns{width:100%;justify-content:flex-start}
+  .head-btns .field{flex:1 1 180px}
+  .run-management,.run-management-row{width:100%}
+  .habit-editor .editor-head:has([aria-label="Habit name"]){flex-wrap:wrap}
+  .habit-editor .editor-head [aria-label="Habit name"]{flex:1 0 100%;min-width:0}
+}
 
 /* ---- settings view, dense layout, hide points ---- */
 .set-card{background:var(--surface1);border-radius:18px;padding:20px 22px;max-width:640px;margin-bottom:14px}

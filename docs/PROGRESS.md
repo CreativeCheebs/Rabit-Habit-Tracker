@@ -4,6 +4,14 @@ Running record of what is built, what is live, and every operational lesson
 learned. Read this file first before continuing work; append to it when you
 finish a step (the owner commits after every step).
 
+## Run lifecycle, duplicate protection, and responsive review
+
+- Web and Android now treat runs as active or stopped, allow stopped runs to remain selectable, require the current active run to be stopped before another is created, and expose run deletion. Deletion removes the run and its membership links but deliberately retains habits and check-in history. Quick Log and run-row logging use active runs only.
+- Run creation and editing reject duplicate habit names within the same run after trimming/collapsing whitespace and ignoring letter case, even when the schedules differ. Legacy multiple-active data remains visible so the owner can stop or remove the unwanted runs.
+- The hosted web run grid and action header were adjusted for narrow screens. Reviewed screenshots are `docs/screenshots/web-runs-desktop.png` (1440x900) and `docs/screenshots/web-runs-mobile.png` (390x844). The mobile view keeps the selector and actions readable and allows the full day grid to scroll without squeezing or overlapping cells.
+- Verification passed: 59 Compose/JVM tests, sync-server tests, QA and debug APK assembly, an isolated Playwright lifecycle journey, JavaScript syntax validation, diff whitespace validation, and Gitleaks across 52 commits. The Playwright journey covers scratch creation, normalized duplicate rejection, active-run blocking, editing, YAML download/import, copying, stopped-run selection, optional rest-day logging, deletion, and retained habit data.
+- Android device interaction is deferred because ADB reported no connected device; the separate QA APK was built successfully and no production app data was touched. Repository-wide ktlint is not clean and the default Detekt task still does not discover KMP sources. A temporary explicit-source Detekt audit reported 911 weighted findings, mostly existing style/complexity issues; that experimental configuration was not retained because it would turn the existing gate red without an agreed cleanup/baseline plan. These are baseline debt, not 911 failures introduced by this change, and must not be silently suppressed by regenerating a baseline.
+
 ## Run editing and rest-day review
 
 - Follow-up: Android run editing now changes existing run and habit records while preserving linked check-ins; imported drafts can be edited, configuration YAML can be copied to the clipboard, and a run selector exposes active runs. Shared habit edits apply across runs. JVM tests cover editing without losing history and YAML export round-trip; a phone QA test edited a habit and confirmed the existing completion still contributed points. Android YAML is copied to the clipboard rather than saved directly as a file.

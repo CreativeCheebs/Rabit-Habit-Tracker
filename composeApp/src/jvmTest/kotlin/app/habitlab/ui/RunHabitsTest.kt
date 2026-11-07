@@ -7,6 +7,26 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class RunHabitsTest {
+    @Test fun duplicateTitlesIgnoreCaseAndWhitespace() {
+        assertEquals("MORNING   light", duplicateHabitTitle(listOf("Morning light", "  MORNING   light ")))
+        assertEquals(null, duplicateHabitTitle(listOf("Morning light", "Evening light")))
+    }
+
+    @Test fun stoppingAndDeletingRunKeepsHabitsAndCheckIns() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        HabitDatabase.Schema.create(driver)
+        val db = HabitDatabase(driver)
+        db.schemaQueries.insertRun("run", "Run", "2026-11-07", 7)
+        db.schemaQueries.insertHabit("habit", "Habit", "General", 1, 1, "interval", 1)
+        db.schemaQueries.attachHabitToRun("link", "run", "habit")
+        db.schemaQueries.insertCheckIn("check", "habit", "2026-11-07", "done", null)
+        db.schemaQueries.stopRun("run")
+        assertEquals("stopped", db.schemaQueries.selectRunByUid("run").executeAsOne().status)
+        db.deleteRunKeepingHabits("run")
+        assertEquals(null, db.schemaQueries.selectRunByUid("run").executeAsOneOrNull())
+        assertEquals("Habit", db.schemaQueries.selectHabitByUid("habit").executeAsOne().title)
+        assertEquals("done", db.schemaQueries.selectCheckInByUid("check").executeAsOne().state)
+    }
     @Test fun editingKeepsExistingLinksAndCheckIns() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         HabitDatabase.Schema.create(driver)
