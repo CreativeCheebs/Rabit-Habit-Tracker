@@ -95,6 +95,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     var dense by remember(database) { mutableStateOf(database.pref(PREF_DENSE_LAYOUT) == "1") }
     var runsRevision by remember { mutableIntStateOf(0) }
     var builderCopy by remember { mutableStateOf<Boolean?>(null) }
+    var editCurrentRun by remember { mutableStateOf(false) }
     val syncClient = remember(database) { SyncClient(database, createHttpClient()) }
     var syncMode by remember(database) { mutableStateOf(syncClient.mode()) }
     var syncing by remember { mutableStateOf(false) }
@@ -185,6 +186,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     ) { Text(if (syncing) "…" else "⟳", color = green, style = MaterialTheme.typography.headlineMedium) }
                     if (page == Destination.Runs) Spacer(Modifier.width(12.dp))
                     if (page == Destination.Runs) IconButton(onClick = { builderCopy = true }, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(50)).background(surface)) { Text("＋", color = green, style = MaterialTheme.typography.headlineMedium) }
+                    if (page == Destination.Runs && database.currentRun() != null) TextButton(onClick = { editCurrentRun = true; builderCopy = true }) { Text("Edit") }
                     if (page == Destination.Runs && syncMode == SYNC_MODE_OFFLINE) TextButton(
                         onClick = { openSignIn() },
                         modifier = Modifier.semantics { contentDescription = "Connect to sync server" }
@@ -231,9 +233,9 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
             builderCopy?.let { copy ->
                 Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
                     RunBuilderPage(
-                        database, today, copy,
+                        database, today, copy, editCurrentRun,
                         onCreated = { runsRevision++; noteLocalChange() },
-                        onDismiss = { builderCopy = null }
+                        onDismiss = { builderCopy = null; editCurrentRun = false }
                     )
                 }
             }
@@ -374,20 +376,21 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
 }
 
 /** Full-page run builder. The first choice on the page is where the habits come from: previous run, scratch, or YAML. */
-@Composable private fun RunBuilderPage(database: HabitDatabase, today: String, startWithCopy: Boolean, onCreated: () -> Unit, onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var duration by remember { mutableIntStateOf(21) }
-    var custom by remember { mutableStateOf(false) }
-    var customDays by remember { mutableStateOf("28") }
-    var startDate by remember { mutableStateOf(today) }
+@Composable private fun RunBuilderPage(database: HabitDatabase, today: String, startWithCopy: Boolean, editing: Boolean, onCreated: () -> Unit, onDismiss: () -> Unit) {
     val existing = remember(database) { database.schemaQueries.selectHabits().executeAsList() }
-    val latestRun = remember(database) { database.schemaQueries.selectRuns().executeAsList().firstOrNull() }
+    val latestRun = remember(database) { database.currentRun() }
+    var name by remember { mutableStateOf(if (editing) latestRun?.name.orEmpty() else "") }
+    var startDate by remember { mutableStateOf(if (editing) latestRun?.start_date ?: today else today) }
+    val initialDays = if (startWithCopy) latestRun?.duration_days?.toInt() ?: 21 else 21
+    var duration by remember { mutableIntStateOf(if (initialDays in listOf(7, 14, 21)) initialDays else 21) }
+    var custom by remember { mutableStateOf(initialDays !in listOf(7, 14, 21)) }
+    var customDays by remember { mutableStateOf(if (custom) initialDays.toString() else "28") }
     val previousHabitIds = remember(database, latestRun) { latestRun?.let { database.schemaQueries.selectHabitsForRun(it.uid).executeAsList().map { row -> row.uid } }.orEmpty() }
     val hasPrevious = previousHabitIds.isNotEmpty()
     // 0 = copy previous run, 1 = start from scratch, 2 = from YAML
-    var source by remember { mutableIntStateOf(if (startWithCopy && hasPrevious) 0 else 1) }
-    val selected = remember { mutableStateListOf<String>().apply { if (startWithCopy && hasPrevious) addAll(previousHabitIds) } }
-    val addedHabits = remember { mutableStateListOf<Habit>() }
+    var source by remember { mutableIntStateOf(if (!editing && startWithCopy && hasPrevious) 0 else 1) }
+    val selected = remember { mutableStateListOf<String>().apply { if (!editing && startWithCopy && hasPrevious) addAll(previousHabitIds) } }
+    val addedHabits = remember { mutableStateListOf<Habit>().apply { if (editing && latestRun != null) addAll(loadRunHabits(database, latestRun.uid)) } }
     var newHabitName by remember { mutableStateOf("") }
     var newHabitPoints by remember { mutableStateOf("1") }
     var newHabitGroup by remember { mutableStateOf("General") }
@@ -397,6 +400,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     var intervalMode by remember { mutableStateOf(false) }
     var recurrenceValue by remember { mutableStateOf("3") }
     var editingSourceId by remember { mutableStateOf<String?>(null) }
+    var editingDraftId by remember { mutableStateOf<String?>(null) }
     var yamlText by remember { mutableStateOf("") }
     var yamlErrors by remember { mutableStateOf<List<String>>(emptyList()) }
     var promptCopied by remember { mutableStateOf(false) }
@@ -404,17 +408,33 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     val line = palette.divider
 
     fun chooseSource(next: Int) {
+        if (next == source) return
         source = next
         selected.clear()
-        if (next == 0) selected.addAll(previousHabitIds)
+        addedHabits.clear()
+        editingSourceId = null
+        newHabitName = ""
+        newHabitGroup = "General"
+        newHabitPoints = "1"
+        newHabitIcon = ""
+        newHabitColor = ""
+        intervalMode = false
+        recurrenceValue = "3"
+        if (next == 0) {
+            selected.addAll(previousHabitIds)
+            val previousDays = latestRun?.duration_days?.toInt() ?: 21
+            custom = previousDays !in listOf(7, 14, 21)
+            if (custom) customDays = previousDays.toString() else duration = previousDays
+        }
     }
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onDismiss, modifier = Modifier.semantics { contentDescription = "Back" }) { Text("←", style = MaterialTheme.typography.titleLarge) }
-            Text("New run", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(if (editing) "Edit run" else "New run", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (!editing) {
             Text("Where do the habits come from?", style = MaterialTheme.typography.labelLarge)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = source == 0, enabled = hasPrevious, onClick = { chooseSource(0) }, label = { Text("Previous", maxLines = 1) }, modifier = Modifier.weight(1f))
@@ -429,6 +449,8 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                 },
                 color = muted, style = MaterialTheme.typography.bodySmall
             )
+            Text("Changing the source clears the habits being prepared.", color = muted, style = MaterialTheme.typography.labelSmall)
+            } else Text("Changes to shared habits affect every run that uses them. Existing check-ins are kept.", color = muted, style = MaterialTheme.typography.bodySmall)
             if (source == 2) {
                 Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -473,7 +495,18 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                 }
                 if (custom) OutlinedTextField(value = customDays, onValueChange = { customDays = it.filter(Char::isDigit).take(3) }, label = { Text("Days") }, singleLine = true)
                 Text("Habits", style = MaterialTheme.typography.labelLarge)
-                existing.forEach { row ->
+                OutlinedButton(enabled = selected.isNotEmpty() || addedHabits.isNotEmpty(), onClick = {
+                    val draft = addedHabits + existing.filter { it.uid in selected }.map { row ->
+                        Habit(row.title, row.group_name, row.impact_points.toInt(), if (row.recurrence_type == "interval") "Every ${row.recurrence_value} days" else "${row.recurrence_value} days per week", id = row.uid, icon = database.habitIcon(row.uid))
+                    }
+                    val values = draft.map { h ->
+                        val n = Regex("\\d+").find(h.recurrence)?.value?.toIntOrNull() ?: 1
+                        YamlHabit(h.name, h.group, h.points, if (h.recurrence.startsWith("Every ")) 0 else n, if (h.recurrence.startsWith("Every ")) n else 0, h.icon)
+                    }
+                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(exportRunYaml(name, if (custom) customDays.toIntOrNull() ?: 21 else duration, startDate, values)))
+                    promptCopied = true
+                }) { Text(if (promptCopied) "YAML copied" else "Copy run YAML") }
+                existing.filter { source == 0 && it.uid in previousHabitIds }.forEach { row ->
                     Row(Modifier.fillMaxWidth().clickable { if (row.uid in selected) selected.remove(row.uid) else selected.add(row.uid) }, verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = row.uid in selected, onCheckedChange = { checked -> if (checked) selected.add(row.uid) else selected.remove(row.uid) })
                         Column(Modifier.weight(1f)) { Text(row.title, style = MaterialTheme.typography.bodyMedium); Text("${row.impact_points} impact pts · ${row.recurrence_type} ${row.recurrence_value}", style = MaterialTheme.typography.labelSmall, color = muted) }
@@ -492,6 +525,11 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         HabitGlyph(added, Modifier.size(20.dp), surface)
                         Text("${added.name} · ${added.points} pts · ${added.recurrence}", style = MaterialTheme.typography.bodySmall, color = green, modifier = Modifier.weight(1f))
+                        TextButton(onClick = {
+                            editingDraftId = added.uid(); newHabitName = added.name; newHabitGroup = added.group; newHabitPoints = added.points.toString()
+                            newHabitIcon = added.icon; newHabitColor = added.color; intervalMode = added.recurrence.startsWith("Every ")
+                            recurrenceValue = Regex("\\d+").find(added.recurrence)?.value ?: "1"
+                        }) { Text("Edit") }
                         TextButton(onClick = { addedHabits.remove(added) }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Remove", style = MaterialTheme.typography.labelSmall) }
                     }
                 }
@@ -526,15 +564,18 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     val habitName = newHabitName.trim()
                     if (habitName.isNotEmpty()) {
                         editingSourceId?.let { selected.remove(it) }
-                        val id = "habit-${Random.nextLong().toULong().toString(16)}"
+                        val id = editingDraftId ?: "habit-${Random.nextLong().toULong().toString(16)}"
                         val count = recurrenceValue.toIntOrNull()?.coerceIn(1, if (intervalMode) 365 else 7) ?: 3
-                        addedHabits.add(Habit(habitName, newHabitGroup.ifBlank { "General" }, newHabitPoints.toIntOrNull()?.coerceAtLeast(0) ?: 1, if (intervalMode) "Every $count days" else "$count days per week", "I", id, newHabitIcon, newHabitColor))
+                        val draft = Habit(habitName, newHabitGroup.ifBlank { "General" }, newHabitPoints.toIntOrNull()?.coerceAtLeast(0) ?: 1, if (intervalMode) "Every $count days" else "$count days per week", "I", id, newHabitIcon, newHabitColor)
+                        val index = addedHabits.indexOfFirst { it.uid() == id }
+                        if (index >= 0) addedHabits[index] = draft else addedHabits.add(draft)
                         newHabitName = ""
                         newHabitIcon = ""
                         newHabitColor = ""
                         editingSourceId = null
+                        editingDraftId = null
                     }
-                }, enabled = newHabitName.isNotBlank()) { Text("＋ Add habit to this run") }
+                }, enabled = newHabitName.isNotBlank()) { Text(if (editingDraftId != null) "Save habit changes" else "＋ Add habit to this run") }
             }
             Spacer(Modifier.height(8.dp))
         }
@@ -544,26 +585,31 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                 OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text("Cancel") }
                 Button(
                     modifier = Modifier.weight(2f),
-                    enabled = selected.isNotEmpty() || addedHabits.isNotEmpty(),
+                    enabled = (selected.isNotEmpty() || addedHabits.isNotEmpty()) && editingDraftId == null && editingSourceId == null,
                     onClick = {
                         val days = if (custom) customDays.toLongOrNull()?.coerceIn(1, 365) ?: 21L else duration.toLong()
                         val runName = name.ifBlank { "${days}-day run" }
-                        val runId = "run-$startDate-${Random.nextLong().toULong().toString(16)}"
+                        val runId = if (editing) latestRun!!.uid else "run-$startDate-${Random.nextLong().toULong().toString(16)}"
                         database.transaction {
-                            database.schemaQueries.insertRun(runId, runName, startDate, days)
+                            if (editing) database.schemaQueries.updateRunDetails(runName, startDate, days, runId) else database.schemaQueries.insertRun(runId, runName, startDate, days)
+                            val oldLinks = if (editing) database.schemaQueries.selectRunLinks(runId).executeAsList() else emptyList()
+                            val keep = (selected + addedHabits.map { it.uid() }).toSet()
+                            oldLinks.filter { it.habit_uid !in keep }.forEach { database.schemaQueries.deleteRunHabitRow(it.uid) }
                             addedHabits.forEach { habit ->
                                 val count = Regex("\\d+").find(habit.recurrence)?.value?.toLongOrNull() ?: 3L
-                                database.schemaQueries.insertHabit(habit.uid(), habit.name, habit.group, 1L, habit.points.toLong(), if (habit.recurrence.startsWith("Every ")) "interval" else "weekly", count)
+                                if (editing && habit.uid() in previousHabitIds) database.schemaQueries.updateHabitDetails(habit.name, habit.group, habit.points.toLong(), if (habit.recurrence.startsWith("Every ")) "interval" else "weekly", count, habit.uid())
+                                else database.schemaQueries.insertHabit(habit.uid(), habit.name, habit.group, 1L, habit.points.toLong(), if (habit.recurrence.startsWith("Every ")) "interval" else "weekly", count)
                                 database.setHabitIcon(habit.uid(), habit.icon)
                                 database.setHabitColor(habit.uid(), habit.color)
                             }
                             selected.forEach { database.schemaQueries.attachHabitToRun("$runId:$it", runId, it) }
-                            addedHabits.forEach { database.schemaQueries.attachHabitToRun("$runId:${it.uid()}", runId, it.uid()) }
+                            addedHabits.filter { h -> oldLinks.none { it.habit_uid == h.uid() } }.forEach { database.schemaQueries.attachHabitToRun("$runId:${it.uid()}:${Random.nextLong().toULong().toString(16)}", runId, it.uid()) }
+                            database.setPref(PREF_CURRENT_RUN, runId)
                         }
                         onCreated()
                         onDismiss()
                     }
-                ) { Text("Create run") }
+                ) { Text(if (editing) "Save changes" else "Create run") }
             }
         }
     }
@@ -738,11 +784,8 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
     LaunchedEffect(pastCommit) { if (pastCommit && !animating) haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
     val hint = "Swipe right for ${swipeRight.key} · left for ${swipeLeft.key}"
     val runHabits = remember(database, runsRevision) {
-        val latestRun = database.schemaQueries.selectRuns().executeAsList().firstOrNull()
-        latestRun?.let { database.schemaQueries.selectHabitsForRun(it.uid).executeAsList().map { row ->
-            val recurrence = if (row.recurrence_type == "interval") "Every ${row.recurrence_value} days" else "${row.recurrence_value} days per week"
-            Habit(row.title, row.group_name, row.impact_points.toInt(), recurrence, romanNumeral(row.iteration.toInt()), row.uid, database.habitIcon(row.uid), database.habitColor(row.uid))
-        } }?.takeIf { it.isNotEmpty() } ?: sampleHabits
+        val latestRun = database.currentRun()
+        loadRunHabits(database, latestRun?.uid)
     }
     val due = remember(database, today, runHabits) {
         val completed = database.schemaQueries.selectCheckInsForDay(today).executeAsList().filter { it.state == "done" }.map { it.habit_uid }.toSet()

@@ -1,6 +1,6 @@
 'use strict';
 /* Habit Lab desktop web client: thin sync mirror + desktop screens. */
-import { parseRunYaml, YAML_GUIDE_PROMPT } from './yaml.js';
+import { parseRunYaml, serializeRunYaml, YAML_GUIDE_PROMPT } from './yaml.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -218,10 +218,11 @@ async function sync() {
 }
 
 /* ---------- model ---------- */
+let selectedRunUid = '';
 function latestRun() {
   const runs = rows('run').filter((r) => r.status === 'active');
-  runs.sort((a, b) => (a.start_date < b.start_date ? 1 : -1));
-  return runs[0] || null;
+  runs.sort((a, b) => b.start_date.localeCompare(a.start_date));
+  return runs.find((r) => r.uid === selectedRunUid) || runs[0] || null;
 }
 function allRuns() {
   const runs = rows('run');
@@ -264,6 +265,13 @@ function dueHabits(today, list) {
     }
     return true;
   });
+}
+// Today's completed habits stay in the main table; only interval habits resting
+// after an earlier completion are placed in the optional section.
+function restingHabits(today, list) {
+  const done = rows('check_in').filter((c) => c.state === 'done' && c.day < today);
+  return list.filter((h) => h.recurrence_type === 'interval' && !checkInsByDay(today)[h.uid] &&
+    done.some((c) => c.habit_uid === h.uid && daysBetween(c.day, today) < (h.recurrence_value || 1)));
 }
 function runDayIndex(run, day) {
   return daysBetween(run.start_date, day);
@@ -334,6 +342,33 @@ function signOut() {
   setLoggedIn(false);
   $('loginPass').value = '';
 }
+/* The welcome is stored per account in this browser, independently of sign-out. */
+let welcomePage = 0;
+function welcomeKey() { return 'habitlab.welcome.' + (localStorage.getItem(LS.account) || '').toLowerCase(); }
+const welcomePages = [
+  `<h1 id="welcomeTitle" tabindex="-1">Not every habit weighs the same</h1><p>Give each habit points for how much it moves your life. Progress is points earned out of points possible, not boxes ticked.</p><div class="welcome-example"><div class="welcome-label">EXAMPLE</div><div class="welcome-stat">4 of 5 points <span>80%</span></div><div class="welcome-track"><span></span></div><div class="welcome-row">A meaningful habit <b>4 pts</b></div><div class="welcome-row">A small habit <b>1 pt</b></div></div>`,
+  `<h1 id="welcomeTitle" tabindex="-1">See how your run is going</h1><p>Every run shows the points you have earned and a forecast of where the run could end.</p><div class="welcome-example"><div class="welcome-label">YOUR PROGRESS</div><div class="welcome-stat">Points earned <span>12 pts</span></div><div class="welcome-track"><span></span></div><div class="welcome-row">Actual <b>━</b></div><div class="welcome-row">Forecast <b>┄</b></div></div>`,
+  `<h1 id="welcomeTitle" tabindex="-1">Build a rhythm that fits you</h1><p>Plan a run, choose the habits that matter to you, and log each day. Done earns the habit’s points; skip earns none.</p><div class="welcome-example"><div class="welcome-label">GET STARTED</div><div class="welcome-row">1. Create or choose your habits <b>✓</b></div><div class="welcome-row">2. Start a run <b>✓</b></div><div class="welcome-row">3. Log your progress <b>✓</b></div></div>`,
+];
+function drawWelcome() {
+  $('welcomeContent').innerHTML = welcomePages[welcomePage];
+  $('welcomeDots').innerHTML = welcomePages.map((_, i) => `<span class="${i === welcomePage ? 'active' : ''}"></span>`).join('');
+  $('welcomeDots').setAttribute('aria-label', `Page ${welcomePage + 1} of ${welcomePages.length}`);
+  $('welcomeBack').textContent = welcomePage ? 'Back' : 'Skip';
+  $('welcomeNext').textContent = welcomePage === welcomePages.length - 1 ? 'Get started' : 'Next';
+  $('welcomeTitle').focus();
+}
+function finishWelcome() {
+  localStorage.setItem(welcomeKey(), '1');
+  $('welcome').hidden = true;
+  $('acctBtn').focus();
+}
+function showWelcomeIfNeeded() {
+  if (localStorage.getItem(welcomeKey())) return;
+  welcomePage = 0;
+  $('welcome').hidden = false;
+  drawWelcome();
+}
 let creating = false;
 function setCreateMode(on) {
   creating = on;
@@ -363,6 +398,7 @@ async function onLogin(e) {
     $('loginPass').value = '';
     setLoggedIn(true);
     showView('runs');
+    showWelcomeIfNeeded();
     sync();
   } catch (ex) {
     err.textContent = ex.message === 'auth' ? 'Invalid username or password.'
@@ -417,6 +453,42 @@ function habitMeta(h) {
   const rec = esc(recurrenceLabel(h).toLowerCase());
   return prefs.hidePoints ? rec : `${h.impact_points} impact pts · ${rec}`;
 }
+async function tokenRequest(method, path, body) {
+  const headers = { 'X-Account-Id': localStorage.getItem(LS.account) || '', 'Authorization': 'Bearer ' + (localStorage.getItem(LS.key) || '') };
+  if (body) headers['Content-Type'] = 'application/json';
+  const response = await fetch(path, { method, headers, ...(body ? { body: JSON.stringify(body) } : {}) });
+  if (!response.ok) {
+    const detail = await response.json().then((j) => j.error || '', () => '');
+    throw new Error(detail || 'Could not contact the server.');
+  }
+  return response.json();
+}
+async function refreshTokens() {
+  const list = $('apiTokenList');
+  if (!list) return;
+  try {
+    const tokens = await tokenRequest('GET', '/api/tokens');
+    if (!list.isConnected) return;
+    list.replaceChildren();
+    if (!tokens.length) { list.textContent = 'No integration tokens yet.'; return; }
+    for (const token of tokens) {
+      const row = document.createElement('div'); row.className = 'set-row';
+      const description = document.createElement('div');
+      const label = document.createElement('b'); label.textContent = token.name;
+      const expiry = document.createElement('div'); expiry.className = 'caption'; expiry.textContent = 'Expires ' + new Date(token.expiresAt).toLocaleDateString();
+      description.append(label, expiry);
+      const revoke = document.createElement('button'); revoke.type = 'button'; revoke.className = 'btn'; revoke.textContent = 'Revoke';
+      revoke.setAttribute('aria-label', `Revoke ${token.name}`);
+      revoke.addEventListener('click', async () => {
+        if (!window.confirm(`Revoke the token for ${token.name}?`)) return;
+        revoke.disabled = true;
+        try { await tokenRequest('DELETE', '/api/tokens/' + encodeURIComponent(token.id)); await refreshTokens(); }
+        catch (e) { toast(e.message); revoke.disabled = false; }
+      });
+      row.append(description, revoke); list.append(row);
+    }
+  } catch (e) { if (list.isConnected) list.textContent = e.message; }
+}
 function renderSettings() {
   const body = $('settingsBody');
   const account = localStorage.getItem(LS.account) || '';
@@ -431,12 +503,32 @@ function renderSettings() {
     <div class="set-row"><div><b>Hide points</b><div class="caption">Hides impact points on habits, the run summary and the points charts.</div></div>
       <label class="switch"><input type="checkbox" id="setHide" aria-label="Hide points"${prefs.hidePoints ? ' checked' : ''}><i></i></label></div></div>
     <div class="set-card"><h3>Sync server</h3><div class="caption">This page is served by your sync server, so it is the same address the Android app connects to.</div>
-    <div class="set-row"><div><b>${esc(location.origin)}</b><div class="caption">Signed in as ${esc(account)}</div></div><button class="btn" id="setSignOut">Sign out</button></div></div>`;
+    <div class="set-row"><div><b>${esc(location.origin)}</b><div class="caption">Signed in as ${esc(account)}</div></div><button class="btn" id="setSignOut">Sign out</button></div></div>
+    <div class="set-card"><h3>API tokens</h3><div class="caption">Connect another app with read-only access to your synced habits, runs, run memberships and check-ins. Tokens expire after 90 days. Treat them like passwords.</div>
+    <form id="apiTokenForm"><label class="field-label" for="apiTokenName">Token name</label><input class="field" id="apiTokenName" required maxlength="80" placeholder="For example, My calendar"><button class="build-button" type="submit" id="apiTokenCreate">Create token</button></form>
+    <div id="apiTokenResult" hidden><p class="caption">Copy this token now. It will not be shown again.</p><label class="field-label" for="apiTokenValue">New token</label><input class="field" id="apiTokenValue" readonly><button class="btn" type="button" id="apiTokenCopy">Copy token</button><p class="caption">API address: ${esc(location.origin)}/api/integration/habit</p></div>
+    <div id="apiTokenError" class="login-error" role="alert"></div><div id="apiTokenList" class="caption">Loading tokens…</div></div>`;
   body.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { prefs.mode = b.dataset.mode; savePrefs(); applyPrefs(); renderSettings(); }));
   body.querySelectorAll('[data-accent]').forEach((b) => b.addEventListener('click', () => { prefs.accent = b.dataset.accent; savePrefs(); applyPrefs(); renderSettings(); }));
   $('setDense').addEventListener('change', (e) => { prefs.dense = e.target.checked; savePrefs(); applyPrefs(); });
   $('setHide').addEventListener('change', (e) => { prefs.hidePoints = e.target.checked; savePrefs(); applyPrefs(); });
   $('setSignOut').addEventListener('click', () => signOut());
+  $('apiTokenForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); const button = $('apiTokenCreate'), error = $('apiTokenError');
+    button.disabled = true; error.classList.remove('show');
+    try {
+      const created = await tokenRequest('POST', '/api/tokens', { name: $('apiTokenName').value });
+      $('apiTokenValue').value = created.token; $('apiTokenResult').hidden = false; $('apiTokenName').value = '';
+      await refreshTokens(); $('apiTokenValue').focus(); $('apiTokenValue').select();
+    } catch (err) { error.textContent = err.message; error.classList.add('show'); }
+    finally { button.disabled = false; }
+  });
+  $('apiTokenCopy').addEventListener('click', async () => {
+    $('apiTokenValue').select();
+    try { await navigator.clipboard.writeText($('apiTokenValue').value); toast('Token copied'); }
+    catch { toast('Select and copy the token'); }
+  });
+  refreshTokens();
 }
 function boot() {
   loadMirror();
@@ -444,6 +536,8 @@ function boot() {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyPrefs);
   $('loginForm').addEventListener('submit', onLogin);
   $('loginSwitch').addEventListener('click', () => setCreateMode(!creating));
+  $('welcomeBack').addEventListener('click', () => { if (welcomePage) { welcomePage--; drawWelcome(); } else finishWelcome(); });
+  $('welcomeNext').addEventListener('click', () => { if (welcomePage < welcomePages.length - 1) { welcomePage++; drawWelcome(); } else finishWelcome(); });
   // Hide "Create an account" when the server has sign-up turned off.
   fetch('/api/config').then((r) => r.json()).then((c) => { if (c && c.signup === false) $('loginSwitch').hidden = true; }).catch(() => {});
   $('acctBtn').addEventListener('click', (e) => { e.stopPropagation(); $('acctMenu').classList.toggle('open'); });
@@ -451,6 +545,7 @@ function boot() {
   if (localStorage.getItem(LS.key)) {
     setLoggedIn(true);
     showView('runs');
+    showWelcomeIfNeeded();
     setSync('', 'Connecting…');
     sync();
   } else {
@@ -591,6 +686,9 @@ function renderRuns() {
   const elapsed = Math.min(Math.max(runDayIndex(run, today) + 1, 1), dur);
   const endDay = addDays(run.start_date, dur - 1);
   const habits = habitsForRun(run.uid);
+  const resting = restingHabits(today, habits);
+  const restingIds = new Set(resting.map((h) => h.uid));
+  const visibleHabits = habits.filter((h) => !restingIds.has(h.uid));
   let earned = 0;
   const perDay = [];
   for (let i = 0; i < elapsed; i++) {
@@ -612,8 +710,9 @@ function renderRuns() {
     <div class="metric"><small>Days logged</small><b>${perDay.filter((e) => e > 0).length} / ${elapsed}</b></div>
     <div class="metric"><small>Habits</small><b>${habits.length}</b></div>
     </div></div></div>
-    <div class="section-head"><h3>Habits</h3><span class="head-btns"><button class="btn" data-click="openBuilder">＋ New run</button><button class="btn" data-click="openEdit" data-a="${safeId(run.uid)}">Edit run</button></span></div>
-    ${habitTable(habits, run.start_date, dur, today, 1)}
+    <div class="section-head"><h3>Habits</h3><span class="head-btns"><label for="activeRunSelect">Run</label><select class="field" id="activeRunSelect" data-change="activeRun">${allRuns().filter((r) => r.status === 'active').map((r) => `<option value="${esc(safeId(r.uid))}"${r.uid === run.uid ? ' selected' : ''}>${esc(r.name)} · ${esc(r.start_date)}</option>`).join('')}</select><button class="btn" data-click="openBuilder">＋ New run</button><button class="btn" data-click="openEdit" data-a="${safeId(run.uid)}">Edit run</button></span></div>
+    ${habitTable(visibleHabits, run.start_date, dur, today, 1)}
+    ${resting.length ? `<details class="not-due"><summary>Not due today · ${resting.length}</summary><p class="caption">You can still log these habits whenever you choose.</p>${habitTable(resting, run.start_date, dur, today, 1)}</details>` : ''}
     <div class="charts-2">
     <div class="card pts-card"><div class="chart-title">Points per day</div><div class="caption">Whole run · hover a bar for values</div>
     ${barChart(perDay.concat(Array(Math.max(0, dur - elapsed)).fill(0)), elapsed - 1)}
@@ -648,7 +747,10 @@ function infiniteView(today) {
   if (!list.length) {
     html += `<div class="empty">No standalone habits yet.<br>Add one below — it stays due with or without a run.</div>`;
   } else {
-    html += habitTable(list, start, 21, today, daysBetween(start, today) + 1 - 20);
+    const resting = restingHabits(today, list);
+    const restingIds = new Set(resting.map((h) => h.uid));
+    html += habitTable(list.filter((h) => !restingIds.has(h.uid)), start, 21, today, 1);
+    if (resting.length) html += `<details class="not-due"><summary>Not due today · ${resting.length}</summary><p class="caption">You can still log these habits whenever you choose.</p>${habitTable(resting, start, 21, today, 1)}</details>`;
   }
   html += `<div class="charts-2">
     <div class="card pts-card"><div class="chart-title">Points per day</div><div class="caption">Last 21 days · hover a bar for values</div>
@@ -879,8 +981,8 @@ function openBuilder() {
   builder = {
     mode: run ? 'copy' : 'scratch',
     copyFrom: run ? run.uid : '',
-    name: '', days: 21, custom: false, start: todayLocal(),
-    includeStandalone: true, showGuide: false, yamlText: '', yamlErrors: [],
+    name: '', days: run?.duration_days || 21, custom: !!run && ![7, 14, 21].includes(run.duration_days), start: todayLocal(),
+    includeStandalone: false, showGuide: false, yamlText: '', yamlErrors: [],
     habits: run ? habitsForRun(run.uid).map(rowToEditor) : [],
   };
   showView('builder');
@@ -947,7 +1049,7 @@ function renderBuilder() {
       <select class="field" id="previousRun" data-change="copyFrom">
       ${runs.map((r) => `<option value="${esc(safeId(r.uid))}"${r.uid === b.copyFrom ? ' selected' : ''}>${esc(r.name)} · ${r.duration_days} days</option>`).join('')}</select>
       <label class="checkline"><input type="checkbox"${b.includeStandalone ? ' checked' : ''} data-change="includeStandalone"> Also include standalone habits</label>
-      <div class="helper">Copied habits stay editable. Past check-ins on overlapping dates count toward the new run automatically.</div></div>`;
+      <div class="helper">Copied habits are shared with the original run. Changes to them update every run that uses them. Past check-ins on overlapping dates count toward the new run.</div></div>`;
   }
   html += `<div class="form-row form-narrow"><div><label class="field-label" for="runName">Run name</label>
     <input class="field" id="runName" placeholder="Name this run" value="${esc(b.name)}" data-input="builder" data-field="name"></div>
@@ -1012,6 +1114,7 @@ function createRun() {
   if (!named.length) { toast('Add at least one habit.'); return; }
   const runId = `run-${start}-${randHex(4)}`;
   putRow('run', runId, { uid: runId, name: (b.name || '').trim() || `${days}-day run`, start_date: start, duration_days: days, status: 'active' });
+  selectedRunUid = runId;
   for (const h of named) {
     const uid = h.uid || `h-${slug(h.name)}-${randHex(2)}`;
     if (!h.uid) {
@@ -1020,6 +1123,13 @@ function createRun() {
         impact_points: Math.max(0, h.points || 0),
         recurrence_type: h.interval ? 'interval' : 'weekly',
         recurrence_value: Math.max(1, h.count || 1), archived: 0,
+      });
+    } else {
+      putRow('habit', uid, {
+        title: h.name.trim(), group_name: (h.group || '').trim() || 'General',
+        impact_points: Math.max(0, h.points || 0),
+        recurrence_type: h.interval ? 'interval' : 'weekly',
+        recurrence_value: Math.max(1, h.count || 1),
       });
     }
     const luid = linkUid(runId, uid);
@@ -1068,8 +1178,23 @@ function renderEdit() {
     ${unattached.map((h) => `<option value="${esc(safeId(h.uid))}">${esc(h.title)} · ${esc(h.group_name)}</option>`).join('')}</select></div>
     <div style="align-self:end"><button class="btn" data-click="attachExisting">Attach</button></div></div>
     <button class="add-habit" data-click="addHabit" data-a="edit">＋ New habit in this run</button><br>
-    <button class="build-button" data-click="saveEdit">Save changes</button> <button class="btn" data-click="showView" data-a="runs">Cancel</button>`;
+    <button class="build-button" data-click="saveEdit">Save changes</button> <button class="btn" data-click="downloadRunYaml">Download YAML</button> <button class="btn" data-click="showView" data-a="runs">Cancel</button>
+    <div class="helper">YAML contains the run settings and habits, not check-ins or habit IDs. Importing it creates a new run.</div>`;
   body.innerHTML = html;
+}
+function downloadRunYaml() {
+  const e = editRun;
+  const habits = e.habits.filter((h) => (h.name || '').trim());
+  if (!habits.length) { toast('Add at least one named habit before exporting.'); return; }
+  const yaml = serializeRunYaml(e, habits);
+  const parsed = parseRunYaml(yaml);
+  if (!parsed.ok) { toast('Check the run date, length and habit schedules before exporting.'); return; }
+  const url = URL.createObjectURL(new Blob([yaml], { type: 'application/yaml;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${slug(e.name) || 'run'}.yaml`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function runsUsingHabitInfo(uids) {
   const multi = uids.filter((u) => u && runsUsingHabit(u).length > 1);
@@ -1088,7 +1213,7 @@ function saveEdit() {
   const e = editRun;
   const days = Math.min(Math.max(e.days || 21, 1), 365);
   const start = /^\d{4}-\d{2}-\d{2}$/.test(e.start || '') ? e.start : todayLocal();
-  putRow('run', e.uid, { uid: e.uid, name: (e.name || '').trim() || 'Untitled run', start_date: start, duration_days: days, status: 'active' });
+  putRow('run', e.uid, { uid: e.uid, name: (e.name || '').trim() || 'Untitled run', start_date: start, duration_days: days });
   const keep = new Set();
   for (const h of e.habits.filter((x) => (x.name || '').trim())) {
     const uid = h.uid || `h-${slug(h.name)}-${randHex(2)}`;
@@ -1203,6 +1328,7 @@ const ACTIONS = {
   editDays: (a) => { editRun.days = Number(a); editRun.custom = false; renderEdit(); },
   editCustom: () => { editRun.custom = true; renderEdit(); },
   attachExisting: () => attachExisting(),
+  downloadRunYaml: () => downloadRunYaml(),
   saveEdit: () => saveEdit(),
   createStandalone: () => createStandalone(),
 };
@@ -1235,6 +1361,7 @@ document.addEventListener('change', (e) => {
   const el = e.target instanceof Element ? e.target.closest('[data-change]') : null;
   if (!el) return;
   if (el.dataset.change === 'attachUid') editRun.attachUid = el.value;
+  else if (el.dataset.change === 'activeRun') { selectedRunUid = el.value; renderRuns(); }
   else if (el.dataset.change === 'copyFrom') builderCopyFrom(el.value);
   else if (el.dataset.change === 'includeStandalone') { builder.includeStandalone = el.checked; builderCopyFrom(builder.copyFrom); }
 });

@@ -24,6 +24,8 @@ The comparison outputs are `ui-qa/diff-runs.png` and `ui-qa/diff-quicklog.png`; 
 
 ## Run the interaction review
 
+To test without replacing the regular Android app, build `./gradlew.bat :composeApp:assembleQa` and install `composeApp/build/outputs/apk/qa/composeApp-qa.apk`. It appears as **Rabit QA**, uses package `app.habitlab.qa`, and has separate local app data. Keep it offline or connect it only to a disposable test account. Existing Maestro flows target the regular `app.habitlab` package and must be adapted before using them with QA.
+
 Install Maestro CLI 2.12.1 from its official Windows release and extract it to `ui-qa/tools/maestro`, or place `maestro` on `PATH`. Then run:
 
 ```powershell
@@ -35,6 +37,8 @@ ui-qa\tools\maestro\bin\maestro.bat test ui-qa\flows\quicklog-review.yaml
 The flow checks Runs → Quick Log navigation, opens and closes the comment field, and captures each state without clearing app data or recording a check-in.
 
 ## Webapp end-to-end (`webapp-check.mjs`)
+
+For an isolated desktop browser check with a disposable in-memory mirror and no server account, run `npm ci --prefix ui-qa` and `node ui-qa/offline-runs-check.mjs`. It covers scratch and YAML creation, edit and YAML download, copying, run selection, and optional logging on an interval rest day. It does not test real authentication or server synchronization.
 
 Desktop Playwright checks against the live server: static bundle, login + 401 path, then (with a test account) scratch run creation, YAML run creation, run editing, swipe logging, and a wipe-and-redownload persistence proof.
 

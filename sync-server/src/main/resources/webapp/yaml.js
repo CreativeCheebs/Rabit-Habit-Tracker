@@ -17,10 +17,24 @@
 
 function unquote(s) {
   s = s.trim();
+  if (s.startsWith('"') && s.endsWith('"')) {
+    try { return JSON.parse(s); } catch { /* Accept the existing simple quoted format. */ }
+  }
   if (s.length >= 2 && ((s[0] === '"' && s[s.length - 1] === '"') || (s[0] === "'" && s[s.length - 1] === "'"))) {
     return s.slice(1, -1);
   }
   return s;
+}
+
+/** Export the fields supported by the run-file format. IDs and check-ins are not included. */
+export function serializeRunYaml(run, habits) {
+  const quote = (value) => JSON.stringify(String(value ?? ''));
+  const lines = [`name: ${quote(run.name)}`, `days: ${run.days}`, `start: ${run.start}`, 'habits:'];
+  for (const h of habits) {
+    lines.push(`  - name: ${quote(h.name)}`, `    group: ${quote(h.group || 'General')}`,
+      `    points: ${h.points}`, h.interval ? `    every: ${h.count} days` : `    days_per_week: ${h.count}`);
+  }
+  return lines.join('\n') + '\n';
 }
 
 function parseEvery(raw) {
@@ -117,7 +131,7 @@ function setHabitField(h, key, val, errors, lineNo) {
  * so any AI can produce a paste-ready run file. Shown in the builder.
  */
 export const YAML_GUIDE_PROMPT = [
-  'You are helping configure a habit run for Habit Lab, a habit tracker.',
+  'You are helping configure a habit run for Rabit, a habit tracker.',
   'Output ONLY a YAML run file, no explanations. The user will paste it into the app.',
   '',
   'FORMAT (2-space indent, "# " comments allowed):',

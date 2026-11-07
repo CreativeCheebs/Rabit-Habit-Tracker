@@ -1,9 +1,18 @@
 # Changelog
 
+- Renamed the app to Rabit - Habit and Goals Tracker.
+
+- Added reusable Windows scripts for local container rebuilds and signed Android release APKs.
+
+- Added the new Habit Lab icon to the Android launcher and hosted web app.
+
 All notable changes are documented here. Follow Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 ### Added
+- Android: select an active run, edit its settings and habits, and copy its configuration as YAML. Existing check-ins are retained; shared habit changes affect all linked runs.
+- Web: choose an active run, download its current editor as YAML, and expand not-due interval habits to log them manually. Android provides a similar collapsed rest-day section.
+- Web welcome screens for first sign-in and revocable, read-only API integration tokens in Settings.
 - Android: three-page welcome on first start explaining weight per habit (points earned over points possible), with animated burnup chart and Quick Log demos, then the sync choice (connect or use offline).
 ### Security
 - Sync server: failed sign-ins are rate limited (per address and per username, HTTP 429 with a clear message); blocked attempts skip the costly password check.
@@ -12,6 +21,9 @@ All notable changes are documented here. Follow Keep a Changelog and Semantic Ve
 - Web app: ids used in inline handlers and option values are validated before rendering; incoming rows with unsafe ids or field names are ignored.
 - Android: the sign-in box warns when the address is plain `http://` and not on a home/local network, since that traffic would cross the internet unencrypted. Lockout messages from the server are shown as written.
 ### Fixed
+- Web: copied runs no longer include standalone habits unless requested; copied habit edits are saved and run status is preserved when editing.
+- Android: reset builder drafts when changing sources, avoid sample habits in an empty real run, and decode escaped names in YAML exported by the web app.
+- Android: show only the selected source's habits, select a newly created run on this device, and preserve the previous run's duration when copying.
 - Web app: a change to one field of a row from another device (e.g. a check-in state) no longer wipes the rest of the row, including its comment. Incoming fields are merged by stamp. A delete from another device keeps a tombstone, so later stale fields cannot bring back a half row.
 - Android: signing in to a different server or account now asks first, then replaces this phone's synced data and restarts sync from zero, so one account's habits are never uploaded into another. Connecting from offline mode still keeps and uploads the phone's own data.
 - Android: a malformed sign-in answer is reported instead of crashing, and cancelling a sign-in is no longer swallowed.

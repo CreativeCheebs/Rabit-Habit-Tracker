@@ -54,7 +54,7 @@ import kotlin.math.max
     var showPicker by remember { mutableStateOf(false) }
     val tint = habitColorOf(colorKey) ?: green
 
-    val run = remember(database) { database.schemaQueries.selectRuns().executeAsList().firstOrNull() }
+    val run = remember(database) { database.currentRun() }
     val runStart = run?.start_date ?: today
     val runDays = run?.duration_days?.toInt() ?: 21
     val elapsed = (0 until runDays).count { addIsoDays(runStart, it) <= today }.coerceIn(1, runDays)

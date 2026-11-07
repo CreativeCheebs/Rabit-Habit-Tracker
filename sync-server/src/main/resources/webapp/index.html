@@ -3,14 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Habit Lab</title>
+<title>Rabit - Habit and Goals Tracker</title>
+<meta name="theme-color" content="#087d6e">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div id="tip" role="tooltip"></div>
 <div class="desk" id="desk" style="display:none">
 <aside class="side">
-<div class="brand"><div class="brand-mark">H</div><div><b>Habit Lab</b><small id="brandSub">Desktop</small></div></div>
+<div class="brand"><img class="brand-mark" src="icon-192.png" alt=""><div><b>Rabit</b><small id="brandSub">Desktop</small></div></div>
 <nav class="sidenav" aria-label="Main navigation">
 <button class="active" data-view="runs"><span class="ic">◷</span><span class="lbl">Runs &amp; Habits</span></button>
 <button data-view="analytics" hidden><span class="ic">▥</span><span class="lbl">Analytics</span></button>
@@ -37,7 +42,7 @@
 </div>
 <div class="login-wrap" id="loginWrap" style="display:none">
 <div class="login-card">
-<div class="brand"><div class="brand-mark">H</div><h1>Habit Lab</h1></div>
+<div class="brand"><img class="brand-mark" src="icon-192.png" alt=""><h1>Rabit</h1></div>
 <div class="sub" id="loginSub">Sign in to sync your runs across devices.</div>
 <form id="loginForm" autocomplete="on">
 <label class="field-label" for="loginUser">Username</label>
@@ -53,6 +58,13 @@
 <div class="login-hint">Your data stays on your own sync server.</div>
 </div>
 </div>
+<section id="welcome" class="welcome" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" hidden>
+<div class="welcome-panel">
+<div class="welcome-brand"><img class="brand-mark" src="icon-192.png" alt=""><span>RABIT</span></div>
+<div id="welcomeContent" class="welcome-content"></div>
+<div class="welcome-nav"><button class="btn" type="button" id="welcomeBack">Skip</button><div id="welcomeDots" class="welcome-dots" aria-live="polite"></div><button class="build-button" type="button" id="welcomeNext">Next</button></div>
+</div>
+</section>
 <script type="module" src="app.js"></script>
 </body>
 </html>

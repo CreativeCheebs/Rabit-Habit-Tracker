@@ -133,7 +133,7 @@ private fun PageDots(count: Int, current: Int) {
 
 @Composable
 private fun WeightPage(active: Boolean) {
-    Text("HABIT LAB", color = green, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+    Text("RABIT", color = green, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
     Text(
         "Not every habit weighs the same",
         color = ink,

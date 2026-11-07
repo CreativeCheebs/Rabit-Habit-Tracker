@@ -4,7 +4,7 @@ body{margin:0;background:var(--page);color:var(--ink);font:14px -apple-system,"S
 .desk{display:flex;min-height:100vh}
 .side{width:248px;flex:none;background:var(--surface);border-right:1px solid var(--line2);display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh}
 .brand{display:flex;align-items:center;gap:11px;padding:2px 10px 18px}
-.brand-mark{width:40px;height:40px;border-radius:13px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;font-size:21px;font-weight:700;flex:none}
+.brand-mark{object-fit:contain;width:40px;height:40px;border-radius:13px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;font-size:21px;font-weight:700;flex:none}
 .brand b{font-size:17px;font-weight:600;display:block}
 .brand small{font-size:10px;color:var(--muted)}
 .brand h1{font-size:22px;font-weight:600;margin:0}
@@ -184,6 +184,23 @@ pre.prompt{background:var(--surface2);border:1px solid var(--outline);border-rad
 .login-switch{display:block;width:100%;background:none;border:0;color:var(--primary,var(--primary));font:inherit;font-size:12px;padding:8px 0;cursor:pointer}
 .login-switch[hidden]{display:none}
 .login-hint{font-size:10px;color:var(--muted);text-align:center;line-height:1.5}
+.welcome[hidden]{display:none}
+.welcome{position:fixed;inset:0;z-index:50;background:var(--page);overflow:auto;display:grid;place-items:center;padding:24px}
+.welcome-panel{width:min(100%,640px);min-height:min(650px,calc(100vh - 48px));display:flex;flex-direction:column;gap:28px}
+.welcome-brand{display:flex;align-items:center;gap:12px;color:var(--primary);font-size:12px;font-weight:700;letter-spacing:.12em}
+.welcome-content{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px}
+.welcome-content h1{font-size:clamp(28px,5vw,44px);line-height:1.1;letter-spacing:-.035em;margin:0;max-width:540px}
+.welcome-content p{color:var(--muted);font-size:16px;line-height:1.55;max-width:530px;margin:0}
+.welcome-example{background:var(--surface1);border:1px solid var(--line2);border-radius:22px;padding:22px;margin-top:8px}
+.welcome-example .welcome-label{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--muted)}
+.welcome-example .welcome-stat{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin:16px 0;font-size:19px;font-weight:600}
+.welcome-example .welcome-stat span{color:var(--primary)}
+.welcome-track{height:9px;background:var(--track);border-radius:99px;overflow:hidden}.welcome-track span{display:block;height:100%;width:80%;background:var(--primary);border-radius:inherit}
+.welcome-example .welcome-row{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--divider)}
+.welcome-example .welcome-row:last-child{border:0}.welcome-example .welcome-row b{color:var(--primary)}
+.welcome-nav{display:flex;align-items:center;justify-content:space-between;gap:12px}.welcome-nav .build-button{width:auto;margin:0;min-width:104px}
+.welcome-dots{display:flex;align-items:center;gap:6px}.welcome-dots span{width:8px;height:8px;background:var(--divider);border-radius:99px}.welcome-dots span.active{width:22px;background:var(--primary)}
+@media (max-width:600px){.welcome{padding:20px}.welcome-panel{min-height:calc(100dvh - 40px)}}
 /* ---------- responsive ---------- */
 @media(max-width:1100px){.run-hero{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(4,1fr)}.charts-2{grid-template-columns:1fr}.ana-grid{grid-template-columns:1fr}.cards-3{grid-template-columns:repeat(2,1fr)}.builder-source{grid-template-columns:1fr 1fr}}
 @media(max-width:860px){.side{width:76px;padding:16px 10px}.brand b,.brand small{display:none}.sidenav button span.lbl{display:none}.sidenav button{justify-content:center}.side-foot{display:none}.cards-3{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.content{padding:18px 14px 50px}.topbar{padding:0 14px}.builder-source{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}}
@@ -210,3 +227,6 @@ pre.prompt{background:var(--surface2);border:1px solid var(--outline);border-rad
 .dense .symbol,.dense .habit-meta{visibility:hidden;height:0;overflow:hidden;margin:0}
 .dense .dot{width:13px;height:13px;border-radius:50%}
 .hide-points .point,.hide-points .metrics-card,.hide-points .pts-card,.hide-points .quick-impact{display:none}
+.not-due{margin-top:12px}
+.not-due summary{cursor:pointer;color:var(--muted);font-weight:500;padding:10px 4px}
+.not-due summary:focus-visible{outline:2px solid var(--primary);outline-offset:3px}

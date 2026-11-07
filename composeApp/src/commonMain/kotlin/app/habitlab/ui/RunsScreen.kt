@@ -32,6 +32,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -99,6 +103,13 @@ internal fun Habit.withIteration(value: Long): Habit = copy(iteration = romanNum
 
 internal fun romanNumeral(n: Int): String = listOf("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X").getOrNull(n - 1) ?: n.toString()
 
+/** Weekly targets do not identify specific weekdays; only intervals have definite rest days. */
+internal fun isIntervalRestDay(recurrence: String, date: String, completedDays: Set<String>): Boolean {
+    if (!recurrence.startsWith("Every ")) return false
+    val interval = Regex("\\d+").find(recurrence)?.value?.toIntOrNull()?.coerceIn(1, 365) ?: return false
+    return (1 until interval).any { addIsoDays(date, -it) in completedDays }
+}
+
 /** Habits of the latest run, in run order; falls back to the sample habits before any run exists. */
 internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit> =
     runUid?.let { uid ->
@@ -106,7 +117,7 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
             val recur = if (row.recurrence_type == "interval") "Every ${row.recurrence_value} days" else "${row.recurrence_value} days per week"
             Habit(row.title, row.group_name, row.impact_points.toInt(), recur, romanNumeral(row.iteration.toInt()), row.uid, database.habitIcon(row.uid), database.habitColor(row.uid))
         }
-    }?.takeIf { it.isNotEmpty() } ?: sampleHabits
+    } ?: sampleHabits
 
 @Composable internal fun RunsScreen(
     database: HabitDatabase,
@@ -116,7 +127,7 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
     onOpenHabit: (Habit) -> Unit,
     onLocalChange: () -> Unit,
 ) {
-    val latestRun = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList().firstOrNull() }
+    val latestRun = remember(database, revision) { database.currentRun() }
     val habits = remember(database, revision, latestRun) { loadRunHabits(database, latestRun?.uid) }
     val runName = latestRun?.name ?: "21-day habit run"
     val runDays = latestRun?.duration_days?.toInt() ?: 21
@@ -141,7 +152,22 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
     var week by remember(latestRun?.uid) { mutableIntStateOf(todayOffset / 7) }
     var selectedDay by remember(latestRun?.uid) { mutableIntStateOf(todayOffset % 7) }
     var openRow by remember { mutableStateOf<String?>(null) }
+    var choosingRun by remember { mutableStateOf(false) }
+    val activeRuns = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList().filter { it.status == "active" } }
+    var restDaysExpanded by remember(latestRun?.uid) { mutableStateOf(false) }
     val runScope = rememberCoroutineScope()
+
+    val completedDays = remember(database, revision, habits) {
+        habits.associate { habit ->
+            habit.uid() to database.schemaQueries.selectCheckInsForHabit(habit.uid()).executeAsList()
+                .filter { it.state == "done" }.map { it.day }.toSet()
+        }
+    }
+    val selectedDate = addIsoDays(runStart, week * 7 + selectedDay)
+    val (notDue, due) = habits.partition { habit ->
+        records[selectedDate]?.containsKey(habit.uid()) != true &&
+            isIntervalRestDay(habit.recurrence, selectedDate, completedDays[habit.uid()].orEmpty())
+    }
 
     fun changeWeek(next: Int) {
         val clamped = next.coerceIn(0, maxWeek)
@@ -176,6 +202,20 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
     }
 
     LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (activeRuns.size > 1) item {
+            Box {
+                TextButton(onClick = { choosingRun = true }) { Text("Choose run: $runName ▾") }
+                DropdownMenu(expanded = choosingRun, onDismissRequest = { choosingRun = false }) {
+                    activeRuns.forEach { run ->
+                        DropdownMenuItem(text = { Text("${run.name} · ${run.start_date}") }, onClick = {
+                            database.setPref(PREF_CURRENT_RUN, run.uid)
+                            choosingRun = false
+                            onLocalChange()
+                        })
+                    }
+                }
+            }
+        }
         item { RunSummaryCard(runName, runDays, habits.size, earnedPoints, earnedPoints.toFloat() / elapsed, elapsed) }
         item {
             WeekStrip(
@@ -184,11 +224,29 @@ internal fun loadRunHabits(database: HabitDatabase, runUid: String?): List<Habit
             )
         }
         item { Text("Swipe a habit right for Done, left for Partial or Skipped. Tap it for details.", color = muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 2.dp)) }
-        habits.groupBy { it.group }.forEach { (group, inGroup) ->
+        if (latestRun != null && habits.isEmpty()) {
+            item { Text("This run has no habits.", color = muted, style = MaterialTheme.typography.bodyMedium) }
+        }
+        due.groupBy { it.group }.forEach { (group, inGroup) ->
             item(key = "group-$group") {
                 Text("${group.uppercase()} · ${inGroup.size}", style = MaterialTheme.typography.labelMedium, color = green, modifier = Modifier.padding(top = 8.dp, start = 4.dp))
             }
             items(inGroup, key = { it.uid() }) { habit ->
+                val dots = (0 until 7).map { stateFor(habit, week * 7 + it) }
+                SwipeHabitRow(
+                    habit = habit, dots = dots, selectedDay = selectedDay, dense = dense,
+                    openRow = openRow, onOpenRow = { openRow = it },
+                    onCommit = { commit(habit, it) }, onOpen = { onOpenHabit(habit) }, scope = runScope
+                )
+            }
+        }
+        if (notDue.isNotEmpty()) {
+            item(key = "not-due-header") {
+                TextButton(onClick = { restDaysExpanded = !restDaysExpanded }, modifier = Modifier.fillMaxWidth()) {
+                    Text("${if (restDaysExpanded) "▾" else "▸"} Not due on this day · ${notDue.size}")
+                }
+            }
+            if (restDaysExpanded) items(notDue, key = { it.uid() }) { habit ->
                 val dots = (0 until 7).map { stateFor(habit, week * 7 + it) }
                 SwipeHabitRow(
                     habit = habit, dots = dots, selectedDay = selectedDay, dense = dense,

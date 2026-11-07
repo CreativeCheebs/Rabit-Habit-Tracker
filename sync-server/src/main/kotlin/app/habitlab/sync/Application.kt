@@ -22,6 +22,9 @@ import java.io.File
 @Serializable data class SyncResponse(val token: Long, val changes: List<SyncRow>)
 @Serializable data class SignInRequest(val username: String, val password: String)
 @Serializable data class SignInResponse(val account: String, val accessToken: String)
+@Serializable data class CreateApiTokenRequest(val name: String)
+@Serializable data class ApiTokenResponse(val id: String, val name: String, val createdAt: Long, val expiresAt: Long)
+@Serializable data class CreatedApiTokenResponse(val token: String, val info: ApiTokenResponse)
 
 private val wireJson = Json { ignoreUnknownKeys = true }
 
@@ -64,6 +67,18 @@ fun isSafeSyncRow(row: SyncRow): Boolean =
 
 private const val WEB_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+
+private fun ApiTokenInfo.response() = ApiTokenResponse(id, name, createdAt, expiresAt)
+
+/** Token management requires the account's login credential, never an integration token. */
+private fun io.ktor.server.application.ApplicationCall.loginAccount(): String? {
+    val account = request.headers["X-Account-Id"]?.takeIf(::isValidAccountId) ?: return null
+    val bearer = request.headers["Authorization"]?.takeIf { it.startsWith("Bearer ") }?.removePrefix("Bearer ") ?: return null
+    if (!Accounts.exists(account)) return null
+    return account.takeIf { java.security.MessageDigest.isEqual(bearerFor(requireSyncSecret(), account).toByteArray(), bearer.toByteArray()) }
+}
+
+private fun tokenStore() = ApiTokenStore(File(System.getenv("HABITLAB_SYNC_DATA") ?: "data"))
 
 fun main() {
     requireSyncSecret()
@@ -114,6 +129,50 @@ private fun Application.syncModule() {
                 RegisterResult.Taken -> call.respond(io.ktor.http.HttpStatusCode.Conflict, mapOf("error" to "That username is taken."))
                 is RegisterResult.Invalid -> call.respond(io.ktor.http.HttpStatusCode.BadRequest, mapOf("error" to result.message))
             }
+        }
+        get("/api/tokens") {
+            val account = call.loginAccount() ?: run { call.respond(io.ktor.http.HttpStatusCode.Unauthorized, mapOf("error" to "Sign in required")); return@get }
+            call.respond(tokenStore().list(account).map { it.response() })
+        }
+        post("/api/tokens") {
+            val account = call.loginAccount() ?: run { call.respond(io.ktor.http.HttpStatusCode.Unauthorized, mapOf("error" to "Sign in required")); return@post }
+            val request = call.receive<CreateApiTokenRequest>()
+            try {
+                val created = tokenStore().create(account, request.name, 90L * 24 * 60 * 60 * 1000)
+                call.respond(io.ktor.http.HttpStatusCode.Created, CreatedApiTokenResponse(created.token, created.info.response()))
+            } catch (e: IllegalArgumentException) {
+                call.respond(io.ktor.http.HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Invalid token name")))
+            }
+        }
+        delete("/api/tokens/{id}") {
+            val account = call.loginAccount() ?: run { call.respond(io.ktor.http.HttpStatusCode.Unauthorized, mapOf("error" to "Sign in required")); return@delete }
+            val id = call.parameters["id"] ?: ""
+            if (!tokenStore().revoke(account, id)) { call.respond(io.ktor.http.HttpStatusCode.NotFound, mapOf("error" to "Token not found")); return@delete }
+            call.respond(mapOf("revoked" to true))
+        }
+        get("/api/integration/{table}") {
+            val bearer = call.request.headers["Authorization"]?.takeIf { it.startsWith("Bearer ") }?.removePrefix("Bearer ")
+            val account = bearer?.let { tokenStore().accountFor(it) }
+            if (account == null || !Accounts.exists(account)) { call.respond(io.ktor.http.HttpStatusCode.Unauthorized, mapOf("error" to "Valid integration token required")); return@get }
+            val table = call.parameters["table"]
+            if (table !in setOf("habit", "run", "run_habit", "check_in")) { call.respond(io.ktor.http.HttpStatusCode.NotFound, mapOf("error" to "Unknown collection")); return@get }
+            val file = File(System.getenv("HABITLAB_SYNC_DATA") ?: "data", "${accountFileKey(account)}.sqlite")
+            if (!file.exists()) { call.respond(emptyList<JsonObject>()); return@get }
+            val rows = DriverManager.getConnection("jdbc:sqlite:${file.absolutePath}").use { db ->
+                db.prepareStatement("SELECT uid,field_name,value_json FROM sync_field WHERE table_name = ? ORDER BY uid").use { ps ->
+                    ps.setString(1, table)
+                    ps.executeQuery().use { rs ->
+                        val items = linkedMapOf<String, MutableMap<String, kotlinx.serialization.json.JsonElement>>()
+                        while (rs.next()) {
+                            val uid = rs.getString(1); val field = rs.getString(2); val raw = rs.getString(3)
+                            val item = items.getOrPut(uid) { linkedMapOf("uid" to JsonPrimitive(uid)) }
+                            if (raw != null) item[field] = wireJson.parseToJsonElement(raw)
+                        }
+                        items.values.filter { it["_deleted"] != JsonPrimitive(true) }.map { JsonObject(it) }
+                    }
+                }
+            }
+            call.respond(rows)
         }
         post("/api/sync") {
             val account = call.request.headers["X-Account-Id"]?.takeIf(::isValidAccountId)

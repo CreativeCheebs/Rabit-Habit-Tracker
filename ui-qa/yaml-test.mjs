@@ -1,8 +1,21 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRunYaml, YAML_GUIDE_PROMPT } from '../sync-server/src/main/resources/webapp/yaml.js';
+import { parseRunYaml, serializeRunYaml, YAML_GUIDE_PROMPT } from '../sync-server/src/main/resources/webapp/yaml.js';
 
 describe('parseRunYaml', () => {
+  it('round-trips exported run settings and habits with punctuation', () => {
+    const src = serializeRunYaml({ name: 'My "new" run', days: 14, start: '2026-11-06' }, [
+      { name: 'Read: books', group: 'Mind & focus', points: 2, interval: false, count: 5 },
+      { name: 'Walk', group: 'Health', points: 0, interval: true, count: 2 },
+    ]);
+    const result = parseRunYaml(src);
+    assert.equal(result.ok, true, result.errors.join(';'));
+    assert.equal(result.run.name, 'My "new" run');
+    assert.deepEqual(result.habits.map(({ name, group, points, weekly, interval }) => ({ name, group, points, weekly, interval })), [
+      { name: 'Read: books', group: 'Mind & focus', points: 2, weekly: 5, interval: 0 },
+      { name: 'Walk', group: 'Health', points: 0, weekly: 0, interval: 2 },
+    ]);
+  });
   it('accepts the Android-only icon key', () => {
     const r = parseRunYaml(['habits:', '  - name: Run', '    icon: run', '    every: 1 day'].join('\n'));
     assert.equal(r.ok, true, r.errors.join(';'));

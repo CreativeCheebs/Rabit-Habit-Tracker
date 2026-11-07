@@ -20,6 +20,12 @@ selectHabitsForRun:
 SELECT habit.* FROM habit INNER JOIN run_habit ON run_habit.habit_uid = habit.uid WHERE run_habit.run_uid = ? ORDER BY habit.group_name, habit.title;
 selectRuns:
 SELECT * FROM run ORDER BY start_date DESC;
+updateRunDetails:
+UPDATE run SET name = ?, start_date = ?, duration_days = ? WHERE uid = ?;
+updateHabitDetails:
+UPDATE habit SET title = ?, group_name = ?, impact_points = ?, recurrence_type = ?, recurrence_value = ? WHERE uid = ?;
+selectRunLinks:
+SELECT * FROM run_habit WHERE run_uid = ?;
 insertHabit:
 INSERT OR IGNORE INTO habit(uid, title, group_name, iteration, impact_points, recurrence_type, recurrence_value)
 VALUES (?, ?, ?, ?, ?, ?, ?);

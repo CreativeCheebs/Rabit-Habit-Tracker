@@ -13,6 +13,14 @@ HABITLAB_SYNC_ALLOW_SIGNUP=true
 
 Keep the same secret across container restarts so existing bearer tokens remain valid. The `.env` file is ignored by Git; do not put it in an image or publish it. `HABITLAB_SYNC_ALLOW_SIGNUP=false` disables new account registration.
 
+On Windows, after creating `.env` once, rebuild and restart with:
+
+```powershell
+.\scripts\rebuild-container.ps1
+```
+
+The script reuses the root `.env` and the existing named data volume. It will not create or replace the secret. It checks the local health endpoint after starting. Existing integration-token hashes stay in the data volume; the original token value is shown only when created and cannot be recovered from the server. The script changes the running local container; it does not publish an image.
+
 From the repository root:
 
 ```sh

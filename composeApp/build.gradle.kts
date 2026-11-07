@@ -28,5 +28,16 @@ kotlin {
       commonTest.dependencies { implementation(kotlin("test")); implementation(libs.ktor.client.mock) }
     }
 }
-android { namespace = "app.habitlab"; compileSdk = 36; defaultConfig { applicationId = "app.habitlab"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "0.1" } }
+android {
+    namespace = "app.habitlab"
+    compileSdk = 36
+    defaultConfig { applicationId = "app.habitlab"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "0.1" }
+    buildTypes {
+        create("qa") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".qa"
+            matchingFallbacks += "debug"
+        }
+    }
+}
 sqldelight { databases { create("HabitDatabase") { packageName.set("app.habitlab.db") } } }

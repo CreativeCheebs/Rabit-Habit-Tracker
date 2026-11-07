@@ -1,5 +1,9 @@
 package app.habitlab.ui
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonPrimitive
+
 /** One habit parsed from a run YAML file. Exactly one of [weekly] / [interval] is non-zero. */
 internal data class YamlHabit(
     val name: String,
@@ -14,11 +18,29 @@ internal data class YamlRun(val name: String, val days: Int, val start: String, 
     val ok: Boolean get() = errors.isEmpty()
 }
 
+internal fun exportRunYaml(name: String, days: Int, start: String, habits: List<YamlHabit>): String = buildString {
+    appendLine("name: ${JsonPrimitive(name)}")
+    appendLine("days: $days")
+    appendLine("start: $start")
+    appendLine("habits:")
+    habits.forEach { h ->
+        appendLine("  - name: ${JsonPrimitive(h.name)}")
+        appendLine("    group: ${JsonPrimitive(h.group)}")
+        appendLine("    points: ${h.points}")
+        if (h.icon.isNotBlank()) appendLine("    icon: ${JsonPrimitive(h.icon)}")
+        if (h.interval > 0) appendLine("    every: ${h.interval} days") else appendLine("    days_per_week: ${h.weekly}")
+    }
+}
+
 
 private class HabitDraft(var name: String = "", var group: String = "General", var points: Int = 1, var weekly: Int = 0, var interval: Int = 0, var icon: String = "", val line: Int)
 
 private fun unquote(raw: String): String {
     val s = raw.trim()
+    // Web exports use JSON string escaping, which is also valid for YAML double quotes.
+    if (s.length >= 2 && s.first() == '"' && s.last() == '"') {
+        runCatching { Json.parseToJsonElement(s).jsonPrimitive.content }.getOrNull()?.let { return it }
+    }
     val quoted = s.length >= 2 && ((s.first() == '"' && s.last() == '"') || (s.first() == '\'' && s.last() == '\''))
     return if (quoted) s.substring(1, s.length - 1) else s
 }
@@ -105,7 +127,7 @@ internal fun parseRunYaml(source: String): YamlRun {
 
 /** Paste into any AI chat; it replies with a run file the builder can load. */
 internal val YAML_GUIDE_PROMPT: String = listOf(
-    "You are helping configure a habit run for Habit Lab, a habit tracker.",
+    "You are helping configure a habit run for Rabit, a habit tracker.",
     "Output ONLY a YAML run file, no explanations. The user will paste it into the app.",
     "",
     "FORMAT (2-space indent, \"# \" comments allowed):",

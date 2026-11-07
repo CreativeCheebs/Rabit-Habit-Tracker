@@ -6,6 +6,28 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RunYamlTest {
+    @Test fun exportRoundTripsRunAndHabitSettings() {
+        val habit = YamlHabit("Read \"books\"", "Home", 4, 0, 2, "book_open")
+        val decoded = parseRunYaml(exportRunYaml("My run", 7, "2026-11-07", listOf(habit)))
+        assertTrue(decoded.ok, decoded.errors.toString())
+        assertEquals(habit, decoded.habits.single())
+        assertEquals("My run", decoded.name)
+        assertEquals(7, decoded.days)
+    }
+    @Test fun parsesEscapedStringsFromWebExport() {
+        val run = parseRunYaml("""
+            name: "A \"quoted\" run"
+            habits:
+              - name: "Path C:\\books"
+                group: "Line\nTwo"
+                every: 1 day
+        """.trimIndent())
+        assertTrue(run.ok, run.errors.toString())
+        assertEquals("A \"quoted\" run", run.name)
+        assertEquals("Path C:\\books", run.habits.single().name)
+        assertEquals("Line\nTwo", run.habits.single().group)
+    }
+
     @Test fun parsesRunAndHabits() {
         val run = parseRunYaml(
             """

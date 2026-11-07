@@ -4,6 +4,19 @@ Running record of what is built, what is live, and every operational lesson
 learned. Read this file first before continuing work; append to it when you
 finish a step (the owner commits after every step).
 
+## Run editing and rest-day review
+
+- Follow-up: Android run editing now changes existing run and habit records while preserving linked check-ins; imported drafts can be edited, configuration YAML can be copied to the clipboard, and a run selector exposes active runs. Shared habit edits apply across runs. JVM tests cover editing without losing history and YAML export round-trip; a phone QA test edited a habit and confirmed the existing completion still contributed points. Android YAML is copied to the clipboard rather than saved directly as a file.
+- The Habit Tracker test service on 8788 and production service on 8789 were updated and restarted from the tested web build. Each previous jar was backed up before replacement. Both health and Rabit branding checks passed; a new disposable account on test also passed browser registration, sign-in, creation, editing, sync, and fresh-browser recovery. The separately running local Docker service was not changed.
+- The updated Android release was built, signed with the owner's external key, verified, and copied to `/home/aakash/apks/Rabit-release-20261107-170754.apk`; the remote checksum matched. Its version code remains 1, and installing over another APK requires a matching signing key.
+
+- Android device follow-up: on a Samsung SM-M075F, installed the separate `app.habitlab.qa` offline build alongside the existing app. Tested scratch and YAML run creation, copying a seven-day run, same-day run selection, interval rest-day grouping and the accessible manual Done action. Fixed builder source lists showing unrelated habits, new runs failing to become current when start dates tied, and copies resetting their duration. The QA build and JVM tests passed. Android still lacks an existing-run editor and YAML export, and imported draft habits do not have a full edit control. The release app was not replaced. The QA run selection is device-local; existing runs cannot yet be selected through the Android UI.
+
+- Web: active-run selection exposes other active runs; interval rest-day habits move to an expandable section and can still be logged. Edit offers YAML download. Copying excludes standalone habits by default, retains duration, and saves edits to shared habits; editing preserves run status. YAML is a configuration export, not a check-in or ID backup.
+- Android: rest-day rows are expandable and remain loggable, empty real runs no longer show sample habits, switching builder sources clears drafts, and the YAML parser handles escaped names from web exports.
+- Isolated Playwright desktop journeys passed for scratch creation, editing, YAML download/import, copying, run selection, and logging a rest-day habit. A separate disposable local server passed registration, sign-in, creation, editing, sync and recovery in a fresh browser; that test server was stopped. Seven web YAML tests, Android JVM tests, Android debug build, and server tests passed. No Android device or emulator was connected. Existing Android run editing and YAML export are still absent. Kotlin formatting check failed with numerous reported violations; detekt reported NO-SOURCE rather than performing analysis. SQLDelight migration verification is not configured.
+- Gitleaks scanned 51 Git commits without findings. The local and LAN web services still serve the old branding; no service was deployed or restarted. The LAN service uses HTTP; login tokens have no per-session expiry or revocation. A release update also needs an appropriate version code and the original signing key.
+
 ## Repository organization and secret scan
 
 - Moved project documents to `docs/`, mockups to `docs/mockups/`, and root screenshots to `docs/screenshots/`; the root README remains the project entry point. UI quality scripts now use the new paths.
@@ -13,6 +26,24 @@ finish a step (the owner commits after every step).
 
 - Added a multi-stage server image recipe and a Compose configuration with a persistent data volume, externally supplied secret, and loopback-only host port. The image includes the existing hosted web app; Android remains a separate APK. Setup and Docker Hub publishing instructions are in `docs/docker.md`.
 - Built `habitlab-sync:local` and checked a disposable container's health, web page, and SQLite-backed account registration. The Compose service was also started locally on `127.0.0.1:8787`, and its health endpoint and web page responded successfully. Its generated local secret is in the Git-ignored `.env`; its persistent named volume is `rabit_habitlab-data`.
+
+## App name
+
+- Changed the visible Android and web app name to Rabit - Habit and Goals Tracker, using Rabit for compact branding. Package names and stored data identifiers remain unchanged.
+
+## Reusable local build scripts
+
+- Added Windows PowerShell scripts for rebuilding the local Docker service using the existing `.env` and persistent volume, and for building, aligning, signing and verifying an Android release APK with an existing user-supplied keystore. The Docker script does not delete volumes; the Android script prompts for passwords rather than storing them.
+
+## Application icons
+
+- Added the supplied carrot logo as the Android launcher icon and as browser, home-screen, and in-page branding assets. Android changes require a new app build; the hosted web app requires a separate deployment.
+
+## Web welcome and integrations
+
+- Added a three-page, skippable web welcome based on the existing Android onboarding, recorded once per account in each browser.
+- Added named read-only integration tokens in web Settings. Tokens are random, stored only as hashes, expire after 90 days, and can be individually revoked. The `/api/integration/{table}` endpoints expose the account's synced habits, runs, run memberships and check-ins; they do not accept integration tokens for sync writes or token management. See `docs/api-integration.md`.
+- Verified server Gradle tests, an isolated API test for authorization/account isolation/revocation, and browser tests for welcome and token creation/revocation at desktop and mobile widths. These changes have not been deployed to the running local or Linux server; rebuild the Docker service or deploy separately when requested.
 
 ## What this is
 
