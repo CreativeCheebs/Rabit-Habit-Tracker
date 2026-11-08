@@ -22,6 +22,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.clip
@@ -96,6 +100,9 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     var runsRevision by remember { mutableIntStateOf(0) }
     var builderCopy by remember { mutableStateOf<Boolean?>(null) }
     var editCurrentRun by remember { mutableStateOf(false) }
+    var manageRuns by remember { mutableStateOf(false) }
+    var groupHabits by remember(database) { mutableStateOf(database.pref("ui_group_habits") != "0") }
+    var historyDays by remember(database) { mutableIntStateOf(database.pref("ui_history_days")?.toIntOrNull()?.coerceIn(7, 21) ?: 7) }
     val syncClient = remember(database) { SyncClient(database, createHttpClient()) }
     var syncMode by remember(database) { mutableStateOf(syncClient.mode()) }
     var syncing by remember { mutableStateOf(false) }
@@ -169,7 +176,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
     if (systemDarkState != systemDark) systemDarkState = systemDark
     MaterialTheme(colorScheme = palette.toColorScheme()) {
         Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = {
-            if (builderCopy == null && detailHabit == null)
+            if (builderCopy == null && detailHabit == null && !manageRuns)
             NavigationBar(containerColor = surface) {
                 visibleDestinations.forEach { dest -> NavigationBarItem(selected = page == dest, onClick = { page = dest }, icon = { DockGlyph(dest) }, label = { Text(dest.title) }, alwaysShowLabel = true)
                 }
@@ -177,7 +184,7 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
         }) { padding ->
             Column(Modifier.fillMaxSize().padding(padding)) {
                 Row(Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (page == Destination.Runs) "Habits" else page.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    if (page == Destination.Runs) Spacer(Modifier.weight(1f)) else Text(page.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                     if (page == Destination.Runs && syncMode == SYNC_MODE_SERVER) IconButton(
                         onClick = { doSync() },
                         enabled = !syncing,
@@ -186,11 +193,6 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                     ) { Text(if (syncing) "…" else "⟳", color = green, style = MaterialTheme.typography.headlineMedium) }
                     if (page == Destination.Runs) Spacer(Modifier.width(12.dp))
                     if (page == Destination.Runs) IconButton(onClick = { builderCopy = true }, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(50)).background(surface)) { Text("＋", color = green, style = MaterialTheme.typography.headlineMedium) }
-                    if (page == Destination.Runs && database.currentRun() != null) TextButton(onClick = { editCurrentRun = true; builderCopy = true }) { Text("Edit") }
-                    if (page == Destination.Runs && syncMode == SYNC_MODE_OFFLINE) TextButton(
-                        onClick = { openSignIn() },
-                        modifier = Modifier.semantics { contentDescription = "Connect to sync server" }
-                    ) { Text("Offline · connect", style = MaterialTheme.typography.labelSmall, color = muted) }
                     if (page == Destination.QuickLog) Text("~5 min", style = MaterialTheme.typography.labelMedium, color = muted)
                 }
                 if (page == Destination.Runs && syncMode == SYNC_MODE_SERVER) {
@@ -210,8 +212,8 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                         )
                     }
                 }
-                when (page) {
-                    Destination.Runs -> RunsScreen(database, runsRevision, today, dense, onOpenHabit = { detailHabit = it }, onLocalChange = { runsRevision++; noteLocalChange() })
+                Crossfade(targetState = page, label = "navigation") { destination -> when (destination) {
+                    Destination.Runs -> RunsScreen(database, runsRevision, today, dense, groupHabits, historyDays, onManageRuns = { manageRuns = true }, onOpenHabit = { detailHabit = it }, onLocalChange = { runsRevision++; noteLocalChange() })
                     Destination.QuickLog -> QuickLogScreen(database, today, runsRevision, onLocalChange = { noteLocalChange() })
                     Destination.Goals -> GoalsScreen(database, today, onLocalChange = { noteLocalChange() })
                     Destination.Trackers -> ListingScreen("Personal measurements", listOf("Sleep quality · /10", "Daily energy · /10", "Body weight · kg"), "Dated entries and simple history graphs.")
@@ -219,17 +221,22 @@ fun HabitLabApp(database: HabitDatabase, today: String) {
                         database = database,
                         syncClient = syncClient, syncMode = syncMode, dense = dense, syncing = syncing, syncStatus = syncStatus,
                         onDense = { dense = it; database.setPref(PREF_DENSE_LAYOUT, if (it) "1" else "0") },
+                        groupHabits = groupHabits, onGroupHabits = { groupHabits = it; database.setPref("ui_group_habits", if (it) "1" else "0") },
+                        historyDays = historyDays, onHistoryDays = { historyDays = it; database.setPref("ui_history_days", it.toString()) },
                         onConnect = { openSignIn() }, onSyncNow = { doSync() },
                         onOffline = { syncClient.setMode(SYNC_MODE_OFFLINE); syncMode = SYNC_MODE_OFFLINE }
                     )
                     Destination.Analytics -> ListingScreen("Analytics preview", listOf("Cycle analytics arrive in Phase 2", "Example data is not personal data"), "Analytics is a Phase 2 preview.")
-                }
+                } }
             }
-            detailHabit?.let { habit ->
+            AnimatedVisibility(visible = manageRuns, enter = fadeIn(), exit = fadeOut()) { Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
+                RunManagementPage(database, runsRevision, onBack = { manageRuns = false }, onEdit = { manageRuns = false; editCurrentRun = true; builderCopy = true }, onChanged = { runsRevision++; noteLocalChange() })
+            } }
+            AnimatedVisibility(visible = detailHabit != null, enter = fadeIn(), exit = fadeOut()) { detailHabit?.let { habit ->
                 Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
                     HabitDetailPage(database, habit, today, onBack = { detailHabit = null }, onChanged = { runsRevision++ })
                 }
-            }
+            } }
             builderCopy?.let { copy ->
                 Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
                     RunBuilderPage(
@@ -1003,6 +1010,10 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
     syncing: Boolean,
     syncStatus: String?,
     onDense: (Boolean) -> Unit,
+    groupHabits: Boolean,
+    onGroupHabits: (Boolean) -> Unit,
+    historyDays: Int,
+    onHistoryDays: (Int) -> Unit,
     onConnect: () -> Unit,
     onSyncNow: () -> Unit,
     onOffline: () -> Unit,
@@ -1058,6 +1069,14 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
         Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text("HABIT LIST", style = MaterialTheme.typography.labelMedium, color = green)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Show habit groups", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                    Switch(checked = groupHabits, onCheckedChange = onGroupHabits, modifier = Modifier.semantics { contentDescription = "Show habit groups" })
+                }
+                Text("Days shown in normal layout", style = MaterialTheme.typography.titleSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(7, 14, 21).forEach { days -> FilterChip(selected = historyDays == days, onClick = { onHistoryDays(days) }, label = { Text("$days days") }) }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Dense layout", style = MaterialTheme.typography.titleSmall)
