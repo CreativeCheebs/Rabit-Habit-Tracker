@@ -70,11 +70,17 @@ private const val WELCOME_PAGES = 3
  * is last and can be changed later in Settings.
  */
 @Composable
-internal fun WelcomeScreen(onConnect: () -> Unit, onOffline: () -> Unit) {
+internal fun WelcomeScreen(
+    onConnect: () -> Unit,
+    onOffline: () -> Unit,
+) {
     val pager = rememberPagerState { WELCOME_PAGES }
     val scope = rememberCoroutineScope()
     val last = WELCOME_PAGES - 1
-    fun goTo(page: Int) { scope.launch { pager.animateScrollToPage(page) } }
+
+    fun goTo(page: Int) {
+        scope.launch { pager.animateScrollToPage(page) }
+    }
     Dialog(
         // Back steps to the previous page; on the first page it does nothing (a choice is still needed).
         onDismissRequest = { if (pager.currentPage > 0) goTo(pager.currentPage - 1) },
@@ -96,8 +102,11 @@ internal fun WelcomeScreen(onConnect: () -> Unit, onOffline: () -> Unit) {
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Row(Modifier.weight(1f)) {
-                        if (pager.currentPage == last) TextButton(onClick = { goTo(last - 1) }) { Text("Back", color = muted) }
-                        else TextButton(onClick = { goTo(last) }) { Text("Skip", color = muted) }
+                        if (pager.currentPage == last) {
+                            TextButton(onClick = { goTo(last - 1) }) { Text("Back", color = muted) }
+                        } else {
+                            TextButton(onClick = { goTo(last) }) { Text("Skip", color = muted) }
+                        }
                     }
                     PageDots(count = WELCOME_PAGES, current = pager.currentPage)
                     Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
@@ -115,7 +124,10 @@ internal fun WelcomeScreen(onConnect: () -> Unit, onOffline: () -> Unit) {
 }
 
 @Composable
-private fun PageDots(count: Int, current: Int) {
+private fun PageDots(
+    count: Int,
+    current: Int,
+) {
     Row(
         Modifier.semantics { contentDescription = "Page ${current + 1} of $count" },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -124,12 +136,18 @@ private fun PageDots(count: Int, current: Int) {
         repeat(count) { index ->
             val width by animateDpAsState(if (index == current) 22.dp else 8.dp, tween(250))
             val color by animateColorAsState(if (index == current) green else palette.divider, tween(250))
-            Spacer(Modifier.width(width).height(8.dp).clip(CircleShape).background(color))
+            Spacer(
+                Modifier
+                    .width(width)
+                    .height(8.dp)
+                    .clip(CircleShape)
+                    .background(color),
+            )
         }
     }
 }
 
-/* ---------- page 1: weight per habit ---------- */
+// ---------- page 1: weight per habit ----------
 
 @Composable
 private fun WeightPage(active: Boolean) {
@@ -168,7 +186,11 @@ private fun WeightExample(active: Boolean) {
     val earned = if (skipBig) 1 else 4
     val progress by animateFloatAsState(earned / 5f, tween(700, easing = FastOutSlowInEasing))
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(surface).padding(16.dp),
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(surface)
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text("EXAMPLE", color = muted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
@@ -183,11 +205,27 @@ private fun WeightExample(active: Boolean) {
             )
             Text("${earned * 20}%", color = green, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
-        Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(50)).background(palette.track)) {
-            Spacer(Modifier.fillMaxWidth(progress).height(10.dp).clip(RoundedCornerShape(50)).background(green))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .clip(RoundedCornerShape(50))
+                .background(palette.track),
+        ) {
+            Spacer(
+                Modifier
+                    .fillMaxWidth(progress)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(green),
+            )
         }
         Text(
-            if (skipBig) "Skip the 4-point habit and only 1 of 5 points is left." else "Skip the 1-point habit and you still have 4 of 5 points.",
+            if (skipBig) {
+                "Skip the 4-point habit and only 1 of 5 points is left."
+            } else {
+                "Skip the 1-point habit and you still have 4 of 5 points."
+            },
             color = muted,
             style = MaterialTheme.typography.bodyMedium,
         )
@@ -195,10 +233,18 @@ private fun WeightExample(active: Boolean) {
 }
 
 @Composable
-private fun WeightRow(name: String, points: Int, skipped: Boolean) {
+private fun WeightRow(
+    name: String,
+    points: Int,
+    skipped: Boolean,
+) {
     val alpha by animateFloatAsState(if (skipped) 0.4f else 1f, tween(500))
     Row(
-        Modifier.fillMaxWidth().graphicsLayer { this.alpha = alpha }.clip(RoundedCornerShape(14.dp)).background(palette.tile)
+        Modifier
+            .fillMaxWidth()
+            .graphicsLayer { this.alpha = alpha }
+            .clip(RoundedCornerShape(14.dp))
+            .background(palette.tile)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -218,7 +264,7 @@ private fun WeightRow(name: String, points: Int, skipped: Boolean) {
     }
 }
 
-/* ---------- page 2: burnup + Quick Log ---------- */
+// ---------- page 2: burnup + Quick Log ----------
 
 @Composable
 private fun FlowPage(active: Boolean) {
@@ -263,17 +309,28 @@ private fun BurnupDemo(active: Boolean) {
     val grid = palette.divider
     val textMuted = muted
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(surface).padding(16.dp)
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(surface)
+            .padding(16.dp)
             .clearAndSetSemantics {
-                contentDescription = "Example burnup chart: points earned rise day by day, then a dashed forecast continues to the end of the run."
+                contentDescription =
+                    "Example burnup chart: points earned rise day by day, then a dashed forecast continues to the end of the run."
             },
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Points burnup", color = ink, style = MaterialTheme.typography.titleMedium)
         Canvas(Modifier.fillMaxWidth().height(150.dp)) {
-            val left = 4.dp.toPx(); val right = size.width - 8.dp.toPx()
-            val top = 8.dp.toPx(); val bottom = size.height - 6.dp.toPx()
-            fun point(day: Int, points: Float) = Offset(
+            val left = 4.dp.toPx()
+            val right = size.width - 8.dp.toPx()
+            val top = 8.dp.toPx()
+            val bottom = size.height - 6.dp.toPx()
+
+            fun point(
+                day: Int,
+                points: Float,
+            ) = Offset(
                 left + (right - left) * day / (DEMO_DAYS - 1),
                 bottom - (bottom - top) * points / DEMO_MAX_POINTS,
             )
@@ -298,7 +355,11 @@ private fun BurnupDemo(active: Boolean) {
                 val end = point(DEMO_DAYS - 1, DEMO_ACTUAL.last() + slope * (DEMO_DAYS - DEMO_ACTUAL.size))
                 head = lerp(actual.last(), end, forecastP)
                 drawLine(
-                    lineColor.copy(alpha = 0.7f), actual.last(), head, strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round,
+                    lineColor.copy(alpha = 0.7f),
+                    actual.last(),
+                    head,
+                    strokeWidth = 3.dp.toPx(),
+                    cap = StrokeCap.Round,
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(14.dp.toPx(), 10.dp.toPx())),
                 )
             }
@@ -311,13 +372,18 @@ private fun BurnupDemo(active: Boolean) {
     }
 }
 
-private class DemoStep(val habit: String, val points: Int, val done: Boolean)
-
-private val DEMO_STEPS = listOf(
-    DemoStep("Plan the day", 3, done = true),
-    DemoStep("Morning light", 2, done = true),
-    DemoStep("Sleep before 11:30 PM", 2, done = false),
+private class DemoStep(
+    val habit: String,
+    val points: Int,
+    val done: Boolean,
 )
+
+private val DEMO_STEPS =
+    listOf(
+        DemoStep("Plan the day", 3, done = true),
+        DemoStep("Morning light", 2, done = true),
+        DemoStep("Sleep before 11:30 PM", 2, done = false),
+    )
 
 @Composable
 private fun QuickLogDemo(active: Boolean) {
@@ -327,7 +393,9 @@ private fun QuickLogDemo(active: Boolean) {
     LaunchedEffect(active) {
         if (!active) return@LaunchedEffect
         while (true) {
-            step = 0; earned = 0; drag.snapTo(0f)
+            step = 0
+            earned = 0
+            drag.snapTo(0f)
             for (i in DEMO_STEPS.indices) {
                 step = i
                 drag.snapTo(0f)
@@ -344,9 +412,14 @@ private fun QuickLogDemo(active: Boolean) {
     val current = DEMO_STEPS[step]
     val stampAlpha = (kotlin.math.abs(drag.value) / 0.4f).coerceIn(0f, 1f)
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(surface).padding(16.dp)
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(surface)
+            .padding(16.dp)
             .clearAndSetSemantics {
-                contentDescription = "Example of Quick Log: swiping a habit card right marks it done and earns its points; swiping left skips it and earns none."
+                contentDescription =
+                    "Example of Quick Log: swiping a habit card right marks it done and earns its points; swiping left skips it and earns none."
             },
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -356,12 +429,25 @@ private fun QuickLogDemo(active: Boolean) {
         }
         BoxWithConstraints(Modifier.fillMaxWidth().heightIn(min = 110.dp)) {
             val travel = maxWidth
-            Spacer(Modifier.fillMaxWidth().height(96.dp).padding(horizontal = 10.dp).offset(y = 12.dp).clip(RoundedCornerShape(18.dp)).background(palette.tile))
+            Spacer(
+                Modifier
+                    .fillMaxWidth()
+                    .height(
+                        96.dp,
+                    ).padding(horizontal = 10.dp)
+                    .offset(y = 12.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(palette.tile),
+            )
             Column(
-                Modifier.fillMaxWidth().heightIn(min = 96.dp)
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 96.dp)
                     .offset(x = travel * drag.value)
                     .graphicsLayer { rotationZ = drag.value * 10f }
-                    .clip(RoundedCornerShape(18.dp)).background(palette.surfaceAlt).padding(16.dp),
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(palette.surfaceAlt)
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.Center,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -392,10 +478,13 @@ private fun QuickLogDemo(active: Boolean) {
     }
 }
 
-/* ---------- page 3: sync choice ---------- */
+// ---------- page 3: sync choice ----------
 
 @Composable
-private fun SyncPage(onConnect: () -> Unit, onOffline: () -> Unit) {
+private fun SyncPage(
+    onConnect: () -> Unit,
+    onOffline: () -> Unit,
+) {
     Text(
         "Where should your habits live?",
         color = ink,

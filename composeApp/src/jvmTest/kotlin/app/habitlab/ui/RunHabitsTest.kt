@@ -21,12 +21,31 @@ class RunHabitsTest {
         db.schemaQueries.attachHabitToRun("link", "run", "habit")
         db.schemaQueries.insertCheckIn("check", "habit", "2026-11-07", "done", null)
         db.schemaQueries.stopRun("run")
-        assertEquals("stopped", db.schemaQueries.selectRunByUid("run").executeAsOne().status)
+        assertEquals(
+            "stopped",
+            db.schemaQueries
+                .selectRunByUid("run")
+                .executeAsOne()
+                .status,
+        )
         db.deleteRunKeepingHabits("run")
         assertEquals(null, db.schemaQueries.selectRunByUid("run").executeAsOneOrNull())
-        assertEquals("Habit", db.schemaQueries.selectHabitByUid("habit").executeAsOne().title)
-        assertEquals("done", db.schemaQueries.selectCheckInByUid("check").executeAsOne().state)
+        assertEquals(
+            "Habit",
+            db.schemaQueries
+                .selectHabitByUid("habit")
+                .executeAsOne()
+                .title,
+        )
+        assertEquals(
+            "done",
+            db.schemaQueries
+                .selectCheckInByUid("check")
+                .executeAsOne()
+                .state,
+        )
     }
+
     @Test fun editingKeepsExistingLinksAndCheckIns() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         HabitDatabase.Schema.create(driver)
@@ -37,11 +56,36 @@ class RunHabitsTest {
         db.schemaQueries.insertCheckIn("check", "habit", "2026-11-07", "done", null)
         db.schemaQueries.updateRunDetails("After", "2026-11-07", 14, "run")
         db.schemaQueries.updateHabitDetails("After", "General", 3, "weekly", 4, "habit")
-        assertEquals("After", db.schemaQueries.selectRunByUid("run").executeAsOne().name)
-        assertEquals("After", db.schemaQueries.selectHabitsForRun("run").executeAsOne().title)
-        assertEquals("done", db.schemaQueries.selectCheckInsForHabit("habit").executeAsOne().state)
-        assertEquals("link", db.schemaQueries.selectRunLinks("run").executeAsOne().uid)
+        assertEquals(
+            "After",
+            db.schemaQueries
+                .selectRunByUid("run")
+                .executeAsOne()
+                .name,
+        )
+        assertEquals(
+            "After",
+            db.schemaQueries
+                .selectHabitsForRun("run")
+                .executeAsOne()
+                .title,
+        )
+        assertEquals(
+            "done",
+            db.schemaQueries
+                .selectCheckInsForHabit("habit")
+                .executeAsOne()
+                .state,
+        )
+        assertEquals(
+            "link",
+            db.schemaQueries
+                .selectRunLinks("run")
+                .executeAsOne()
+                .uid,
+        )
     }
+
     @Test fun currentRunPrefSelectsNewRunOnSameDay() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         HabitDatabase.Schema.create(driver)
@@ -53,6 +97,7 @@ class RunHabitsTest {
         db.setPref(PREF_CURRENT_RUN, "missing")
         assertTrue(db.currentRun() != null)
     }
+
     @Test fun emptyRealRunNeverDisplaysExampleOrUnrelatedHabits() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         HabitDatabase.Schema.create(driver)

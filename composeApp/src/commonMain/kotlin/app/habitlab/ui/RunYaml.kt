@@ -1,8 +1,8 @@
 package app.habitlab.ui
 
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 
 /** One habit parsed from a run YAML file. Exactly one of [weekly] / [interval] is non-zero. */
 internal data class YamlHabit(
@@ -14,26 +14,45 @@ internal data class YamlHabit(
     val icon: String,
 )
 
-internal data class YamlRun(val name: String, val days: Int, val start: String, val habits: List<YamlHabit>, val errors: List<String>) {
+internal data class YamlRun(
+    val name: String,
+    val days: Int,
+    val start: String,
+    val habits: List<YamlHabit>,
+    val errors: List<String>,
+) {
     val ok: Boolean get() = errors.isEmpty()
 }
 
-internal fun exportRunYaml(name: String, days: Int, start: String, habits: List<YamlHabit>): String = buildString {
-    appendLine("name: ${JsonPrimitive(name)}")
-    appendLine("days: $days")
-    appendLine("start: $start")
-    appendLine("habits:")
-    habits.forEach { h ->
-        appendLine("  - name: ${JsonPrimitive(h.name)}")
-        appendLine("    group: ${JsonPrimitive(h.group)}")
-        appendLine("    points: ${h.points}")
-        if (h.icon.isNotBlank()) appendLine("    icon: ${JsonPrimitive(h.icon)}")
-        if (h.interval > 0) appendLine("    every: ${h.interval} days") else appendLine("    days_per_week: ${h.weekly}")
+internal fun exportRunYaml(
+    name: String,
+    days: Int,
+    start: String,
+    habits: List<YamlHabit>,
+): String =
+    buildString {
+        appendLine("name: ${JsonPrimitive(name)}")
+        appendLine("days: $days")
+        appendLine("start: $start")
+        appendLine("habits:")
+        habits.forEach { h ->
+            appendLine("  - name: ${JsonPrimitive(h.name)}")
+            appendLine("    group: ${JsonPrimitive(h.group)}")
+            appendLine("    points: ${h.points}")
+            if (h.icon.isNotBlank()) appendLine("    icon: ${JsonPrimitive(h.icon)}")
+            if (h.interval > 0) appendLine("    every: ${h.interval} days") else appendLine("    days_per_week: ${h.weekly}")
+        }
     }
-}
 
-
-private class HabitDraft(var name: String = "", var group: String = "General", var points: Int = 1, var weekly: Int = 0, var interval: Int = 0, var icon: String = "", val line: Int)
+private class HabitDraft(
+    var name: String = "",
+    var group: String = "General",
+    var points: Int = 1,
+    var weekly: Int = 0,
+    var interval: Int = 0,
+    var icon: String = "",
+    val line: Int,
+)
 
 private fun unquote(raw: String): String {
     val s = raw.trim()
@@ -52,19 +71,48 @@ internal fun isIsoDate(raw: String): Boolean {
     val day = d.toInt()
     val year = y.toInt()
     val leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
-    val length = when (month) { 2 -> if (leap) 29 else 28; 4, 6, 9, 11 -> 30; else -> 31 }
+    val length =
+        when (month) {
+            2 -> if (leap) 29 else 28
+            4, 6, 9, 11 -> 30
+            else -> 31
+        }
     return month in 1..12 && day in 1..length
 }
 
-private fun setHabitField(h: HabitDraft, key: String, value: String, errors: MutableList<String>, lineNo: Int) {
+private fun setHabitField(
+    h: HabitDraft,
+    key: String,
+    value: String,
+    errors: MutableList<String>,
+    lineNo: Int,
+) {
     when (key) {
         "name" -> h.name = value
         "group" -> h.group = value.ifBlank { "General" }
-        "icon" -> if (isKnownIcon(value.trim().lowercase())) h.icon = value.trim().lowercase() else errors.add("line $lineNo: unknown icon \"$value\" (use a Fluent icon name such as run, heart, book_open)")
-        "points" -> value.toIntOrNull()?.takeIf { it >= 0 }?.let { h.points = it } ?: errors.add("line $lineNo: points must be an integer >= 0")
-        "days_per_week" -> value.toIntOrNull()?.takeIf { it in 1..7 }?.let { h.weekly = it } ?: errors.add("line $lineNo: days_per_week must be 1..7")
-        "every" -> Regex("""^(\d+)\s*days?$""").find(value.trim().lowercase())?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it >= 1 }?.let { h.interval = it }
-            ?: errors.add("line $lineNo: every must look like \"2 days\"")
+        "icon" ->
+            if (isKnownIcon(
+                    value.trim().lowercase(),
+                )
+            ) {
+                h.icon = value.trim().lowercase()
+            } else {
+                errors.add(
+                    "line $lineNo: unknown icon \"$value\" (use a Fluent icon name such as run, heart, book_open)",
+                )
+            }
+        "points" ->
+            value.toIntOrNull()?.takeIf { it >= 0 }?.let { h.points = it }
+                ?: errors.add("line $lineNo: points must be an integer >= 0")
+        "days_per_week" ->
+            value.toIntOrNull()?.takeIf { it in 1..7 }?.let { h.weekly = it }
+                ?: errors.add("line $lineNo: days_per_week must be 1..7")
+        "every" ->
+            Regex("""^(\d+)\s*days?$""").find(value.trim().lowercase())?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it >= 1 }?.let {
+                h.interval =
+                    it
+            }
+                ?: errors.add("line $lineNo: every must look like \"2 days\"")
         else -> errors.add("line $lineNo: unknown habit key \"$key\"")
     }
 }
@@ -87,10 +135,17 @@ internal fun parseRunYaml(source: String): YamlRun {
         val dash = body.startsWith("- ") || body == "-"
         if (indent == 0 && !dash) {
             val colon = body.indexOf(':')
-            if (colon < 0) { errors.add("line $lineNo: expected \"key: value\""); return@forEachIndexed }
+            if (colon < 0) {
+                errors.add("line $lineNo: expected \"key: value\"")
+                return@forEachIndexed
+            }
             val key = body.substring(0, colon).trim().lowercase()
             val value = unquote(body.substring(colon + 1))
-            if (key == "habits") { inHabits = true; current = null; return@forEachIndexed }
+            if (key == "habits") {
+                inHabits = true
+                current = null
+                return@forEachIndexed
+            }
             inHabits = false
             when (key) {
                 "name" -> name = value
@@ -100,7 +155,10 @@ internal fun parseRunYaml(source: String): YamlRun {
             }
             return@forEachIndexed
         }
-        if (!inHabits) { errors.add("line $lineNo: habit entries belong under \"habits:\""); return@forEachIndexed }
+        if (!inHabits) {
+            errors.add("line $lineNo: habit entries belong under \"habits:\"")
+            return@forEachIndexed
+        }
         val field: String
         if (dash) {
             val draft = HabitDraft(line = lineNo)
@@ -111,9 +169,16 @@ internal fun parseRunYaml(source: String): YamlRun {
         } else {
             field = body
         }
-        val target = current ?: run { errors.add("line $lineNo: expected \"- \" to start a habit"); return@forEachIndexed }
+        val target =
+            current ?: run {
+                errors.add("line $lineNo: expected \"- \" to start a habit")
+                return@forEachIndexed
+            }
         val colon = field.indexOf(':')
-        if (colon < 0) { errors.add("line $lineNo: expected \"key: value\""); return@forEachIndexed }
+        if (colon < 0) {
+            errors.add("line $lineNo: expected \"key: value\"")
+            return@forEachIndexed
+        }
         setHabitField(target, field.substring(0, colon).trim().lowercase(), unquote(field.substring(colon + 1)), errors, lineNo)
     }
     drafts.forEachIndexed { i, h ->
@@ -126,31 +191,32 @@ internal fun parseRunYaml(source: String): YamlRun {
 }
 
 /** Paste into any AI chat; it replies with a run file the builder can load. */
-internal val YAML_GUIDE_PROMPT: String = listOf(
-    "You are helping configure a habit run for Rabit, a habit tracker.",
-    "Output ONLY a YAML run file, no explanations. The user will paste it into the app.",
-    "",
-    "FORMAT (2-space indent, \"# \" comments allowed):",
-    "  name: <run name, optional, default \"<days>-day run\">",
-    "  days: <run length 1..365, optional, default 21>",
-    "  start: <YYYY-MM-DD start date, optional, default today>",
-    "  habits:   # required, at least one",
-    "    - name: <habit name, required>",
-    "      group: <group label, optional, default General>",
-    "      points: <impact points per completion, integer >= 0, optional, default 1>",
-    "      icon: <optional Fluent icon name, e.g. ${FEATURED_ICON_KEYS.joinToString(", ")}>",
-    "      days_per_week: <1..7, weekly target the user hits on any days>",
-    "      every: <N days, e.g. \"2 days\"; repeat interval, 1 means daily>",
-    "  Give each habit EXACTLY ONE of days_per_week / every.",
-    "  daily habit -> every: 1 day.  weekdays habit -> days_per_week: 5.",
-    "",
-    "RULES THE APP ENFORCES (respect them when choosing schedules):",
-    "- An \"every N days\" habit stays due until done: if missed today it is",
-    "  still due tomorrow. After a Done it hides for N-1 days, then is due again.",
-    "- A \"days_per_week\" habit is due every day until done that day.",
-    "- Only Done earns impact points. Partial and Skipped earn nothing.",
-    "- Keep 2-6 habits per run, 1-4 points each. Ask the user if unclear.",
-    "",
-    "Ask the user which habits they want (name, how often, group, points),",
-    "then output ONLY the YAML file.",
-).joinToString("\n")
+internal val YAML_GUIDE_PROMPT: String =
+    listOf(
+        "You are helping configure a habit run for Rabit, a habit tracker.",
+        "Output ONLY a YAML run file, no explanations. The user will paste it into the app.",
+        "",
+        "FORMAT (2-space indent, \"# \" comments allowed):",
+        "  name: <run name, optional, default \"<days>-day run\">",
+        "  days: <run length 1..365, optional, default 21>",
+        "  start: <YYYY-MM-DD start date, optional, default today>",
+        "  habits:   # required, at least one",
+        "    - name: <habit name, required>",
+        "      group: <group label, optional, default General>",
+        "      points: <impact points per completion, integer >= 0, optional, default 1>",
+        "      icon: <optional Fluent icon name, e.g. ${FEATURED_ICON_KEYS.joinToString(", ")}>",
+        "      days_per_week: <1..7, weekly target the user hits on any days>",
+        "      every: <N days, e.g. \"2 days\"; repeat interval, 1 means daily>",
+        "  Give each habit EXACTLY ONE of days_per_week / every.",
+        "  daily habit -> every: 1 day.  weekdays habit -> days_per_week: 5.",
+        "",
+        "RULES THE APP ENFORCES (respect them when choosing schedules):",
+        "- An \"every N days\" habit stays due until done: if missed today it is",
+        "  still due tomorrow. After a Done it hides for N-1 days, then is due again.",
+        "- A \"days_per_week\" habit is due every day until done that day.",
+        "- Only Done earns impact points. Partial and Skipped earn nothing.",
+        "- Keep 2-6 habits per run, 1-4 points each. Ask the user if unclear.",
+        "",
+        "Ask the user which habits they want (name, how often, group, points),",
+        "then output ONLY the YAML file.",
+    ).joinToString("\n")

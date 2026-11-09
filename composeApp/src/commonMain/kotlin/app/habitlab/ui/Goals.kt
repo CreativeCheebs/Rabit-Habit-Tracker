@@ -1,6 +1,5 @@
 package app.habitlab.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -43,16 +42,28 @@ import app.habitlab.db.HabitDatabase
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
-private val GOAL_TINTS = listOf<() -> Color>({ green }, { androidx.compose.ui.graphics.lerp(green, palette.partial, .5f) }, { palette.partial })
+private val GOAL_TINTS =
+    listOf<() -> Color>({ green }, {
+        androidx.compose.ui.graphics
+            .lerp(green, palette.partial, .5f)
+    }, { palette.partial })
 
 /** Mirrors the web app's Goals view: a card per goal with progress from its start date, plus "New goal". */
-@Composable internal fun GoalsScreen(database: HabitDatabase, today: String, onLocalChange: () -> Unit) {
+@Composable internal fun GoalsScreen(
+    database: HabitDatabase,
+    today: String,
+    onLocalChange: () -> Unit,
+) {
     var revision by remember { mutableIntStateOf(0) }
     val goals = remember(database, revision) { database.schemaQueries.selectGoals().executeAsList() }
     var editing by remember { mutableStateOf<Goal?>(null) }
     var creating by remember { mutableStateOf(false) }
 
-    LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyColumn(
+        Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         item {
             Column {
                 Text("Your goals", style = MaterialTheme.typography.titleMedium)
@@ -64,27 +75,58 @@ private val GOAL_TINTS = listOf<() -> Color>({ green }, { androidx.compose.ui.gr
             val tint = GOAL_TINTS[index % GOAL_TINTS.size]()
             val percent = (goal.progress * 100).roundToInt().coerceIn(0, 100)
             Card(
-                colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(18.dp),
-                modifier = Modifier.fillMaxWidth().clickable { editing = goal }.semantics { contentDescription = "Goal ${goal.description}, $percent percent" }
+                colors = CardDefaults.cardColors(containerColor = surface),
+                shape = RoundedCornerShape(18.dp),
+                modifier =
+                    Modifier.fillMaxWidth().clickable { editing = goal }.semantics {
+                        contentDescription =
+                            "Goal ${goal.description}, $percent percent"
+                    },
             ) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(goal.description, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                        Text(
+                            goal.description,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f),
+                        )
                         Text("$percent%", style = MaterialTheme.typography.titleMedium, color = tint)
                     }
                     Text(
                         "Started ${shortDate(goal.start_date)}" + (goal.target_date?.let { " · target ${shortDate(it)}" } ?: ""),
-                        style = MaterialTheme.typography.labelSmall, color = muted, modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
+                        style = MaterialTheme.typography.labelSmall,
+                        color = muted,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
                     )
-                    LinearProgressIndicator(progress = { (goal.progress.toFloat()).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().height(8.dp), color = tint, trackColor = palette.track, gapSize = 0.dp, drawStopIndicator = {})
+                    LinearProgressIndicator(
+                        progress = {
+                            (goal.progress.toFloat()).coerceIn(0f, 1f)
+                        },
+                        modifier =
+                            Modifier.fillMaxWidth().height(
+                                8.dp,
+                            ),
+                        color = tint,
+                        trackColor = palette.track,
+                        gapSize = 0.dp,
+                        drawStopIndicator = {},
+                    )
                 }
             }
         }
         item {
             Box(
-                Modifier.fillMaxWidth().border(1.5.dp, palette.divider, RoundedCornerShape(18.dp)).clickable { creating = true }.padding(18.dp)
+                Modifier
+                    .fillMaxWidth()
+                    .border(
+                        1.5.dp,
+                        palette.divider,
+                        RoundedCornerShape(18.dp),
+                    ).clickable { creating = true }
+                    .padding(18.dp)
                     .semantics { contentDescription = "New goal" },
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("＋ New goal", style = MaterialTheme.typography.titleSmall, color = green)
@@ -94,18 +136,32 @@ private val GOAL_TINTS = listOf<() -> Color>({ green }, { androidx.compose.ui.gr
         }
     }
 
-    if (creating) GoalDialog(null, onDismiss = { creating = false }, onDelete = null) { description, target, _ ->
-        val uid = "g-" + Random.nextInt().toUInt().toString(16).padStart(8, '0')
-        database.schemaQueries.upsertGoalRow(uid, description, today, target, 0.0)
-        creating = false; revision++; onLocalChange()
+    if (creating) {
+        GoalDialog(null, onDismiss = { creating = false }, onDelete = null) { description, target, _ ->
+            val uid =
+                "g-" +
+                    Random
+                        .nextInt()
+                        .toUInt()
+                        .toString(16)
+                        .padStart(8, '0')
+            database.schemaQueries.upsertGoalRow(uid, description, today, target, 0.0)
+            creating = false
+            revision++
+            onLocalChange()
+        }
     }
     editing?.let { goal ->
         GoalDialog(goal, onDismiss = { editing = null }, onDelete = {
             database.schemaQueries.deleteGoalRow(goal.uid)
-            editing = null; revision++; onLocalChange()
+            editing = null
+            revision++
+            onLocalChange()
         }) { description, target, progress ->
             database.schemaQueries.updateGoal(description, target, progress, goal.uid)
-            editing = null; revision++; onLocalChange()
+            editing = null
+            revision++
+            onLocalChange()
         }
     }
 }
@@ -125,25 +181,37 @@ private val GOAL_TINTS = listOf<() -> Color>({ green }, { androidx.compose.ui.gr
         title = { Text(if (goal == null) "New goal" else "Edit goal") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Goal") }, placeholder = { Text("e.g. Read 20 pages daily") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = description, onValueChange = {
+                    description = it
+                }, label = { Text("Goal") }, placeholder = { Text("e.g. Read 20 pages daily") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(
-                    value = target, onValueChange = { target = it.take(10) }, label = { Text("Target date (optional)") }, placeholder = { Text("YYYY-MM-DD") },
-                    singleLine = true, isError = !targetValid, supportingText = { if (!targetValid) Text("Use YYYY-MM-DD") }, modifier = Modifier.fillMaxWidth()
+                    value = target,
+                    onValueChange = { target = it.take(10) },
+                    label = { Text("Target date (optional)") },
+                    placeholder = { Text("YYYY-MM-DD") },
+                    singleLine = true,
+                    isError = !targetValid,
+                    supportingText = { if (!targetValid) Text("Use YYYY-MM-DD") },
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 if (goal != null) {
                     Text("Progress ${(progress * 100).roundToInt()}%", style = MaterialTheme.typography.labelLarge)
-                    Slider(value = progress, onValueChange = { progress = (it * 20).roundToInt() / 20f }, valueRange = 0f..1f, steps = 19, colors = SliderDefaults.colors(thumbColor = green, activeTrackColor = green))
+                    Slider(value = progress, onValueChange = {
+                        progress = (it * 20).roundToInt() / 20f
+                    }, valueRange = 0f..1f, steps = 19, colors = SliderDefaults.colors(thumbColor = green, activeTrackColor = green))
                 }
             }
         },
         confirmButton = {
-            TextButton(enabled = description.isNotBlank() && targetValid, onClick = { onSave(description.trim(), target.takeIf { it.isNotBlank() }, progress.toDouble()) }) { Text("Save") }
+            TextButton(enabled = description.isNotBlank() && targetValid, onClick = {
+                onSave(description.trim(), target.takeIf { it.isNotBlank() }, progress.toDouble())
+            }) { Text("Save") }
         },
         dismissButton = {
             Row {
                 if (onDelete != null) TextButton(onClick = onDelete) { Text("Delete", color = palette.error) }
                 TextButton(onClick = onDismiss) { Text("Cancel") }
             }
-        }
+        },
     )
 }

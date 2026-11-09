@@ -28,6 +28,12 @@ class CheckInUpdateTest {
         val db = freshDb()
         db.schemaQueries.insertCheckIn("h1:2026-11-05", "h1", "2026-11-05", "done", "felt great")
         db.schemaQueries.updateCheckIn("partial", "cut short", "h1", "2026-11-05")
-        assertEquals("cut short", db.schemaQueries.selectCheckInByUid("h1:2026-11-05").executeAsOne().comment)
+        assertEquals(
+            "cut short",
+            db.schemaQueries
+                .selectCheckInByUid("h1:2026-11-05")
+                .executeAsOne()
+                .comment,
+        )
     }
 }

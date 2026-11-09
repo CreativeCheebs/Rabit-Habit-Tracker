@@ -10,15 +10,20 @@ import kotlin.math.sign
  * may remap each direction in the swipe settings. Comment never writes a
  * check-in: it opens the note sheet for the current habit instead.
  */
-enum class QuickSwipeAction(val key: String) {
+enum class QuickSwipeAction(
+    val key: String,
+) {
     Done("done"),
     Partial("partial"),
     Skipped("skipped"),
-    Comment("comment");
+    Comment("comment"),
+    ;
 
     companion object {
-        fun parse(raw: String?, fallback: QuickSwipeAction): QuickSwipeAction =
-            entries.firstOrNull { it.key == raw?.trim()?.lowercase() } ?: fallback
+        fun parse(
+            raw: String?,
+            fallback: QuickSwipeAction,
+        ): QuickSwipeAction = entries.firstOrNull { it.key == raw?.trim()?.lowercase() } ?: fallback
     }
 }
 
@@ -52,8 +57,10 @@ fun previewSwipeAction(
     }
 
 /** 0..1 progress used to fade in the Gmail-style background and stamp. */
-fun swipeProgress(offsetX: Float, thresholdPx: Float): Float =
-    if (thresholdPx <= 0f) 0f else (abs(offsetX) / thresholdPx).coerceIn(0f, 1f)
+fun swipeProgress(
+    offsetX: Float,
+    thresholdPx: Float,
+): Float = if (thresholdPx <= 0f) 0f else (abs(offsetX) / thresholdPx).coerceIn(0f, 1f)
 
 fun swipeStampLabel(action: QuickSwipeAction): String =
     when (action) {
@@ -73,17 +80,21 @@ fun swipeCheckInState(action: QuickSwipeAction): String? =
     }
 
 /** Parses a comma-joined stored action list; legacy single values still parse. */
-fun parseSwipeActionList(raw: String?, fallback: List<QuickSwipeAction>): List<QuickSwipeAction> {
+fun parseSwipeActionList(
+    raw: String?,
+    fallback: List<QuickSwipeAction>,
+): List<QuickSwipeAction> {
     if (raw.isNullOrBlank()) return fallback
-    val parsed = raw.split(",")
-        .mapNotNull { token -> QuickSwipeAction.entries.firstOrNull { it.key == token.trim().lowercase() } }
-        .distinct()
-        .take(3)
+    val parsed =
+        raw
+            .split(",")
+            .mapNotNull { token -> QuickSwipeAction.entries.firstOrNull { it.key == token.trim().lowercase() } }
+            .distinct()
+            .take(3)
     return parsed.ifEmpty { fallback }
 }
 
-fun serializeSwipeActionList(actions: List<QuickSwipeAction>): String =
-    actions.joinToString(",") { it.key }
+fun serializeSwipeActionList(actions: List<QuickSwipeAction>): String = actions.joinToString(",") { it.key }
 
 /**
  * Where a released Quick Log card goes: 1 flies right, -1 flies left, 0

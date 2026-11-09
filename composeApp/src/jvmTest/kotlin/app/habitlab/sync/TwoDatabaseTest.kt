@@ -4,7 +4,6 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import app.habitlab.db.HabitDatabase
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
-import kotlinx.serialization.json.long
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -18,11 +17,13 @@ class TwoDatabaseTest {
         return HabitDatabase(driver)
     }
 
-    private fun deviceOf(db: HabitDatabase): String =
-        db.schemaQueries.selectMetaValue("device").executeAsOne()
+    private fun deviceOf(db: HabitDatabase): String = db.schemaQueries.selectMetaValue("device").executeAsOne()
 
     /** One full exchange in each direction, like two devices syncing via the server. */
-    private fun syncPair(a: HabitDatabase, b: HabitDatabase) {
+    private fun syncPair(
+        a: HabitDatabase,
+        b: HabitDatabase,
+    ) {
         val outA = exportChanges(a)
         applyChanges(b, outA.changes)
         markExported(a, outA.upto)
@@ -32,10 +33,19 @@ class TwoDatabaseTest {
     }
 
     private fun habitTitles(db: HabitDatabase): Map<String, String> =
-        db.schemaQueries.selectHabits().executeAsList().associate { it.uid to it.title }
+        db.schemaQueries
+            .selectHabits()
+            .executeAsList()
+            .associate { it.uid to it.title }
 
-    private fun checkInStates(db: HabitDatabase, day: String): Map<String, String> =
-        db.schemaQueries.selectCheckInsForDay(day).executeAsList().associate { it.habit_uid to it.state }
+    private fun checkInStates(
+        db: HabitDatabase,
+        day: String,
+    ): Map<String, String> =
+        db.schemaQueries
+            .selectCheckInsForDay(day)
+            .executeAsList()
+            .associate { it.habit_uid to it.state }
 
     @Test
     fun offlineInsertsConvergeBothWays() {
@@ -110,8 +120,11 @@ class TwoDatabaseTest {
         assertNull(a.schemaQueries.selectCheckInByUid("h1:2026-11-04").executeAsOneOrNull())
         assertNull(b.schemaQueries.selectCheckInByUid("h1:2026-11-04").executeAsOneOrNull())
         for (db in listOf(a, b)) {
-            val tombstone = db.schemaQueries.selectFieldStamps("check_in", "h1:2026-11-04").executeAsList()
-                .firstOrNull { it.field_name == "_deleted" }
+            val tombstone =
+                db.schemaQueries
+                    .selectFieldStamps("check_in", "h1:2026-11-04")
+                    .executeAsList()
+                    .firstOrNull { it.field_name == "_deleted" }
             assertTrue(tombstone != null)
         }
         // The habit itself is untouched on both sides.
@@ -182,7 +195,11 @@ class TwoDatabaseTest {
         b.schemaQueries.upsertFieldStamp("habit", "h1", "title", 9_000_000_000_000L, deviceOf(b), 99L)
         val out = exportChanges(b)
         applyChanges(a, out.changes)
-        val clock = a.schemaQueries.selectMetaValue("clock").executeAsOne().toLong()
+        val clock =
+            a.schemaQueries
+                .selectMetaValue("clock")
+                .executeAsOne()
+                .toLong()
         assertTrue(clock >= 9_000_000_000_000L)
         assertEquals("0", a.schemaQueries.selectMetaValue("applying").executeAsOne())
     }
@@ -193,7 +210,12 @@ class TwoDatabaseTest {
         val b = freshDb()
         a.schemaQueries.insertHabit("h1", "Plan the day", "Focus", 1L, 3L, "weekly", 3L)
         syncPair(a, b)
-        val points = b.schemaQueries.selectHabits().executeAsList().first { it.uid == "h1" }.impact_points
+        val points =
+            b.schemaQueries
+                .selectHabits()
+                .executeAsList()
+                .first { it.uid == "h1" }
+                .impact_points
         assertEquals(3L, points)
     }
 }

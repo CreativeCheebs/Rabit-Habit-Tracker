@@ -9,6 +9,19 @@
 All notable changes are documented here. Follow Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
+
+## [1.0.1] - CI and formatting
+
+- Corrected Gradle wrapper invocation in CI and allowed independent checks to run after failures.
+- Formatted Kotlin sources and configured ktlint to recognize Compose function naming conventions.
+- Increased Android version code to 3 for this release.
+
+## [1.0.0] - Stable baseline
+
+The Android stable baseline was version 1.0.0 (version code 2).
+
+The following entries describe the functionality included in this baseline.
+
 ### Added
 - Web and Android: run lifecycle controls for selecting stopped runs, stopping the active run, and deleting a run without deleting its habits or check-in history.
 - Browser regression coverage and reviewed desktop/mobile screenshots for run creation, editing, duplicate-name validation, YAML import/export, stop, selection, and deletion.

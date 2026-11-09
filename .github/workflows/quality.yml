@@ -29,14 +29,18 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v6
       - name: Kotlin formatting check
-        run: ./gradlew :composeApp:ktlintCheck
+        run: bash ./gradlew :composeApp:ktlintCheck
       - name: Static analysis
-        run: ./gradlew :composeApp:detekt
+        if: success() || failure()
+        run: bash ./gradlew :composeApp:detekt
       - name: KMP and server JVM tests
-        run: ./gradlew :composeApp:jvmTest :sync-server:test
+        if: success() || failure()
+        run: bash ./gradlew :composeApp:jvmTest :sync-server:test
       - name: Android debug build
-        run: ./gradlew :composeApp:assembleDebug
+        if: success() || failure()
+        run: bash ./gradlew :composeApp:assembleDebug
       - name: Web app parser tests
+        if: success() || failure()
         run: node --test ui-qa/yaml-test.mjs
       - name: Upload test and analysis reports
         if: always()
@@ -61,7 +65,7 @@ jobs:
         with:
           cache-provider: basic
       - name: iOS simulator tests
-        run: ./gradlew :composeApp:iosSimulatorArm64Test
+        run: bash ./gradlew :composeApp:iosSimulatorArm64Test
 
   secrets:
     name: Secret scan

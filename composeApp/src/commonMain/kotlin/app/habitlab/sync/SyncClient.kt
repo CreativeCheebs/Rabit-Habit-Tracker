@@ -40,23 +40,50 @@ fun isUnencryptedRemote(url: String): Boolean {
 }
 
 sealed interface SyncOutcome {
-    data class Success(val received: Int, val sent: Int) : SyncOutcome
+    data class Success(
+        val received: Int,
+        val sent: Int,
+    ) : SyncOutcome
+
     data object NotConfigured : SyncOutcome
-    data class LocalProblem(val message: String) : SyncOutcome
-    data class Unreachable(val message: String) : SyncOutcome
-    data class ServerRefused(val status: Int, val message: String) : SyncOutcome
+
+    data class LocalProblem(
+        val message: String,
+    ) : SyncOutcome
+
+    data class Unreachable(
+        val message: String,
+    ) : SyncOutcome
+
+    data class ServerRefused(
+        val status: Int,
+        val message: String,
+    ) : SyncOutcome
 }
 
-sealed class SignInProblem(message: String) : Exception(message) {
+sealed class SignInProblem(
+    message: String,
+) : Exception(message) {
     class Rejected : SignInProblem("The server did not accept that username or password.")
-    class Unreachable(val url: String) : SignInProblem("Can't reach the sync server at $url.")
-    class ServerError(val status: Int) : SignInProblem("The server answered $status.")
+
+    class Unreachable(
+        val url: String,
+    ) : SignInProblem("Can't reach the sync server at $url.")
+
+    class ServerError(
+        val status: Int,
+    ) : SignInProblem("The server answered $status.")
+
     /** The server explained itself, e.g. "That username is taken." */
-    class Refused(message: String) : SignInProblem(message)
+    class Refused(
+        message: String,
+    ) : SignInProblem(message)
 
     /** Signing in elsewhere would replace the data this phone holds for [account]; the user must agree first. */
-    class SwitchNeedsConfirmation(val account: String, val url: String) :
-        SignInProblem("This phone is connected to $account at $url. Switching replaces its habits with the new account's.")
+    class SwitchNeedsConfirmation(
+        val account: String,
+        val url: String,
+    ) : SignInProblem("This phone is connected to $account at $url. Switching replaces its habits with the new account's.")
 }
 
 /**
@@ -64,10 +91,16 @@ sealed class SignInProblem(message: String) : Exception(message) {
  * apply the answer, then advance token and pushed only on success so a failed
  * sync simply repeats next time.
  */
-class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
+class SyncClient(
+    private val db: HabitDatabase,
+    private val http: HttpClient,
+) {
     fun mode(): String? = db.metaValue(SYNC_MODE_KEY)
+
     fun setMode(mode: String) = db.setMetaValue(SYNC_MODE_KEY, mode)
+
     fun serverUrl(): String? = db.metaValue(SYNC_URL_KEY)
+
     fun account(): String? = db.metaValue(SYNC_ACCOUNT_KEY)
 
     /** Signs in, or with [create] first creates the account on the server (which also signs in). */
@@ -86,22 +119,31 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
         val previousUrl = serverUrl()
         val switching = previousAccount != null && (previousUrl != base || previousAccount != username)
         if (switching && !replaceLocalData) throw SignInProblem.SwitchNeedsConfirmation(previousAccount!!, previousUrl ?: "")
-        val body = JsonObject(
-            mapOf("username" to JsonPrimitive(username), "password" to JsonPrimitive(password)),
-        )
-        val response = try {
-            http.post("$base/api/${if (create) "register" else "sign-in"}") {
-                contentType(ContentType.Application.Json)
-                setBody(body.toString())
+        val body =
+            JsonObject(
+                mapOf("username" to JsonPrimitive(username), "password" to JsonPrimitive(password)),
+            )
+        val response =
+            try {
+                http.post("$base/api/${if (create) "register" else "sign-in"}") {
+                    contentType(ContentType.Application.Json)
+                    setBody(body.toString())
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                throw SignInProblem.Unreachable(base)
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            throw SignInProblem.Unreachable(base)
-        }
         if (!response.status.isSuccess()) {
             if (response.status.value == 401) throw SignInProblem.Rejected()
-            val detail = try { ((syncJson.parseToJsonElement(response.bodyAsText()) as? JsonObject)?.get("error") as? JsonPrimitive)?.content } catch (e: Exception) { null }
+            val detail =
+                try {
+                    ((syncJson.parseToJsonElement(response.bodyAsText()) as? JsonObject)?.get("error") as? JsonPrimitive)?.content
+                } catch (
+                    e: Exception,
+                ) {
+                    null
+                }
             if ((create || response.status.value == 429) && detail != null) throw SignInProblem.Refused(detail)
             throw SignInProblem.ServerError(response.status.value)
         }
@@ -172,23 +214,25 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
         } catch (e: Exception) {
             return SyncOutcome.LocalProblem("This phone's data could not be read: ${e.message}")
         }
-        val request = JsonObject(
-            mapOf(
-                "device" to JsonPrimitive(device),
-                "token" to JsonPrimitive(token),
-                "changes" to kotlinx.serialization.json.JsonArray(changes.map { it.toWire() }),
-            ),
-        )
-        val response = try {
-            http.post("$base/api/sync") {
-                header("X-Account-Id", account)
-                header("Authorization", "Bearer $authToken")
-                contentType(ContentType.Application.Json)
-                setBody(request.toString())
+        val request =
+            JsonObject(
+                mapOf(
+                    "device" to JsonPrimitive(device),
+                    "token" to JsonPrimitive(token),
+                    "changes" to kotlinx.serialization.json.JsonArray(changes.map { it.toWire() }),
+                ),
+            )
+        val response =
+            try {
+                http.post("$base/api/sync") {
+                    header("X-Account-Id", account)
+                    header("Authorization", "Bearer $authToken")
+                    contentType(ContentType.Application.Json)
+                    setBody(request.toString())
+                }
+            } catch (e: Exception) {
+                return SyncOutcome.Unreachable("Can't reach the sync server at $base.")
             }
-        } catch (e: Exception) {
-            return SyncOutcome.Unreachable("Can't reach the sync server at $base.")
-        }
         if (!response.status.isSuccess()) {
             return SyncOutcome.ServerRefused(response.status.value, "The server answered ${response.status.value}.")
         }
@@ -199,9 +243,10 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
         return try {
             val parsed = syncJson.parseToJsonElement(text) as JsonObject
             val serverToken = (parsed["token"] as JsonPrimitive).long
-            val incoming = (parsed["changes"] as kotlinx.serialization.json.JsonArray).map {
-                syncChangeFromWire(it as JsonObject)
-            }
+            val incoming =
+                (parsed["changes"] as kotlinx.serialization.json.JsonArray).map {
+                    syncChangeFromWire(it as JsonObject)
+                }
             applyChanges(db, incoming)
             db.setMetaValue("token", serverToken.toString())
             markExported(db, upto)
@@ -211,10 +256,12 @@ class SyncClient(private val db: HabitDatabase, private val http: HttpClient) {
         }
     }
 
-    private fun HabitDatabase.metaValue(key: String): String? =
-        schemaQueries.selectMetaValue(key).executeAsOneOrNull()
+    private fun HabitDatabase.metaValue(key: String): String? = schemaQueries.selectMetaValue(key).executeAsOneOrNull()
 
-    private fun HabitDatabase.setMetaValue(key: String, value: String) {
+    private fun HabitDatabase.setMetaValue(
+        key: String,
+        value: String,
+    ) {
         schemaQueries.upsertMetaValue(key, value)
     }
 }

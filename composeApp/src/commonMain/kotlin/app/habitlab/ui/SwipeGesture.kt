@@ -23,26 +23,28 @@ fun Modifier.horizontalSwipe(
     onStart: () -> Unit = {},
     onDrag: (dx: Float, dy: Float) -> Unit,
     onRelease: (velocityX: Float) -> Unit,
-): Modifier = pointerInput(key) {
-    awaitEachGesture {
-        val down = awaitFirstDown(requireUnconsumed = false)
-        if (!canStart()) return@awaitEachGesture
-        val tracker = VelocityTracker()
-        tracker.addPointerInputChange(down)
-        var overSlop = 0f
-        val start = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
-            change.consume()
-            overSlop = over
-        } ?: return@awaitEachGesture
-        tracker.addPointerInputChange(start)
-        onStart()
-        onDrag(overSlop, 0f)
-        horizontalDrag(start.id) { change ->
-            tracker.addPointerInputChange(change)
-            val delta = change.positionChange()
-            change.consume()
-            onDrag(delta.x, delta.y)
+): Modifier =
+    pointerInput(key) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            if (!canStart()) return@awaitEachGesture
+            val tracker = VelocityTracker()
+            tracker.addPointerInputChange(down)
+            var overSlop = 0f
+            val start =
+                awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                    change.consume()
+                    overSlop = over
+                } ?: return@awaitEachGesture
+            tracker.addPointerInputChange(start)
+            onStart()
+            onDrag(overSlop, 0f)
+            horizontalDrag(start.id) { change ->
+                tracker.addPointerInputChange(change)
+                val delta = change.positionChange()
+                change.consume()
+                onDrag(delta.x, delta.y)
+            }
+            onRelease(tracker.calculateVelocity().x)
         }
-        onRelease(tracker.calculateVelocity().x)
     }
-}
