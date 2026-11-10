@@ -8,7 +8,7 @@ finish a step (the owner commits after every step).
 
 - Android and web Manage runs can activate a stopped run. The current active run stops; all check-ins and habits remain. Android changes statuses in one local transaction, and web queues the status changes together for sync.
 - Added a SQLDelight activation query and a JVM regression test for single-active status and preserved check-ins. Android ktlint, JVM tests, QA/debug assemblies, server tests, and isolated browser run lifecycle test passed.
-- Installed the QA APK on the connected Samsung, but ADB still reports a locked screen, so on-device interaction of the new control remains unverified. Signed Android 1.2.0 (code 6) with the external key, verified v2/v3 signatures, and transferred it to `/home/aakash/apks/` with matching SHA-256 `89d3f82a065e7ed60ce9ad2073b52b30d293ebfed81b51c3240bbe86d2c6961a`. Both hosted JARs were backed up, test/prod restarted, health endpoints returned OK, and both served the new control.
+- Installed the QA APK on the connected Samsung. Once unlocked, activated the stopped QA_Parallel_Probe, observed it as the sole active run with two synced status changes, then reactivated QA_One_Active and confirmed its previous 36% check-in progress and successful sync. Signed Android 1.2.0 (code 6) with the external key, verified v2/v3 signatures, and transferred it to `/home/aakash/apks/` with matching SHA-256 `89d3f82a065e7ed60ce9ad2073b52b30d293ebfed81b51c3240bbe86d2c6961a`. Both hosted JARs were backed up, test/prod restarted, health endpoints returned OK, and both served the new control. Commit `941b5bb` was pushed and GitHub release v1.2.0 was published with the signed APK.
 
 ## Single current run and server ignore rules
 
