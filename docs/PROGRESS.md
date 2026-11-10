@@ -11,6 +11,7 @@ finish a step (the owner commits after every step).
 - JVM sharing tests, ktlint and Android debug assembly passed. No Android device was connected, so interaction and clipboard behavior were not checked on device.
 - Android 1.1.0 (version code 4) assembled as an unsigned release. Signing did not complete: the external `rabit-passphrase.txt` is a keytool transcript rather than a usable password source. No APK was transferred and the web server was not restarted for this Android-only change.
 - GitHub follow-up: all ten open Dependabot PRs were closed at the owner's request. A v1.1.0 release draft points to main but remains unpublished without a signed APK. The root README is now for end users, with representative screenshots; detailed setup moved to `docs/developer-guide.md`. GitHub About description and topics were set.
+- Release follow-up: the corrected external passphrase file signed Android 1.1.0 (code 4). The APK passed v2/v3 signature verification and package metadata checks, was uploaded to and published in the GitHub v1.1.0 release, then copied to `/home/aakash/apks/Rabit-1.1.0-release.apk`. The remote SHA-256 matched the local APK: `7e554b56a474395a0b642576328c277da8a18054394b92ffcdc424cffcbd9971`. No signing material entered the repository.
 
 ## Run lifecycle, duplicate protection, and responsive review
 
