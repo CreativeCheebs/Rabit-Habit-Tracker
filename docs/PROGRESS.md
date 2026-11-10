@@ -4,6 +4,12 @@ Running record of what is built, what is live, and every operational lesson
 learned. Read this file first before continuing work; append to it when you
 finish a step (the owner commits after every step).
 
+## Manual run activation (2026-11-10)
+
+- Android and web Manage runs can activate a stopped run. The current active run stops; all check-ins and habits remain. Android changes statuses in one local transaction, and web queues the status changes together for sync.
+- Added a SQLDelight activation query and a JVM regression test for single-active status and preserved check-ins. Android ktlint, JVM tests, QA/debug assemblies, server tests, and isolated browser run lifecycle test passed.
+- Installed the QA APK on the connected Samsung, but ADB still reports a locked screen, so on-device interaction of the new control remains unverified. Signed Android 1.2.0 (code 6) with the external key, verified v2/v3 signatures, and transferred it to `/home/aakash/apks/` with matching SHA-256 `89d3f82a065e7ed60ce9ad2073b52b30d293ebfed81b51c3240bbe86d2c6961a`. Both hosted JARs were backed up, test/prod restarted, health endpoints returned OK, and both served the new control.
+
 ## Single current run and server ignore rules
 
 - Android and hosted web remove the run selector. Android's run manager shows the current run by default, with older stopped runs behind “Show past runs.” The Android add button opens run management while an active run exists; the builder also retains its creation guard.

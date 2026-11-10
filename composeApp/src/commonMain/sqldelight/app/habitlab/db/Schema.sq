@@ -24,6 +24,8 @@ updateRunDetails:
 UPDATE run SET name = ?, start_date = ?, duration_days = ? WHERE uid = ?;
 stopRun:
 UPDATE run SET status = 'stopped' WHERE uid = ? AND status = 'active';
+activateRun:
+UPDATE run SET status = 'active' WHERE uid = ? AND status = 'stopped';
 updateHabitDetails:
 UPDATE habit SET title = ?, group_name = ?, impact_points = ?, recurrence_type = ?, recurrence_value = ? WHERE uid = ?;
 selectRunLinks:

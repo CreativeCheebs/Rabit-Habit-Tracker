@@ -49,6 +49,19 @@ internal fun HabitDatabase.ensureSingleActiveRun(): Int {
     return active.size - 1
 }
 
+/** Switch to an existing run in one transaction; retain all rows and check-in history. */
+internal fun HabitDatabase.activateExistingRun(runUid: String): Boolean {
+    val target = schemaQueries.selectRunByUid(runUid).executeAsOneOrNull() ?: return false
+    if (target.status == "active") return true
+    if (target.status != "stopped") return false
+    transaction {
+        activeRuns().forEach { schemaQueries.stopRun(it.uid) }
+        schemaQueries.activateRun(runUid)
+        setPref(PREF_CURRENT_RUN, runUid)
+    }
+    return true
+}
+
 /** Delete only the run and its links; habits and dated check-ins may be shared. */
 internal fun HabitDatabase.deleteRunKeepingHabits(runUid: String) {
     transaction {

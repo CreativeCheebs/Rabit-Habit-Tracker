@@ -10,7 +10,11 @@ All notable changes are documented here. Follow Keep a Changelog and Semantic Ve
 
 ## [Unreleased]
 
-- Web: stopped-run history is available from Manage runs and is read-only. Quick Log excludes stopped-run habits.
+## [1.2.0] - Manual run activation
+
+- Android and web Manage runs can make a stopped run active. The previous active run is stopped and its habits and check-ins are kept.
+- Web stopped-run history is read-only and Quick Log excludes stopped-run habits.
+- Increased Android version code to 6.
 
 ## [1.1.1] - Single current run
 

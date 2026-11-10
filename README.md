@@ -23,7 +23,7 @@ These screenshots show earlier builds; some controls and labels have since chang
 
 ## Get started
 
-**Android:** Download the signed [Rabit 1.1.1 APK](https://github.com/CreativeCheebs/Rabit-Habit-Tracker/releases/tag/v1.1.1). Open Rabit and choose offline use or connect to your own sync server.
+**Android:** Download the signed [Rabit 1.2.0 APK](https://github.com/CreativeCheebs/Rabit-Habit-Tracker/releases/tag/v1.2.0). Open Rabit and choose offline use or connect to your own sync server.
 
 **Browser:** The web app is included with the self-hosted sync server. Follow the [Docker setup guide](docs/docker.md), then open your server's address in a browser and create an account.
 

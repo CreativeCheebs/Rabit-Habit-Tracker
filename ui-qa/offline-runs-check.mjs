@@ -156,5 +156,12 @@ try {
     return Object.values(db.run).filter((entry) => entry.v.status === 'active' && !entry.v._deleted).length;
   }), 1);
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('habitlab.db')).run.legacy.v.status), 'stopped');
-  console.log('PASS offline browser: scratch, edit, YAML download, one active run, read-only history, YAML creation and optional rest-day logging');
+  await page.locator('.run-management summary').click();
+  await page.locator('.run-management-row').filter({ hasText: 'Copied run' }).getByRole('button', { name: 'Make active' }).click();
+  assert.deepEqual(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('habitlab.db')).run)
+    .filter((entry) => entry.v.status === 'active' && !entry.v._deleted).map((entry) => entry.v.name)), ['Copied run']);
+  assert.equal(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('habitlab.db')).run)
+    .find((entry) => entry.v.name === 'YAML run').v.status), 'stopped');
+  assert.equal(await page.locator('#activeRunSelect').count(), 0);
+  console.log('PASS offline browser: scratch, edit, YAML download, manual run activation, read-only history, YAML creation and optional rest-day logging');
 } finally { await browser.close(); }

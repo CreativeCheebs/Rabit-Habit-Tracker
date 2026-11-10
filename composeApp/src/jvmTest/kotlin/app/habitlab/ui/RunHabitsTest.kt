@@ -107,6 +107,38 @@ class RunHabitsTest {
         driver.close()
     }
 
+    @Test fun manuallyActivatingPastRunStopsCurrentAndKeepsCheckIns() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        HabitDatabase.Schema.create(driver)
+        val db = HabitDatabase(driver)
+        db.schemaQueries.insertRun("current", "Current", "2026-11-10", 21)
+        db.schemaQueries.insertRun("past", "Past", "2026-11-01", 21)
+        db.schemaQueries.stopRun("past")
+        db.schemaQueries.insertHabit("habit", "Habit", "General", 1, 2, "weekly", 7)
+        db.schemaQueries.attachHabitToRun("past:habit", "past", "habit")
+        db.schemaQueries.insertCheckIn("habit:2026-11-01", "habit", "2026-11-01", "done", null)
+
+        assertTrue(db.activateExistingRun("past"))
+        assertEquals(listOf("past"), db.activeRuns().map { it.uid })
+        assertEquals("past", db.currentRun()?.uid)
+        assertEquals(
+            "stopped",
+            db.schemaQueries
+                .selectRunByUid("current")
+                .executeAsOne()
+                .status,
+        )
+        assertEquals(
+            "done",
+            db.schemaQueries
+                .selectCheckInByUid("habit:2026-11-01")
+                .executeAsOne()
+                .state,
+        )
+        assertEquals(0, db.ensureSingleActiveRun())
+        driver.close()
+    }
+
     @Test fun emptyRealRunNeverDisplaysExampleOrUnrelatedHabits() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         HabitDatabase.Schema.create(driver)

@@ -383,8 +383,9 @@ internal fun loadRunHabits(
 ) {
     val runs = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList() }
     val current = remember(database, revision) { database.currentRun()?.uid }
+    val orderedRuns = listOfNotNull(runs.firstOrNull { it.uid == current }) + runs.filter { it.uid != current }
     var showPastRuns by remember { mutableStateOf(false) }
-    val visibleRuns = if (showPastRuns) runs else runs.filter { it.uid == current }
+    val visibleRuns = if (showPastRuns) orderedRuns else orderedRuns.take(1)
     var pending by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -414,6 +415,8 @@ internal fun loadRunHabits(
                                 "active"
                             ) {
                                 TextButton(onClick = { pending = Triple("stop", run.uid, run.name) }) { Text("Stop") }
+                            } else if (run.status == "stopped") {
+                                TextButton(onClick = { pending = Triple("activate", run.uid, run.name) }) { Text("Make active") }
                             }
                             TextButton(onClick = { pending = Triple("delete", run.uid, run.name) }) { Text("Delete") }
                         }
@@ -425,27 +428,48 @@ internal fun loadRunHabits(
     pending?.let { (action, uid, name) ->
         AlertDialog(
             onDismissRequest = { pending = null },
-            title = { Text(if (action == "stop") "Stop run?" else "Delete run?") },
-            text = { Text("${if (action == "stop") "Stop" else "Delete"} $name? Its habits and check-ins will be kept.") },
+            title = {
+                Text(
+                    when (action) {
+                        "stop" -> "Stop run?"
+                        "activate" -> "Make this run active?"
+                        else -> "Delete run?"
+                    },
+                )
+            },
+            text = {
+                Text(
+                    if (action == "activate") {
+                        "Make $name active? The current active run will be stopped. Habits and check-ins will be kept."
+                    } else {
+                        "${if (action == "stop") "Stop" else "Delete"} $name? Its habits and check-ins will be kept."
+                    },
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    if (action ==
-                        "stop"
-                    ) {
-                        database.schemaQueries.stopRun(uid)
+                    if (action == "activate") {
+                        val activated = database.activateExistingRun(uid)
+                        pending = null
+                        if (activated) {
+                            onChanged()
+                            onBack()
+                        }
                     } else {
-                        database.deleteRunKeepingHabits(uid)
+                        if (action == "stop") {
+                            database.schemaQueries.stopRun(uid)
+                        } else {
+                            database.deleteRunKeepingHabits(uid)
+                        }
+                        pending = null
+                        onChanged()
                     }
-                    ; pending = null
-                    onChanged()
                 }) {
                     Text(
-                        if (action ==
-                            "stop"
-                        ) {
-                            "Stop"
-                        } else {
-                            "Delete"
+                        when (action) {
+                            "stop" -> "Stop"
+                            "activate" -> "Make active"
+                            else -> "Delete"
                         },
                     )
                 }

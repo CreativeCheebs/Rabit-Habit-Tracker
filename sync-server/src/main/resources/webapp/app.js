@@ -84,7 +84,7 @@ function deviceId() {
   if (!d) { d = uuid(); localStorage.setItem(LS.device, d); }
   return d;
 }
-function putRow(t, u, values) {
+function putRow(t, u, values, schedule = true) {
   const cur = row(t, u) || { v: {}, s: {} };
   const c = nextClock(), d = deviceId();
   const v = { ...cur.v, ...values };
@@ -97,7 +97,7 @@ function putRow(t, u, values) {
   mirror[t][u] = { v, s };
   dirty.set(t + '|' + u, ++dirtySeq);
   saveMirror();
-  scheduleSync();
+  if (schedule) scheduleSync();
 }
 /** Tombstone a row: the delete syncs, and the mirror drops it at once. */
 function deleteRow(t, u) {
@@ -705,7 +705,17 @@ function runManagement() {
   const runs = allRuns();
   if (!runs.length) return '';
   return `<details class="run-management"><summary>Manage runs · ${runs.length}</summary><p class="caption">Stop an active run before starting another. Deleting a run keeps its habits and check-in history.</p>
-    ${runs.map((r) => `<div class="run-management-row"><div><strong>${esc(r.name)}</strong><div class="caption">${esc(r.start_date)} · ${r.duration_days} days · ${r.status === 'active' ? 'Active' : 'Stopped'}</div></div><div class="head-btns">${r.status === 'stopped' ? `<button class="btn" data-click="showRunHistory" data-a="${safeId(r.uid)}">History</button>` : ''}${r.uid === latestRun()?.uid ? `<button class="btn" data-click="openEdit" data-a="${safeId(r.uid)}">Edit</button>` : ''}${r.status === 'active' ? `<button class="btn" data-click="stopRun" data-a="${safeId(r.uid)}">Stop run</button>` : ''}<button class="btn" data-click="deleteRun" data-a="${safeId(r.uid)}">Delete run</button></div></div>`).join('')}</details>`;
+    ${runs.map((r) => `<div class="run-management-row"><div><strong>${esc(r.name)}</strong><div class="caption">${esc(r.start_date)} · ${r.duration_days} days · ${r.status === 'active' ? 'Active' : 'Stopped'}</div></div><div class="head-btns">${r.status === 'stopped' ? `<button class="btn" data-click="showRunHistory" data-a="${safeId(r.uid)}">History</button><button class="btn" data-click="activateRun" data-a="${safeId(r.uid)}">Make active</button>` : ''}${r.uid === latestRun()?.uid ? `<button class="btn" data-click="openEdit" data-a="${safeId(r.uid)}">Edit</button>` : ''}${r.status === 'active' ? `<button class="btn" data-click="stopRun" data-a="${safeId(r.uid)}">Stop run</button>` : ''}<button class="btn" data-click="deleteRun" data-a="${safeId(r.uid)}">Delete run</button></div></div>`).join('')}</details>`;
+}
+function activateRun(uid) {
+  const target = allRuns().find((r) => r.uid === uid && r.status === 'stopped');
+  if (!target) return;
+  if (!window.confirm(`Make “${target.name}” active? The current active run will be stopped. Habits and check-ins will be kept.`)) return;
+  for (const run of allRuns().filter((r) => r.status === 'active')) putRow('run', run.uid, { status: 'stopped' }, false);
+  putRow('run', uid, { status: 'active' }, false);
+  historyRunUid = '';
+  scheduleSync();
+  renderRuns();
 }
 function showRunHistory(uid) {
   const run = allRuns().find((r) => r.uid === uid);
@@ -1379,6 +1389,7 @@ const ACTIONS = {
   openBuilder: () => openBuilder(),
   openEdit: (a) => openEdit(a),
   showRunHistory: (a) => showRunHistory(a),
+  activateRun: (a) => activateRun(a),
   closeRunHistory: () => { historyRunUid = ''; renderRuns(); },
   stopRun: (a) => stopRun(a),
   deleteRun: (a) => deleteRun(a),
