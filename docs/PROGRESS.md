@@ -4,6 +4,13 @@ Running record of what is built, what is live, and every operational lesson
 learned. Read this file first before continuing work; append to it when you
 finish a step (the owner commits after every step).
 
+## Android daily text sharing
+
+- Android's Runs toolbar now opens Share. Habit detail has an opt-in switch, off by default. Share lists only opted-in habits due today, shows ✓/◐/✕ for done/partial/other, and copies plain text headed `# Day N, D Month` with optional today and run percentages. The options are in Share settings.
+- Sharing choices are device-local `sync_meta` preferences; the current sync protocol does not carry them to web or another phone. No SQLDelight table migration was needed. Percentages use only eligible days of opted-in habits through today; a selected run outside today's date shows an unavailable state.
+- JVM sharing tests, ktlint and Android debug assembly passed. No Android device was connected, so interaction and clipboard behavior were not checked on device.
+- Android 1.1.0 (version code 4) assembled as an unsigned release. Signing did not complete: the external `rabit-passphrase.txt` is a keytool transcript rather than a usable password source. No APK was transferred and the web server was not restarted for this Android-only change.
+
 ## Run lifecycle, duplicate protection, and responsive review
 
 - CI formatting follow-up (2026-11-09): formatted app Kotlin sources and scripts, configured ktlint to allow PascalCase for `@Composable` functions, and fixed remaining line-length issues. The app ktlint check, app JVM tests, root server tests, and Android debug assembly passed together; seven web parser tests also passed. Existing ktlint baseline was preserved. One existing UI file retains a file-scoped wildcard-import exception. These changes and the workflow fix are local and GitHub Actions and iOS simulator testing remain unverified. Dependency review still needs the GitHub dependency graph enabled or diagnosed.

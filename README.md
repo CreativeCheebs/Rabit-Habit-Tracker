@@ -12,7 +12,7 @@ Android first, built with Compose Multiplatform, Kotlin, Material 3 dark theme, 
 
 ## Android
 
-The stable Android version is **1.0.1** (Android version code **3**). The app follows Semantic Versioning: increase the major version for incompatible changes, the minor version for backward-compatible features, and the patch version for backward-compatible fixes. Increase `versionCode` to a new, higher integer for every Android release; it is independent of the three-part version name. Update `CHANGELOG.md` when preparing a release. A version in the source does not by itself publish an APK or create a Git tag.
+The current Android source version is **1.1.0** (Android version code **4**). The app follows Semantic Versioning: increase the major version for incompatible changes, the minor version for backward-compatible features, and the patch version for backward-compatible fixes. Increase `versionCode` to a new, higher integer for every Android release; it is independent of the three-part version name. Update `CHANGELOG.md` when preparing a release. A version in the source does not by itself publish an APK or create a Git tag.
 
 Open the project in Android Studio or build with the Gradle wrapper:
 

@@ -21,6 +21,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,6 +52,7 @@ import kotlin.math.max
     var icon by remember(habit.uid()) { mutableStateOf(habit.icon) }
     var colorKey by remember(habit.uid()) { mutableStateOf(habit.color) }
     var showPicker by remember { mutableStateOf(false) }
+    var shareable by remember(habit.uid()) { mutableStateOf(database.isHabitShareable(habit.uid())) }
     val tint = habitColorOf(colorKey) ?: green
 
     val run = remember(database) { database.currentRun() }
@@ -121,6 +123,19 @@ import kotlin.math.max
                             color = muted,
                         )
                     }
+                }
+            }
+            Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Include when sharing", style = MaterialTheme.typography.titleMedium)
+                        Text("Show this habit in the daily Share page.", color = muted, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = shareable, onCheckedChange = {
+                        shareable = it
+                        database.setHabitShareable(habit.uid(), it)
+                        onChanged()
+                    })
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -9,6 +9,10 @@ internal const val PREF_ACCENT = "ui_accent"
 internal const val PREF_HIDE_POINTS = "ui_hide_points"
 internal const val PREF_CURRENT_RUN = "ui_current_run"
 private const val ICON_PREFIX = "habit_icon:"
+private const val SHARE_PREFIX = "habit_share:"
+internal const val PREF_SHARE_HABITS = "ui_share_habit_completion"
+internal const val PREF_SHARE_TODAY = "ui_share_today_completion"
+internal const val PREF_SHARE_RUN = "ui_share_run_completion"
 
 internal fun HabitDatabase.pref(key: String): String? = schemaQueries.selectMetaValue(key).executeAsOneOrNull()
 
@@ -16,6 +20,13 @@ internal fun HabitDatabase.setPref(
     key: String,
     value: String,
 ) = schemaQueries.upsertMetaValue(key, value)
+
+internal fun HabitDatabase.isHabitShareable(habitUid: String): Boolean = pref(SHARE_PREFIX + habitUid) == "1"
+
+internal fun HabitDatabase.setHabitShareable(
+    habitUid: String,
+    shareable: Boolean,
+) = setPref(SHARE_PREFIX + habitUid, if (shareable) "1" else "0")
 
 internal fun HabitDatabase.currentRun(): app.habitlab.db.Run? {
     val runs = schemaQueries.selectRuns().executeAsList()

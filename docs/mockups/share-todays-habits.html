@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rabit · Share mockup</title>
+<style>
+:root{color-scheme:dark;font-family:Roboto,Arial,sans-serif;background:#101713;color:#e3ebe4}*{box-sizing:border-box}body{margin:0;padding:28px}header,.note{max-width:1100px;margin:0 auto 24px}h1{font-size:27px;font-weight:500;margin:0 0 8px}p{color:#aab9ad;line-height:1.5;margin:0}.canvas{display:flex;flex-wrap:wrap;justify-content:center;gap:24px}.phone{width:350px;min-height:690px;border:7px solid #374239;border-radius:34px;background:#151e18;padding:18px;box-shadow:0 16px 45px #0006}.status{font-size:12px;display:flex;justify-content:space-between;margin-bottom:29px}.top{display:flex;align-items:center;gap:16px;margin-bottom:24px}.back{font-size:23px;color:#b6d9bb}.top h2{font-size:21px;font-weight:500;margin:0;flex:1}.icon-button{border:0;background:none;color:#b5dfbb;font-size:22px;cursor:pointer;padding:4px}.eyebrow{font-size:11px;letter-spacing:1px;color:#b5dfbb;text-transform:uppercase;margin-bottom:9px}.lead{font-size:24px;line-height:1.2;margin:0 0 8px}.help{font-size:13px;color:#aab9ad;line-height:1.45;margin-bottom:20px}.card{background:#202b23;border-radius:19px;padding:16px;margin:11px 0}.row{display:flex;align-items:center;justify-content:space-between;gap:12px}.name{font-size:15px;font-weight:500}.meta{font-size:12px;color:#abb9ac;margin-top:5px}.switch{width:44px;height:26px;background:#a9d5ad;border-radius:20px;padding:3px;flex:none;border:0;cursor:pointer}.switch:after{content:"";display:block;width:20px;height:20px;border-radius:50%;background:#183720;margin-left:auto}.switch[aria-checked="false"]{background:#455248}.switch[aria-checked="false"]:after{background:#b9c8bc;margin-left:0}.divider{border-top:1px solid #3a493e;margin:15px 0}.pill{font-size:16px;border-radius:20px;padding:4px 10px;background:#304c37;color:#c3e8c7}.muted-pill{background:#3b403a;color:#b9c4ba}.button{width:100%;border:0;border-radius:16px;padding:14px;font-size:14px;font-weight:600;background:#b3dfb9;color:#193a22;margin-top:15px;cursor:pointer}.list{background:#202b23;border-radius:19px;overflow:hidden;margin-top:18px}.item{padding:15px;border-bottom:1px solid #37443a}.item:last-child{border:0}.item .row{align-items:flex-start}.summary{background:#23382a;border-radius:15px;padding:13px;margin:15px 0;color:#c6e8ca;font-size:13px}.preview{white-space:pre-wrap;background:#101a13;border:1px solid #405247;border-radius:16px;padding:15px;font:13px/1.55 ui-monospace,Consolas,monospace;color:#d5e5d8}.foot{font-size:12px;color:#aab9ad;margin-top:12px}.note{margin-top:25px;font-size:13px;color:#b1c0b3}[hidden]{display:none!important}button:focus-visible{outline:2px solid white;outline-offset:3px}@media(max-width:750px){body{padding:18px}.phone{width:min(100%,350px)}}
+</style>
+</head>
+<body>
+<header><h1>Share today's habits</h1><p>Android dark-mode concept · per-habit privacy and configurable text sharing. Sample results are illustrative.</p></header>
+<main class="canvas">
+<section class="phone" aria-label="Habit edit mockup">
+<div class="status"><span>9:41</span><span>● ▰</span></div><div class="top"><span class="back">‹</span><h2>Edit habit</h2><span>Save</span></div>
+<div class="eyebrow">Focus</div><h3 class="lead">Plan the day</h3><p class="help">3 days per week · 3 impact points</p>
+<div class="card"><div class="row"><div><div class="name">Include when sharing</div><div class="meta">Show this habit in the Share page.</div></div><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Share Plan the day"></button></div><div class="divider"></div><div class="meta">Off by default for new and existing habits.</div></div>
+<div class="card"><div class="row"><div><div class="name">Private habit</div><div class="meta">Journal · excluded from shared text</div></div><button class="switch" type="button" role="switch" aria-checked="false" aria-label="Share Private habit"></button></div></div>
+</section>
+<section class="phone" aria-label="Share page mockup">
+<div class="status"><span>9:41</span><span>● ▰</span></div><div class="top"><span class="back">‹</span><h2>Share</h2><button class="icon-button" type="button" aria-label="Share settings" title="Share settings" onclick="document.getElementById('shareSettings').scrollIntoView({behavior:'smooth'})">⚙</button></div>
+<div class="eyebrow">Tuesday · 10 November</div><h3 class="lead">Today's habits</h3><p class="help">Only habits you choose to share appear here. Use settings to choose which results appear in the copied text.</p>
+<div class="summary" id="dailySummary">Today · 67% completed</div>
+<div class="list"><div class="item"><div class="row"><div><div class="name">Morning light</div><div class="meta">Wellbeing</div></div><span class="pill" aria-label="Completed">✓</span></div></div><div class="item"><div class="row"><div><div class="name">Plan the day</div><div class="meta">Focus</div></div><span class="pill" aria-label="Completed">✓</span></div></div><div class="item"><div class="row"><div><div class="name">Focused work block</div><div class="meta">Focus</div></div><span class="pill muted-pill" aria-label="Not completed">✕</span></div></div></div>
+<div class="summary" id="runSummary">Whole run · 42% completed</div><button class="button" id="copyAll" type="button">Copy text</button><p class="foot">Private habits and notes are excluded.</p>
+</section>
+<section class="phone" id="shareSettings" aria-label="Share settings mockup">
+<div class="status"><span>9:41</span><span>● ▰</span></div><div class="top"><span class="back">‹</span><h2>Share settings</h2></div><p class="help">Choose what appears in the copied text. These choices apply only to habits marked shareable.</p>
+<div class="card"><div class="row"><div><div class="name">Habit completion</div><div class="meta">Show ✓ or ✕ beside each habit.</div></div><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Show habit completion" data-option="habits"></button></div></div>
+<div class="card"><div class="row"><div><div class="name">Today's completion</div><div class="meta">Show today's completion percentage.</div></div><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Show today's completion" data-option="today"></button></div></div>
+<div class="card"><div class="row"><div><div class="name">Whole-run completion</div><div class="meta">Show whole-run completion percentage.</div></div><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Show whole-run completion" data-option="run"></button></div></div>
+<p class="foot">Percentages use the shareable habits only. A rest day counts only when that habit is due.</p>
+</section>
+<section class="phone" aria-label="Copied text preview">
+<div class="status"><span>9:41</span><span>● ▰</span></div><div class="top"><span class="back">‹</span><h2>Text preview</h2></div><p class="help">Plain text for messages, notes, and email. Settings above update this preview.</p><div class="preview" id="preview"></div><button class="button" id="copyPreview" type="button">Copy text</button><p class="foot" id="feedback" role="status" aria-live="polite">Private habits and notes are excluded.</p>
+</section>
+</main>
+<p class="note">Concept only. A partial completion needs its own symbol or label in implementation so it is not mistaken for a full completion or a missed habit. If no habits are shareable, show an empty state linking to habit editing.</p>
+<script>
+const options={habits:true,today:true,run:true};
+function render(){const lines=['# Day 12, 10 November',''];for(const [name,done] of [['Morning light',true],['Plan the day',true],['Focused work block',false]])lines.push(`- ${options.habits?(done?'✓ ':'✕ '):''}${name}`);if(options.today||options.run)lines.push('');if(options.today)lines.push('Today: 67%');if(options.run)lines.push('Whole run: 42%');document.getElementById('preview').textContent=lines.join('\n');document.getElementById('dailySummary').hidden=!options.today;document.getElementById('runSummary').hidden=!options.run;document.querySelectorAll('.list .pill').forEach(el=>el.hidden=!options.habits)}
+document.querySelectorAll('[data-option]').forEach(button=>button.addEventListener('click',()=>{const key=button.dataset.option;options[key]=!options[key];button.setAttribute('aria-checked',String(options[key]));render()}));
+document.querySelectorAll('.card .switch:not([data-option])').forEach(button=>button.addEventListener('click',()=>button.setAttribute('aria-checked',String(button.getAttribute('aria-checked')!=='true'))));
+async function copy(){try{await navigator.clipboard.writeText(document.getElementById('preview').textContent);document.getElementById('feedback').textContent='Copied to clipboard'}catch{document.getElementById('feedback').textContent='Clipboard unavailable in this browser'}}document.getElementById('copyAll').addEventListener('click',copy);document.getElementById('copyPreview').addEventListener('click',copy);render();
+</script>
+</body>
+</html>

@@ -175,6 +175,7 @@ fun HabitLabApp(
     var builderCopy by remember { mutableStateOf<Boolean?>(null) }
     var editCurrentRun by remember { mutableStateOf(false) }
     var manageRuns by remember { mutableStateOf(false) }
+    var shareOpen by remember { mutableStateOf(false) }
     var groupHabits by remember(database) { mutableStateOf(database.pref("ui_group_habits") != "0") }
     var historyDays by remember(database) { mutableIntStateOf(database.pref("ui_history_days")?.toIntOrNull()?.coerceIn(7, 21) ?: 7) }
     val syncClient = remember(database) { SyncClient(database, createHttpClient()) }
@@ -268,7 +269,7 @@ fun HabitLabApp(
     if (systemDarkState != systemDark) systemDarkState = systemDark
     MaterialTheme(colorScheme = palette.toColorScheme()) {
         Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = {
-            if (builderCopy == null && detailHabit == null && !manageRuns) {
+            if (builderCopy == null && detailHabit == null && !manageRuns && !shareOpen) {
                 NavigationBar(containerColor = surface) {
                     visibleDestinations.forEach { dest ->
                         NavigationBarItem(selected = page == dest, onClick = {
@@ -298,6 +299,18 @@ fun HabitLabApp(
                                     .background(surface)
                                     .semantics { contentDescription = "Sync now" },
                         ) { Text(if (syncing) "…" else "⟳", color = green, style = MaterialTheme.typography.headlineMedium) }
+                    }
+                    if (page == Destination.Runs) {
+                        IconButton(
+                            onClick = { shareOpen = true },
+                            modifier =
+                                Modifier.semantics {
+                                    contentDescription =
+                                        "Share today's habits"
+                                },
+                        ) {
+                            Text("Share", color = green, style = MaterialTheme.typography.labelLarge)
+                        }
                     }
                     if (page == Destination.Runs) Spacer(Modifier.width(12.dp))
                     if (page ==
@@ -397,6 +410,11 @@ fun HabitLabApp(
                         runsRevision++
                         noteLocalChange()
                     })
+                }
+            }
+            AnimatedVisibility(visible = shareOpen, enter = fadeIn(), exit = fadeOut()) {
+                Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
+                    ShareHabitsPage(database, today, runsRevision, onBack = { shareOpen = false })
                 }
             }
             AnimatedVisibility(visible = detailHabit != null, enter = fadeIn(), exit = fadeOut()) {

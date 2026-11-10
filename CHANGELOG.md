@@ -10,6 +10,12 @@ All notable changes are documented here. Follow Keep a Changelog and Semantic Ve
 
 ## [Unreleased]
 
+## [1.1.0] - Daily text sharing
+
+- Added Android per-habit sharing opt-in and a Share page that copies daily completion as text.
+- Added Share settings for habit status, today's percentage, and whole-run percentage. Choices currently persist on the device only.
+- Increased Android version code to 4.
+
 ## [1.0.1] - CI and formatting
 
 - Corrected Gradle wrapper invocation in CI and allowed independent checks to run after failures.
