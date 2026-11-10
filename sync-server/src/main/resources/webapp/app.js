@@ -219,9 +219,13 @@ async function sync() {
 }
 
 /* ---------- model ---------- */
-function latestRun() {
-  const runs = allRuns();
-  return runs.find((r) => r.status === 'active') || runs[0] || null;
+let historyRunUid = '';
+function activeRun() { return allRuns().find((r) => r.status === 'active') || null; }
+function latestRun() { return activeRun() || allRuns()[0] || null; }
+function displayedRun() {
+  const history = allRuns().find((r) => r.uid === historyRunUid && r.status === 'stopped');
+  if (historyRunUid && !history) historyRunUid = '';
+  return history || latestRun();
 }
 function allRuns() {
   const runs = rows('run');
@@ -642,7 +646,7 @@ function earnedOn(habits, day) {
   }
   return total;
 }
-function habitTable(habits, startDate, count, todayIso, numberedBase) {
+function habitTable(habits, startDate, count, todayIso, numberedBase, readOnly = false) {
   // numberedBase: day number shown under the first column (1 for runs,
   // calendar offset for trailing windows). Returns {head, rows}.
   const cols = `grid-template-columns:repeat(${count},minmax(22px,1fr))`;
@@ -664,13 +668,16 @@ function habitTable(habits, startDate, count, todayIso, numberedBase) {
       const future = day > todayIso;
       body += future
         ? `<span class="dot future"></span>`
-        : `<button class="dot ${c ? safeState(c.state) : ''}${day === todayIso ? ' today' : ''}" aria-label="${esc(h.title)} ${day}" data-click="toggleDay" data-a="${safeId(h.uid)}" data-b="${day}"></button>`;
+        : readOnly
+          ? `<span class="dot ${c ? safeState(c.state) : ''}${day === todayIso ? ' today' : ''}" role="img" aria-label="${esc(h.title)} ${day}: ${c ? esc(c.state) : 'not logged'}"></span>`
+          : `<button class="dot ${c ? safeState(c.state) : ''}${day === todayIso ? ' today' : ''}" aria-label="${esc(h.title)} ${day}" data-click="toggleDay" data-a="${safeId(h.uid)}" data-b="${day}"></button>`;
     }
     body += `</div><div class="point">${h.impact_points}</div></div>`;
   }
   return `<div class="htable" style="--day-count:${count}">${head}<div class="run-table">${body}</div></div>`;
 }
 function toggleDay(habitUid, day) {
+  if (currentView === 'runs' && displayedRun()?.status !== 'active' && !unlinkedHabits().some((h) => h.uid === habitUid)) return;
   const cur = checkInsByDay(day)[habitUid];
   const state = cur && cur.state === 'done' ? 'skipped' : 'done';
   const values = { uid: habitUid + ':' + day, habit_uid: habitUid, day, state };
@@ -698,7 +705,13 @@ function runManagement() {
   const runs = allRuns();
   if (!runs.length) return '';
   return `<details class="run-management"><summary>Manage runs · ${runs.length}</summary><p class="caption">Stop an active run before starting another. Deleting a run keeps its habits and check-in history.</p>
-    ${runs.map((r) => `<div class="run-management-row"><div><strong>${esc(r.name)}</strong><div class="caption">${esc(r.start_date)} · ${r.duration_days} days · ${r.status === 'active' ? 'Active' : 'Stopped'}</div></div><div class="head-btns">${r.uid === latestRun()?.uid ? `<button class="btn" data-click="openEdit" data-a="${safeId(r.uid)}">Edit</button>` : ''}${r.status === 'active' ? `<button class="btn" data-click="stopRun" data-a="${safeId(r.uid)}">Stop run</button>` : ''}<button class="btn" data-click="deleteRun" data-a="${safeId(r.uid)}">Delete run</button></div></div>`).join('')}</details>`;
+    ${runs.map((r) => `<div class="run-management-row"><div><strong>${esc(r.name)}</strong><div class="caption">${esc(r.start_date)} · ${r.duration_days} days · ${r.status === 'active' ? 'Active' : 'Stopped'}</div></div><div class="head-btns">${r.status === 'stopped' ? `<button class="btn" data-click="showRunHistory" data-a="${safeId(r.uid)}">History</button>` : ''}${r.uid === latestRun()?.uid ? `<button class="btn" data-click="openEdit" data-a="${safeId(r.uid)}">Edit</button>` : ''}${r.status === 'active' ? `<button class="btn" data-click="stopRun" data-a="${safeId(r.uid)}">Stop run</button>` : ''}<button class="btn" data-click="deleteRun" data-a="${safeId(r.uid)}">Delete run</button></div></div>`).join('')}</details>`;
+}
+function showRunHistory(uid) {
+  const run = allRuns().find((r) => r.uid === uid);
+  if (!run || run.status !== 'stopped') return;
+  historyRunUid = uid;
+  showView('runs');
 }
 function stopRun(uid) {
   const run = row('run', uid)?.v;
@@ -713,11 +726,12 @@ function deleteRun(uid) {
   if (!window.confirm(`Delete “${run.name}”? Its habits and check-in history will be kept.`)) return;
   for (const link of rows('run_habit').filter((r) => r.run_uid === uid)) deleteRow('run_habit', link.uid);
   deleteRow('run', uid);
+  if (historyRunUid === uid) historyRunUid = '';
   renderRuns();
 }
 function renderRuns() {
   const body = $('runsBody');
-  const run = latestRun();
+  const run = displayedRun();
   const today = todayLocal();
   if (!run) {
     body.innerHTML = (infiniteOn() ? infiniteView(today) : emptyRunsView()) + runManagement();
@@ -752,9 +766,11 @@ function renderRuns() {
     <div class="metric"><small>Days logged</small><b>${perDay.filter((e) => e > 0).length} / ${elapsed}</b></div>
     <div class="metric"><small>Habits</small><b>${habits.length}</b></div>
     </div></div></div>
-    <div class="section-head"><h3>Habits</h3><span class="head-btns"><button class="btn" data-click="openBuilder">＋ New run</button><button class="btn" data-click="openEdit" data-a="${safeId(run.uid)}">Edit run</button></span></div>
-    ${habitTable(visibleHabits, run.start_date, dur, today, 1)}
-    ${resting.length ? `<details class="not-due"><summary>Not due today · ${resting.length}</summary><p class="caption">You can still log these habits whenever you choose.</p>${habitTable(resting, run.start_date, dur, today, 1)}</details>` : ''}
+    ${historyRunUid ? `<div class="section-head"><h3>Past run · ${esc(run.name)}</h3><button class="btn" data-click="closeRunHistory">Back to current run</button></div>` : ''}
+    <div class="section-head"><h3>Habits</h3><span class="head-btns"><button class="btn" data-click="openBuilder">＋ New run</button>${run.status === 'active' && !historyRunUid ? `<button class="btn" data-click="openEdit" data-a="${safeId(run.uid)}">Edit run</button>` : ''}</span></div>
+    ${run.status === 'stopped' ? '<p class="caption">Stopped run · history is read-only.</p>' : ''}
+    ${habitTable(visibleHabits, run.start_date, dur, today, 1, run.status !== 'active')}
+    ${resting.length ? `<details class="not-due"><summary>Not due today · ${resting.length}</summary><p class="caption">${run.status === 'active' ? 'You can still log these habits whenever you choose.' : 'Past completions remain visible.'}</p>${habitTable(resting, run.start_date, dur, today, 1, run.status !== 'active')}</details>` : ''}
     <div class="charts-2">
     <div class="card pts-card"><div class="chart-title">Points per day</div><div class="caption">Whole run · hover a bar for values</div>
     ${barChart(perDay.concat(Array(Math.max(0, dur - elapsed)).fill(0)), elapsed - 1)}
@@ -833,7 +849,7 @@ function infiniteBurnup(perDay, baseline) {
 let quickList = [], quickResults = [], quickCommentOpen = false, quickLogged = new Set(), quickSession = '';
 function renderQuick() {
   const today = todayLocal();
-  const run = latestRun();
+  const run = activeRun();
   const session = today + '|' + (run ? run.uid : '');
   if (session !== quickSession) { quickSession = session; quickLogged = new Set(); quickResults = []; }
   const pool = run ? habitsForRun(run.uid).concat(unlinkedHabits()) : unlinkedHabits();
@@ -896,6 +912,10 @@ function endQuickDrag(e) {
 function recordQuick(kind) {
   if (!quickList.length) return;
   const h = quickList[0];
+  if (!unlinkedHabits().some((item) => item.uid === h.uid) && !habitsForRun(activeRun()?.uid).some((item) => item.uid === h.uid)) {
+    renderQuick();
+    return;
+  }
   const state = kind === 'skip' ? 'skipped' : kind;
   const noteEl = $('quickNoteText');
   const note = noteEl && noteEl.value.trim() ? noteEl.value.trim() : null;
@@ -1161,6 +1181,7 @@ function createRun() {
   if (duplicate) { showRunError(`“${duplicate}” appears more than once. Give each habit a different name.`); return; }
   const runId = `run-${start}-${randHex(4)}`;
   putRow('run', runId, { uid: runId, name: (b.name || '').trim() || `${days}-day run`, start_date: start, duration_days: days, status: 'active' });
+  historyRunUid = '';
   for (const h of named) {
     const uid = h.uid || `h-${slug(h.name)}-${randHex(2)}`;
     if (!h.uid) {
@@ -1357,6 +1378,8 @@ const ACTIONS = {
   openStandalone: () => openStandalone(),
   openBuilder: () => openBuilder(),
   openEdit: (a) => openEdit(a),
+  showRunHistory: (a) => showRunHistory(a),
+  closeRunHistory: () => { historyRunUid = ''; renderRuns(); },
   stopRun: (a) => stopRun(a),
   deleteRun: (a) => deleteRun(a),
   infiniteOn: () => { setInfinite(true); renderRuns(); },

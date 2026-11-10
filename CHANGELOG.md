@@ -10,6 +10,8 @@ All notable changes are documented here. Follow Keep a Changelog and Semantic Ve
 
 ## [Unreleased]
 
+- Web: stopped-run history is available from Manage runs and is read-only. Quick Log excludes stopped-run habits.
+
 ## [1.1.1] - Single current run
 
 - Android and browser now show one current run without a run selector. Old parallel active runs are stopped automatically; their habits and check-in history remain.

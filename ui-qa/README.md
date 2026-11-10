@@ -38,7 +38,7 @@ The flow checks Runs → Quick Log navigation, opens and closes the comment fiel
 
 ## Webapp end-to-end (`webapp-check.mjs`)
 
-For an isolated desktop browser check with a disposable in-memory mirror and no server account, run `npm ci --prefix ui-qa` and `node ui-qa/offline-runs-check.mjs`. It covers scratch and YAML creation, edit and YAML download, copying, single-active-run repair, and optional logging on an interval rest day. It does not test real authentication or server synchronization.
+For an isolated desktop browser check with a disposable in-memory mirror and no server account, run `npm ci --prefix ui-qa` and `node ui-qa/offline-runs-check.mjs`. It covers scratch and YAML creation, edit and YAML download, copying, single-active-run repair, read-only stopped history and Quick Log, and optional logging on an interval rest day. It does not test real authentication or server synchronization.
 
 Desktop Playwright checks against the live server: static bundle, login + 401 path, then (with a test account) scratch run creation, YAML run creation, run editing, swipe logging, and a wipe-and-redownload persistence proof.
 

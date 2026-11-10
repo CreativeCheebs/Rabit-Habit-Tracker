@@ -74,6 +74,16 @@ try {
   await page.locator('.run-management summary').click();
   await page.getByRole('button', { name: 'Stop run' }).click();
   assert.match(await page.locator('.run-management').textContent(), /Stopped/);
+  assert.equal(await page.locator('#runsBody .dots button').count(), 0);
+  const stoppedCheckIns = await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('habitlab.db')).check_in).length);
+  await page.evaluate(() => {
+    const habit = Object.values(JSON.parse(localStorage.getItem('habitlab.db')).habit).find((entry) => entry.v.title === 'Edited habit').v;
+    window.toggleDay(habit.uid, new Date().toISOString().slice(0, 10));
+    window.showView('quicklog');
+  });
+  assert.equal(await page.locator('#quickBody').getByText('Edited habit').count(), 0);
+  assert.equal(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('habitlab.db')).check_in).length), stoppedCheckIns);
+  await page.evaluate(() => window.showView('runs'));
 
   await page.getByRole('button', { name: '＋ New run' }).click();
   assert.equal(await page.locator('#builderHabits [aria-label="Habit name"]').inputValue(), 'Edited habit');
@@ -83,6 +93,11 @@ try {
   assert.equal(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('habitlab.db')).run)
     .filter((entry) => entry.v.status === 'active' && !entry.v._deleted).length), 1);
   assert.equal(await page.locator('#runsBody').getByText('Edited habit').count(), 1);
+  await page.locator('.run-management summary').click();
+  await page.locator('.run-management-row').filter({ hasText: 'Edited run' }).getByRole('button', { name: 'History' }).click();
+  assert.equal(await page.getByRole('button', { name: 'Back to current run' }).count(), 1);
+  assert.equal(await page.locator('#runsBody .dots button').count(), 0);
+  await page.getByRole('button', { name: 'Back to current run' }).click();
 
   await page.getByRole('button', { name: '＋ New run' }).click();
   await page.getByRole('button', { name: 'Cancel' }).click();
@@ -141,5 +156,5 @@ try {
     return Object.values(db.run).filter((entry) => entry.v.status === 'active' && !entry.v._deleted).length;
   }), 1);
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('habitlab.db')).run.legacy.v.status), 'stopped');
-  console.log('PASS offline browser: scratch, edit, YAML download, single active run, YAML creation and optional rest-day logging');
+  console.log('PASS offline browser: scratch, edit, YAML download, one active run, read-only history, YAML creation and optional rest-day logging');
 } finally { await browser.close(); }
