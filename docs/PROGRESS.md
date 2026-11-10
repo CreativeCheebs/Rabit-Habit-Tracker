@@ -10,6 +10,7 @@ finish a step (the owner commits after every step).
 - Sharing choices are device-local `sync_meta` preferences; the current sync protocol does not carry them to web or another phone. No SQLDelight table migration was needed. Percentages use only eligible days of opted-in habits through today; a selected run outside today's date shows an unavailable state.
 - JVM sharing tests, ktlint and Android debug assembly passed. No Android device was connected, so interaction and clipboard behavior were not checked on device.
 - Android 1.1.0 (version code 4) assembled as an unsigned release. Signing did not complete: the external `rabit-passphrase.txt` is a keytool transcript rather than a usable password source. No APK was transferred and the web server was not restarted for this Android-only change.
+- GitHub follow-up: all ten open Dependabot PRs were closed at the owner's request. A v1.1.0 release draft points to main but remains unpublished without a signed APK. The root README is now for end users, with representative screenshots; detailed setup moved to `docs/developer-guide.md`. GitHub About description and topics were set.
 
 ## Run lifecycle, duplicate protection, and responsive review
 
