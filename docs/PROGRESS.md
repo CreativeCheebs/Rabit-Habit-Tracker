@@ -4,6 +4,15 @@ Running record of what is built, what is live, and every operational lesson
 learned. Read this file first before continuing work; append to it when you
 finish a step (the owner commits after every step).
 
+## Single current run and server ignore rules
+
+- Android and hosted web remove the run selector. Android's run manager shows the current run by default, with older stopped runs behind “Show past runs.” The Android add button opens run management while an active run exists; the builder also retains its creation guard.
+- Both clients reconcile legacy or concurrently synced multiple-active data by keeping the newest run (start date, then UID) active and stopping the others. This preserves run rows, memberships, habits, and check-ins. The reconciliation changes sync through the existing protocol. The server itself does not enforce a one-active-run constraint, so this is a client-side convergence rule.
+- The owner chose to keep server source tracked. Ignore rules now explicitly cover local server databases, logs, and machine-specific Gradle settings, in addition to existing build and data exclusions.
+- Android JVM tests, ktlint, Android debug assembly, server tests, and the isolated browser lifecycle journey passed. The browser journey refreshed the desktop and mobile screenshots. No Android device was connected for on-device interaction testing.
+- Android 1.1.1 (version code 5) was built, signed with the external key, and verified with APK signature schemes v2 and v3. `/home/aakash/apks/Rabit-1.1.1-release.apk` matched the local SHA-256 `1f6a8505879da0fba55c28af3a7e97cdb0bef1b59e3574de33ff6f4920925fa0`.
+- Test and production server JARs were backed up before restarting. The first root Gradle build left the standalone fat JAR stale; a direct `sync-server/gradlew.bat buildFatJar` rebuilt it with the new JavaScript. Both 8788 and 8789 passed health checks and served the updated app without `activeRunSelect`. Future server deployments must use the standalone wrapper and verify the bundled web asset, not only the source tree.
+
 ## Android daily text sharing
 
 - Android's Runs toolbar now opens Share. Habit detail has an opt-in switch, off by default. Share lists only opted-in habits due today, shows ✓/◐/✕ for done/partial/other, and copies plain text headed `# Day N, D Month` with optional today and run percentages. The options are in Share settings.

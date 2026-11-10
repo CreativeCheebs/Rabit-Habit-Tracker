@@ -6,9 +6,16 @@ local.properties
 send_tool/
 habitlab-sync.zip
 sync-server/data/
+sync-server/*.sqlite
+sync-server/*.sqlite-*
+sync-server/*.db
+sync-server/*.log
+sync-server/gradle.properties
 ui-qa/node_modules/
 ui-qa/tools/
 TEST-CREDS.md
 .env
 .env.*
 !.env.example
+.VSCodeCounter/
+.vscode/settings.json

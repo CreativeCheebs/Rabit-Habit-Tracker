@@ -79,9 +79,9 @@ try {
   assert.equal(await page.locator('#builderHabits [aria-label="Habit name"]').inputValue(), 'Edited habit');
   await page.locator('#runName').fill('Copied run');
   await page.getByRole('button', { name: 'Create run' }).click();
-  assert.equal(await page.locator('#activeRunSelect option').count(), 2);
-  const originalRun = await page.locator('#activeRunSelect option').filter({ hasText: 'Edited run' }).getAttribute('value');
-  await page.locator('#activeRunSelect').selectOption(originalRun);
+  assert.equal(await page.locator('#activeRunSelect').count(), 0);
+  assert.equal(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('habitlab.db')).run)
+    .filter((entry) => entry.v.status === 'active' && !entry.v._deleted).length), 1);
   assert.equal(await page.locator('#runsBody').getByText('Edited habit').count(), 1);
 
   await page.getByRole('button', { name: '＋ New run' }).click();
@@ -104,7 +104,7 @@ try {
     localStorage.setItem('habitlab.db', JSON.stringify(db));
   });
   await page.reload();
-  await page.locator('#activeRunSelect').selectOption(await page.locator('#activeRunSelect option').filter({ hasText: 'YAML run' }).getAttribute('value'));
+  assert.equal(await page.locator('#activeRunSelect').count(), 0);
   const resting = page.locator('.not-due');
   assert.equal(await resting.getByText('YAML habit').count(), 1);
   assert.equal(await resting.getAttribute('open'), null);
@@ -117,7 +117,10 @@ try {
   await page.locator('.run-management summary').click();
   const editedRow = page.locator('.run-management-row').filter({ hasText: 'Edited run' });
   await editedRow.getByRole('button', { name: 'Delete run' }).click();
-  assert.equal(await page.locator('#activeRunSelect option').filter({ hasText: 'Edited run' }).count(), 0);
+  assert.equal(await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('habitlab.db'));
+    return Object.values(db.run).some((entry) => entry.v.name === 'Edited run' && !entry.v._deleted);
+  }), false);
   assert.equal(await page.evaluate(() => {
     const db = JSON.parse(localStorage.getItem('habitlab.db'));
     return Object.values(db.habit).some((entry) => entry.v.title === 'Edited habit' && !entry.d);
@@ -126,5 +129,17 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: 'docs/screenshots/web-runs-mobile.png', fullPage: true });
   assert.deepEqual(errors, []);
-  console.log('PASS offline browser: scratch, edit, YAML download, copy, run selection, YAML creation and optional rest-day logging');
+  // A legacy parallel active run is stopped on load; its row and history survive.
+  await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('habitlab.db'));
+    db.run.legacy = { v: { uid: 'legacy', name: 'Legacy run', start_date: '2020-01-01', duration_days: 7, status: 'active' }, s: {} };
+    localStorage.setItem('habitlab.db', JSON.stringify(db));
+  });
+  await page.reload();
+  assert.equal(await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('habitlab.db'));
+    return Object.values(db.run).filter((entry) => entry.v.status === 'active' && !entry.v._deleted).length;
+  }), 1);
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('habitlab.db')).run.legacy.v.status), 'stopped');
+  console.log('PASS offline browser: scratch, edit, YAML download, single active run, YAML creation and optional rest-day logging');
 } finally { await browser.close(); }

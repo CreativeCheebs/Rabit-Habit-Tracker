@@ -203,6 +203,7 @@ async function sync() {
     }).filter(Boolean);
     const resp = await api('/api/sync', { device: deviceId(), token: Number(localStorage.getItem(LS.token) || 0), changes });
     for (const r of resp.changes || []) mergeIncoming(r);
+    ensureSingleActiveRun();
     localStorage.setItem(LS.token, String(resp.token));
     for (const [k, s] of snap) if (dirty.get(k) === s) dirty.delete(k);
     saveMirror();
@@ -218,16 +219,20 @@ async function sync() {
 }
 
 /* ---------- model ---------- */
-let selectedRunUid = '';
 function latestRun() {
-  const runs = rows('run').filter((r) => r.status === 'active');
-  runs.sort((a, b) => b.start_date.localeCompare(a.start_date));
-  return runs.find((r) => r.uid === selectedRunUid) || runs[0] || null;
+  const runs = allRuns();
+  return runs.find((r) => r.status === 'active') || runs[0] || null;
 }
 function allRuns() {
   const runs = rows('run');
-  runs.sort((a, b) => (a.start_date < b.start_date ? 1 : -1));
+  runs.sort((a, b) => b.start_date.localeCompare(a.start_date) || b.uid.localeCompare(a.uid));
   return runs;
+}
+// Keep the newest active run. Old parallel runs remain available as stopped history.
+function ensureSingleActiveRun() {
+  const active = allRuns().filter((r) => r.status === 'active');
+  for (const run of active.slice(1)) putRow('run', run.uid, { status: 'stopped' });
+  return Math.max(0, active.length - 1);
 }
 function duplicateHabitName(habits) {
   const seen = new Set();
@@ -558,6 +563,7 @@ function boot() {
   $('acctBtn').addEventListener('click', (e) => { e.stopPropagation(); $('acctMenu').classList.toggle('open'); });
   document.addEventListener('click', (e) => { if (!e.target.closest('.acct-wrap')) $('acctMenu').classList.remove('open'); });
   if (localStorage.getItem(LS.key)) {
+    ensureSingleActiveRun();
     setLoggedIn(true);
     showView('runs');
     showWelcomeIfNeeded();
@@ -692,14 +698,13 @@ function runManagement() {
   const runs = allRuns();
   if (!runs.length) return '';
   return `<details class="run-management"><summary>Manage runs · ${runs.length}</summary><p class="caption">Stop an active run before starting another. Deleting a run keeps its habits and check-in history.</p>
-    ${runs.map((r) => `<div class="run-management-row"><div><strong>${esc(r.name)}</strong><div class="caption">${esc(r.start_date)} · ${r.duration_days} days · ${r.status === 'active' ? 'Active' : 'Stopped'}</div></div><div class="head-btns"><button class="btn" data-click="viewRun" data-a="${safeId(r.uid)}">View</button><button class="btn" data-click="openEdit" data-a="${safeId(r.uid)}">Edit</button>${r.status === 'active' ? `<button class="btn" data-click="stopRun" data-a="${safeId(r.uid)}">Stop run</button>` : ''}<button class="btn" data-click="deleteRun" data-a="${safeId(r.uid)}">Delete run</button></div></div>`).join('')}</details>`;
+    ${runs.map((r) => `<div class="run-management-row"><div><strong>${esc(r.name)}</strong><div class="caption">${esc(r.start_date)} · ${r.duration_days} days · ${r.status === 'active' ? 'Active' : 'Stopped'}</div></div><div class="head-btns">${r.uid === latestRun()?.uid ? `<button class="btn" data-click="openEdit" data-a="${safeId(r.uid)}">Edit</button>` : ''}${r.status === 'active' ? `<button class="btn" data-click="stopRun" data-a="${safeId(r.uid)}">Stop run</button>` : ''}<button class="btn" data-click="deleteRun" data-a="${safeId(r.uid)}">Delete run</button></div></div>`).join('')}</details>`;
 }
 function stopRun(uid) {
   const run = row('run', uid)?.v;
   if (!run || run._deleted || run.status !== 'active') return;
   if (!window.confirm(`Stop “${run.name}”? You can still view its history.`)) return;
   putRow('run', uid, { status: 'stopped' });
-  selectedRunUid = uid;
   renderRuns();
 }
 function deleteRun(uid) {
@@ -708,12 +713,11 @@ function deleteRun(uid) {
   if (!window.confirm(`Delete “${run.name}”? Its habits and check-in history will be kept.`)) return;
   for (const link of rows('run_habit').filter((r) => r.run_uid === uid)) deleteRow('run_habit', link.uid);
   deleteRow('run', uid);
-  if (selectedRunUid === uid) selectedRunUid = '';
   renderRuns();
 }
 function renderRuns() {
   const body = $('runsBody');
-  const run = allRuns().find((r) => r.uid === selectedRunUid) || latestRun();
+  const run = latestRun();
   const today = todayLocal();
   if (!run) {
     body.innerHTML = (infiniteOn() ? infiniteView(today) : emptyRunsView()) + runManagement();
@@ -748,7 +752,7 @@ function renderRuns() {
     <div class="metric"><small>Days logged</small><b>${perDay.filter((e) => e > 0).length} / ${elapsed}</b></div>
     <div class="metric"><small>Habits</small><b>${habits.length}</b></div>
     </div></div></div>
-    <div class="section-head"><h3>Habits</h3><span class="head-btns"><label for="activeRunSelect">Run</label><select class="field" id="activeRunSelect" data-change="activeRun">${allRuns().map((r) => `<option value="${esc(safeId(r.uid))}"${r.uid === run.uid ? ' selected' : ''}>${esc(r.name)} · ${r.status === 'active' ? 'Active' : 'Stopped'} · ${esc(r.start_date)}</option>`).join('')}</select><button class="btn" data-click="openBuilder">＋ New run</button><button class="btn" data-click="openEdit" data-a="${safeId(run.uid)}">Edit run</button></span></div>
+    <div class="section-head"><h3>Habits</h3><span class="head-btns"><button class="btn" data-click="openBuilder">＋ New run</button><button class="btn" data-click="openEdit" data-a="${safeId(run.uid)}">Edit run</button></span></div>
     ${habitTable(visibleHabits, run.start_date, dur, today, 1)}
     ${resting.length ? `<details class="not-due"><summary>Not due today · ${resting.length}</summary><p class="caption">You can still log these habits whenever you choose.</p>${habitTable(resting, run.start_date, dur, today, 1)}</details>` : ''}
     <div class="charts-2">
@@ -1157,7 +1161,6 @@ function createRun() {
   if (duplicate) { showRunError(`“${duplicate}” appears more than once. Give each habit a different name.`); return; }
   const runId = `run-${start}-${randHex(4)}`;
   putRow('run', runId, { uid: runId, name: (b.name || '').trim() || `${days}-day run`, start_date: start, duration_days: days, status: 'active' });
-  selectedRunUid = runId;
   for (const h of named) {
     const uid = h.uid || `h-${slug(h.name)}-${randHex(2)}`;
     if (!h.uid) {
@@ -1354,7 +1357,6 @@ const ACTIONS = {
   openStandalone: () => openStandalone(),
   openBuilder: () => openBuilder(),
   openEdit: (a) => openEdit(a),
-  viewRun: (a) => { selectedRunUid = a; showView('runs'); },
   stopRun: (a) => stopRun(a),
   deleteRun: (a) => deleteRun(a),
   infiniteOn: () => { setInfinite(true); renderRuns(); },
@@ -1410,7 +1412,6 @@ document.addEventListener('change', (e) => {
   const el = e.target instanceof Element ? e.target.closest('[data-change]') : null;
   if (!el) return;
   if (el.dataset.change === 'attachUid') editRun.attachUid = el.value;
-  else if (el.dataset.change === 'activeRun') { selectedRunUid = el.value; renderRuns(); }
   else if (el.dataset.change === 'copyFrom') builderCopyFrom(el.value);
   else if (el.dataset.change === 'includeStandalone') { builder.includeStandalone = el.checked; builderCopyFrom(builder.copyFrom); }
 });

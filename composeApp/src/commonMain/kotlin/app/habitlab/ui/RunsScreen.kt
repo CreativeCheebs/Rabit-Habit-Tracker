@@ -383,33 +383,33 @@ internal fun loadRunHabits(
 ) {
     val runs = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList() }
     val current = remember(database, revision) { database.currentRun()?.uid }
+    var showPastRuns by remember { mutableStateOf(false) }
+    val visibleRuns = if (showPastRuns) runs else runs.filter { it.uid == current }
     var pending by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("‹ Back") }
             Text("Manage runs", style = MaterialTheme.typography.titleLarge)
         }
+        if (runs.size > 1) {
+            TextButton(onClick = { showPastRuns = !showPastRuns }) {
+                Text(if (showPastRuns) "Hide past runs" else "Show past runs (${runs.size - 1})")
+            }
+        }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(runs, key = { it.uid }) { run ->
+            items(visibleRuns, key = { it.uid }) { run ->
                 Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.fillMaxWidth().padding(12.dp)) {
                         Text(run.name, style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "${run.start_date} · ${run.status}${if (run.uid == current) " · selected" else ""}",
+                            "${run.start_date} · ${run.status}",
                             color = muted,
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            TextButton(onClick = {
-                                database.setPref(PREF_CURRENT_RUN, run.uid)
-                                onChanged()
-                                onBack()
-                            }) { Text("Select") }
-                            TextButton(onClick = {
-                                database.setPref(PREF_CURRENT_RUN, run.uid)
-                                onChanged()
-                                onEdit()
-                            }) { Text("Edit") }
+                            if (run.uid == current) {
+                                TextButton(onClick = onEdit) { Text("Edit") }
+                            }
                             if (run.status ==
                                 "active"
                             ) {

@@ -217,6 +217,11 @@ fun HabitLabApp(
             if (outcome is SyncOutcome.Success) {
                 syncDirty = false
                 if (outcome.received > 0) runsRevision++
+                val repaired = database.ensureSingleActiveRun()
+                if (repaired > 0) {
+                    runsRevision++
+                    syncDirty = true
+                }
             }
         }
     }
@@ -224,6 +229,14 @@ fun HabitLabApp(
     fun noteLocalChange() {
         syncDirty = true
         doSync()
+    }
+
+    LaunchedEffect(database) {
+        val repaired = database.ensureSingleActiveRun()
+        if (repaired > 0) {
+            runsRevision++
+            noteLocalChange()
+        }
     }
 
     fun attemptSignIn(
@@ -317,7 +330,11 @@ fun HabitLabApp(
                         Destination.Runs
                     ) {
                         IconButton(onClick = {
-                            builderCopy = true
+                            if (database.activeRuns().isNotEmpty()) {
+                                manageRuns = true
+                            } else {
+                                builderCopy = true
+                            }
                         }, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(50)).background(surface)) {
                             Text("＋", color = green, style = MaterialTheme.typography.headlineMedium)
                         }

@@ -30,10 +30,24 @@ internal fun HabitDatabase.setHabitShareable(
 
 internal fun HabitDatabase.currentRun(): app.habitlab.db.Run? {
     val runs = schemaQueries.selectRuns().executeAsList()
-    return runs.firstOrNull { it.uid == pref(PREF_CURRENT_RUN) } ?: runs.firstOrNull { it.status == "active" } ?: runs.firstOrNull()
+    return runs
+        .filter {
+            it.status == "active"
+        }.sortedWith(compareByDescending<app.habitlab.db.Run> { it.start_date }.thenByDescending { it.uid })
+        .firstOrNull() ?: runs.firstOrNull()
 }
 
 internal fun HabitDatabase.activeRuns() = schemaQueries.selectRuns().executeAsList().filter { it.status == "active" }
+
+/** Resolve old or concurrently synced parallel runs without deleting their habits or check-ins. */
+internal fun HabitDatabase.ensureSingleActiveRun(): Int {
+    val active = activeRuns().sortedWith(compareByDescending<app.habitlab.db.Run> { it.start_date }.thenByDescending { it.uid })
+    if (active.size <= 1) return 0
+    transaction {
+        active.drop(1).forEach { schemaQueries.stopRun(it.uid) }
+    }
+    return active.size - 1
+}
 
 /** Delete only the run and its links; habits and dated check-ins may be shared. */
 internal fun HabitDatabase.deleteRunKeepingHabits(runUid: String) {

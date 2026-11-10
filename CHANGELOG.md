@@ -10,6 +10,13 @@ All notable changes are documented here. Follow Keep a Changelog and Semantic Ve
 
 ## [Unreleased]
 
+## [1.1.1] - Single current run
+
+- Android and browser now show one current run without a run selector. Old parallel active runs are stopped automatically; their habits and check-in history remain.
+- Starting a new run is blocked while an active run exists. The Android add button opens run management so the current run can be stopped first.
+- Server source remains tracked; local server databases, logs, and machine-specific Gradle settings are ignored.
+- Increased Android version code to 5.
+
 ## [1.1.0] - Daily text sharing
 
 - Added Android per-habit sharing opt-in and a Share page that copies daily completion as text.

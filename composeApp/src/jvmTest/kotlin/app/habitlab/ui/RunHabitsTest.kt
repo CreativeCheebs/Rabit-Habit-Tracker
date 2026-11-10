@@ -86,16 +86,25 @@ class RunHabitsTest {
         )
     }
 
-    @Test fun currentRunPrefSelectsNewRunOnSameDay() {
+    @Test fun parallelActiveRunsAreStoppedWithoutDeletingHistory() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         HabitDatabase.Schema.create(driver)
         val db = HabitDatabase(driver)
         db.schemaQueries.insertRun("older", "Older", "2026-11-07", 21)
         db.schemaQueries.insertRun("newer", "Newer", "2026-11-07", 21)
         db.setPref(PREF_CURRENT_RUN, "newer")
-        assertEquals("newer", db.currentRun()?.uid)
-        db.setPref(PREF_CURRENT_RUN, "missing")
-        assertTrue(db.currentRun() != null)
+        assertEquals("older", db.currentRun()?.uid)
+        assertEquals(1, db.ensureSingleActiveRun())
+        assertEquals(listOf("older"), db.activeRuns().map { it.uid })
+        assertEquals(
+            "stopped",
+            db.schemaQueries
+                .selectRunByUid("newer")
+                .executeAsOne()
+                .status,
+        )
+        assertEquals(0, db.ensureSingleActiveRun())
+        driver.close()
     }
 
     @Test fun emptyRealRunNeverDisplaysExampleOrUnrelatedHabits() {
