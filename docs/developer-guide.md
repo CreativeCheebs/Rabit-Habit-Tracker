@@ -82,3 +82,5 @@ Run `node ui-qa/webapp-check.mjs` only after setting `HABITLAB_WEB` to a running
 Android UI review uses the existing Playwright/Pixelmatch/Maestro workflow documented in `ui-qa/README.md`. iOS simulator tests require macOS and an installed Xcode toolchain; they do not run on the Linux CI runner. Keep SQLDelight changes forward-only and test schema/data upgrades before release. Add browser accessibility and performance gates around the actual hosted web app, not Wasm tasks.
 
 CI also runs secret scanning and pull request dependency review. Require the relevant checks in branch protection, review scanner findings, and keep production signing and deployment secrets out of pull request workflows. See `docs/` and `.claude/` for specialist review roles, setup guidance, migration policy, security, release readiness, and UI review.
+
+Android Share can select earlier runs and days. Habit sharing is opt-in on each device; the copied run percentage covers eligible shared habit-days through the selected date. Android and web run management allow date edits while preserving existing dated check-ins. The web habit row also offers direct editing, including standalone habits.

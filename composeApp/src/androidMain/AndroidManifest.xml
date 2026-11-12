@@ -2,7 +2,7 @@
     <!-- Sync talks to the home-LAN server over plain HTTP; never use this for remote hosts. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <application android:icon="@mipmap/ic_launcher" android:theme="@android:style/Theme.Material.NoActionBar" android:label="Rabit - Habit and Goals Tracker" android:usesCleartextTraffic="true">
+    <application android:icon="@mipmap/ic_launcher" android:theme="@android:style/Theme.Material.NoActionBar" android:label="Rabit - Habit and Goals Tracker" android:usesCleartextTraffic="true" android:enableOnBackInvokedCallback="true">
         <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity>
     </application>
 </manifest>

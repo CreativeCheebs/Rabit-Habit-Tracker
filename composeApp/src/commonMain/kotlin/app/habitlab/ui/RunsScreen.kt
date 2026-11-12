@@ -11,6 +11,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -56,6 +57,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -200,9 +202,9 @@ internal fun loadRunHabits(
         }
     val earnedPoints = pointsPerRunDay.sum()
 
-    var selectedOffset by remember(latestRun?.uid) { mutableIntStateOf(todayOffset) }
-    val week = selectedOffset / 7
-    val selectedDay = selectedOffset % 7
+    var selectedOffset by remember(latestRun?.uid, runStart, runDays) { mutableIntStateOf(todayOffset) }
+    val historyStart = historyWindowStart(selectedOffset, if (dense) 7 else historyDays)
+    val selectedDay = selectedOffset - historyStart
     var openRow by remember { mutableStateOf<String?>(null) }
     var restDaysExpanded by remember(latestRun?.uid) { mutableStateOf(false) }
     val runScope = rememberCoroutineScope()
@@ -330,7 +332,7 @@ internal fun loadRunHabits(
                                 )
                             }
                             inGroup.forEach { habit ->
-                                val dots = (0 until if (dense) 7 else historyDays).map { stateFor(habit, week * 7 + it) }
+                                val dots = (0 until if (dense) 7 else historyDays).map { stateFor(habit, historyStart + it) }
                                 SwipeHabitRow(
                                     habit = habit,
                                     dots = dots,
@@ -350,7 +352,7 @@ internal fun loadRunHabits(
                             }
                             if (restDaysExpanded) {
                                 notDue.forEach { habit ->
-                                    val dots = (0 until if (dense) 7 else historyDays).map { stateFor(habit, week * 7 + it) }
+                                    val dots = (0 until if (dense) 7 else historyDays).map { stateFor(habit, historyStart + it) }
                                     SwipeHabitRow(
                                         habit = habit,
                                         dots = dots,
@@ -370,7 +372,10 @@ internal fun loadRunHabits(
             }
         }
         if (!hidePointsPref) item { PointsPerDayCard(pointsPerRunDay, habits.sumOf { it.points }) }
-        if (!hidePointsPref) item { PointsBurnupCard(pointsPerRunDay, elapsed, habits.sumOf { it.points }) }
+        if (!hidePointsPref) {
+            val chartElapsed = (0 until runDays).count { addIsoDays(runStart, it) <= today }
+            item { PointsBurnupCard(pointsPerRunDay, chartElapsed, habits.sumOf { it.points }) }
+        }
     }
 }
 
@@ -378,7 +383,7 @@ internal fun loadRunHabits(
     database: HabitDatabase,
     revision: Int,
     onBack: () -> Unit,
-    onEdit: () -> Unit,
+    onEdit: (String) -> Unit,
     onChanged: () -> Unit,
 ) {
     val runs = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList() }
@@ -408,9 +413,7 @@ internal fun loadRunHabits(
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            if (run.uid == current) {
-                                TextButton(onClick = onEdit) { Text("Edit") }
-                            }
+                            TextButton(onClick = { onEdit(run.uid) }) { Text("Edit") }
                             if (run.status ==
                                 "active"
                             ) {
@@ -639,11 +642,11 @@ internal fun loadRunHabits(
         states.forEachIndexed { day, state ->
             val fill =
                 when (state) {
-                    DONE -> green
+                    DONE -> palette.completed
                     PARTIAL -> palette.partial
-                    SKIPPED -> palette.skipped
+                    SKIPPED -> palette.incomplete
                     OUTSIDE -> palette.emptyDay.copy(alpha = .5f)
-                    else -> Color.Transparent
+                    else -> palette.incomplete
                 }
             Box(
                 Modifier
@@ -795,9 +798,9 @@ private val ROW_SHAPE = RoundedCornerShape(16.dp)
                                     val index = rowIndex * 7 + columnIndex
                                     val fill =
                                         when (state) {
-                                            DONE -> green
+                                            DONE -> palette.completed
                                             PARTIAL -> palette.partial
-                                            SKIPPED -> palette.skipped
+                                            SKIPPED, NONE -> palette.incomplete
                                             else -> Color.Transparent
                                         }
                                     Box(
@@ -883,39 +886,42 @@ private val ROW_SHAPE = RoundedCornerShape(16.dp)
             Text("Points per day", style = MaterialTheme.typography.titleSmall)
             val values = perDay
             val top = max(maxDailyPoints, 1)
-            Column(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-                Canvas(Modifier.width(max(300, perDay.size * 24).dp).height(112.dp).padding(top = 12.dp)) {
-                    val slot = size.width / perDay.size.coerceAtLeast(1)
-                    val barWidth = slot * .46f
-                    for (line in 1..3) {
-                        val y = size.height * line / 4f
-                        drawLine(palette.divider, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
-                    }
-                    values.forEachIndexed { i, value ->
-                        val height = (size.height - 8.dp.toPx()) * value / top
-                        if (value >
-                            0
-                        ) {
-                            drawRoundRect(
-                                green,
-                                Offset(i * slot + (slot - barWidth) / 2, size.height - height),
-                                androidx.compose.ui.geometry
-                                    .Size(barWidth, height),
-                                androidx.compose.ui.geometry
-                                    .CornerRadius(5.dp.toPx()),
-                            )
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val chartWidth = maxOf(maxWidth, (perDay.size * 14).dp)
+                Column(Modifier.horizontalScroll(rememberScrollState())) {
+                    Canvas(Modifier.width(chartWidth).height(112.dp).padding(top = 12.dp)) {
+                        val slot = size.width / perDay.size.coerceAtLeast(1)
+                        val barWidth = slot * .46f
+                        for (line in 1..3) {
+                            val y = size.height * line / 4f
+                            drawLine(palette.divider, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+                        }
+                        values.forEachIndexed { i, value ->
+                            val height = (size.height - 8.dp.toPx()) * value / top
+                            if (value >
+                                0
+                            ) {
+                                drawRoundRect(
+                                    green,
+                                    Offset(i * slot + (slot - barWidth) / 2, size.height - height),
+                                    androidx.compose.ui.geometry
+                                        .Size(barWidth, height),
+                                    androidx.compose.ui.geometry
+                                        .CornerRadius(5.dp.toPx()),
+                                )
+                            }
                         }
                     }
-                }
-                Row(Modifier.width(max(300, perDay.size * 24).dp)) {
-                    perDay.indices.forEach { i ->
-                        Text(
-                            "${i + 1}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = muted,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Center,
-                        )
+                    Row(Modifier.width(chartWidth)) {
+                        perDay.indices.forEach { i ->
+                            Text(
+                                "${i + 1}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = muted,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }
@@ -932,13 +938,15 @@ private val ROW_SHAPE = RoundedCornerShape(16.dp)
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text("Points burnup", style = MaterialTheme.typography.titleSmall)
             Text(
-                "Cumulative points across the run",
+                "Actual points and forecast at the current daily pace",
                 style = MaterialTheme.typography.bodySmall,
                 color = muted,
                 modifier = Modifier.padding(top = 3.dp),
             )
             val cumulative = perDay.take(elapsed).runningFold(0) { acc, v -> acc + v }
-            val peak = max(maxDailyPoints * perDay.size, 1)
+            val forecast = forecastEnd(cumulative.last(), elapsed, perDay.size)
+            val peak = max(max(maxDailyPoints * perDay.size, forecast.roundToInt()), 1)
+            val forecastColor = MaterialTheme.colorScheme.tertiary
             Canvas(Modifier.fillMaxWidth().height(130.dp).padding(top = 12.dp)) {
                 val left = 8.dp.toPx()
                 val right = size.width - 6.dp.toPx()
@@ -954,6 +962,18 @@ private val ROW_SHAPE = RoundedCornerShape(16.dp)
                     val x = left + (right - left) * i / (n).toFloat()
                     val y = bottom - (bottom - top) * value / peak
                     if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                if (elapsed > 0 && elapsed < perDay.size) {
+                    val x = left + (right - left) * elapsed / n.toFloat()
+                    val y = bottom - (bottom - top) * cumulative.last() / peak
+                    val forecastY = bottom - (bottom - top) * forecast / peak
+                    drawLine(
+                        forecastColor,
+                        Offset(x, y),
+                        Offset(right, forecastY),
+                        3.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx())),
+                    )
                 }
                 drawPath(
                     path,
@@ -974,3 +994,16 @@ private val ROW_SHAPE = RoundedCornerShape(16.dp)
         }
     }
 }
+
+/** First day of the history window containing the selection. */
+internal fun historyWindowStart(
+    selectedOffset: Int,
+    windowDays: Int,
+): Int = (selectedOffset / windowDays.coerceAtLeast(1)) * windowDays.coerceAtLeast(1)
+
+/** Linear projection from the elapsed daily average; no forecast before the run starts. */
+internal fun forecastEnd(
+    earned: Int,
+    elapsed: Int,
+    duration: Int,
+): Float = if (elapsed <= 0) 0f else earned.toFloat() * duration / elapsed

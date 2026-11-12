@@ -169,11 +169,13 @@ fun HabitLabApp(
     today: String,
 ) {
     var page by remember { mutableStateOf(Destination.Runs) }
+    val pageHistory = remember { mutableStateListOf<Destination>() }
+    var backProgress by remember { mutableFloatStateOf(0f) }
     var detailHabit by remember { mutableStateOf<Habit?>(null) }
     var dense by remember(database) { mutableStateOf(database.pref(PREF_DENSE_LAYOUT) == "1") }
     var runsRevision by remember { mutableIntStateOf(0) }
     var builderCopy by remember { mutableStateOf<Boolean?>(null) }
-    var editCurrentRun by remember { mutableStateOf(false) }
+    var editRunUid by remember { mutableStateOf<String?>(null) }
     var manageRuns by remember { mutableStateOf(false) }
     var shareOpen by remember { mutableStateOf(false) }
     var groupHabits by remember(database) { mutableStateOf(database.pref("ui_group_habits") != "0") }
@@ -278,6 +280,30 @@ fun HabitLabApp(
             database.pref(PREF_HIDE_POINTS) == "1"
         0
     }
+    val canNavigateBack = builderCopy != null || shareOpen || detailHabit != null || manageRuns || pageHistory.isNotEmpty()
+    PlatformBackHandler(
+        enabled = canNavigateBack && !showFirstStart && !showSignIn && pendingSwitch == null,
+        onProgress = { backProgress = it },
+        onBack = {
+            when {
+                builderCopy != null -> builderCopy = null
+                shareOpen -> shareOpen = false
+                detailHabit != null -> detailHabit = null
+                manageRuns -> manageRuns = false
+                pageHistory.isNotEmpty() -> page = pageHistory.removeAt(pageHistory.lastIndex)
+            }
+        },
+    )
+    val peekModifier =
+        Modifier.graphicsLayer {
+            scaleX = 1f - backProgress * 0.08f
+            scaleY = 1f - backProgress * 0.08f
+            alpha = 1f - backProgress * 0.2f
+        }
+    var lastDetail by remember { mutableStateOf<Habit?>(null) }
+    if (detailHabit != null) lastDetail = detailHabit
+    var lastBuilderCopy by remember { mutableStateOf(true) }
+    if (builderCopy != null) lastBuilderCopy = builderCopy!!
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     if (systemDarkState != systemDark) systemDarkState = systemDark
     MaterialTheme(colorScheme = palette.toColorScheme()) {
@@ -286,7 +312,10 @@ fun HabitLabApp(
                 NavigationBar(containerColor = surface) {
                     visibleDestinations.forEach { dest ->
                         NavigationBarItem(selected = page == dest, onClick = {
-                            page = dest
+                            if (page != dest) {
+                                pageHistory.add(page)
+                                page = dest
+                            }
                         }, icon = { DockGlyph(dest) }, label = { Text(dest.title) }, alwaysShowLabel = true)
                     }
                 }
@@ -333,6 +362,7 @@ fun HabitLabApp(
                             if (database.activeRuns().isNotEmpty()) {
                                 manageRuns = true
                             } else {
+                                editRunUid = null
                                 builderCopy = true
                             }
                         }, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(50)).background(surface)) {
@@ -360,7 +390,9 @@ fun HabitLabApp(
                         )
                     }
                 }
-                Crossfade(targetState = page, label = "navigation") { destination ->
+
+                @Composable
+                fun DestinationContent(destination: Destination) {
                     when (destination) {
                         Destination.Runs ->
                             RunsScreen(database, runsRevision, today, dense, groupHabits, historyDays, onManageRuns = {
@@ -415,13 +447,38 @@ fun HabitLabApp(
                             )
                     }
                 }
+                Box(Modifier.fillMaxSize()) {
+                    val peekDestination = pageHistory.lastOrNull()
+                    val peekingPage =
+                        backProgress > 0f &&
+                            peekDestination != null &&
+                            builderCopy == null &&
+                            !shareOpen &&
+                            detailHabit == null &&
+                            !manageRuns
+                    if (peekingPage) DestinationContent(peekDestination!!)
+                    Crossfade(
+                        targetState = page,
+                        modifier = if (peekingPage) peekModifier else Modifier,
+                        label = "navigation",
+                    ) { destination -> DestinationContent(destination) }
+                }
             }
             AnimatedVisibility(visible = manageRuns, enter = fadeIn(), exit = fadeOut()) {
-                Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
-                    RunManagementPage(database, runsRevision, onBack = { manageRuns = false }, onEdit = {
-                        manageRuns = false
-                        editCurrentRun =
-                            true
+                Surface(
+                    Modifier.fillMaxSize().padding(padding).then(
+                        if (builderCopy ==
+                            null
+                        ) {
+                            peekModifier
+                        } else {
+                            Modifier
+                        },
+                    ),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    RunManagementPage(database, runsRevision, onBack = { manageRuns = false }, onEdit = { uid ->
+                        editRunUid = uid
                         builderCopy = true
                     }, onChanged = {
                         runsRevision++
@@ -430,31 +487,30 @@ fun HabitLabApp(
                 }
             }
             AnimatedVisibility(visible = shareOpen, enter = fadeIn(), exit = fadeOut()) {
-                Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
+                Surface(Modifier.fillMaxSize().padding(padding).then(peekModifier), color = MaterialTheme.colorScheme.background) {
                     ShareHabitsPage(database, today, runsRevision, onBack = { shareOpen = false })
                 }
             }
             AnimatedVisibility(visible = detailHabit != null, enter = fadeIn(), exit = fadeOut()) {
-                detailHabit?.let { habit ->
-                    Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
+                lastDetail?.let { habit ->
+                    Surface(Modifier.fillMaxSize().padding(padding).then(peekModifier), color = MaterialTheme.colorScheme.background) {
                         HabitDetailPage(database, habit, today, onBack = { detailHabit = null }, onChanged = { runsRevision++ })
                     }
                 }
             }
-            builderCopy?.let { copy ->
-                Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
+            AnimatedVisibility(visible = builderCopy != null, enter = fadeIn(), exit = fadeOut()) {
+                Surface(Modifier.fillMaxSize().padding(padding).then(peekModifier), color = MaterialTheme.colorScheme.background) {
                     RunBuilderPage(
                         database,
                         today,
-                        copy,
-                        editCurrentRun,
+                        lastBuilderCopy,
+                        editRunUid,
                         onCreated = {
                             runsRevision++
                             noteLocalChange()
                         },
                         onDismiss = {
                             builderCopy = null
-                            editCurrentRun = false
                         },
                     )
                 }
@@ -745,17 +801,36 @@ fun HabitLabApp(
     }
 }
 
+internal fun isValidRunDate(value: String): Boolean {
+    if (!Regex("\\d{4}-\\d{2}-\\d{2}").matches(value)) return false
+    val year = value.substring(0, 4).toInt()
+    val month = value.substring(5, 7).toInt()
+    val day = value.substring(8, 10).toInt()
+    if (year == 0 || month !in 1..12) return false
+    val maxDay =
+        when (month) {
+            2 -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
+            4, 6, 9, 11 -> 30
+            else -> 31
+        }
+    return day in 1..maxDay
+}
+
 /** Full-page run builder. The first choice on the page is where the habits come from: previous run, scratch, or YAML. */
 @Composable private fun RunBuilderPage(
     database: HabitDatabase,
     today: String,
     startWithCopy: Boolean,
-    editing: Boolean,
+    editRunUid: String?,
     onCreated: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val editing = editRunUid != null
     val existing = remember(database) { database.schemaQueries.selectHabits().executeAsList() }
-    val latestRun = remember(database) { database.currentRun() }
+    val latestRun =
+        remember(database, editRunUid) {
+            if (editRunUid != null) database.schemaQueries.selectRunByUid(editRunUid).executeAsOneOrNull() else database.currentRun()
+        }
     var name by remember { mutableStateOf(if (editing) latestRun?.name.orEmpty() else "") }
     var startDate by remember { mutableStateOf(if (editing) latestRun?.start_date ?: today else today) }
     val initialDays = if (startWithCopy) latestRun?.duration_days?.toInt() ?: 21 else 21
@@ -966,6 +1041,17 @@ fun HabitLabApp(
                 OutlinedTextField(value = name, onValueChange = {
                     name = it
                 }, label = { Text("Run name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = startDate,
+                    onValueChange = {
+                        startDate = it
+                        builderError = null
+                    },
+                    label = { Text("Start date (YYYY-MM-DD)") },
+                    singleLine = true,
+                    isError = !isValidRunDate(startDate),
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 Text("Run length", style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(7, 14, 21).forEach { days ->
@@ -1206,6 +1292,10 @@ fun HabitLabApp(
                         val duplicate = duplicateHabitTitle(draftTitles)
                         if (duplicate != null) {
                             builderError = "Habit ‘$duplicate’ appears more than once. Remove or rename the duplicate."
+                            return@Button
+                        }
+                        if (!isValidRunDate(startDate)) {
+                            builderError = "Enter a valid start date in YYYY-MM-DD format."
                             return@Button
                         }
                         val days = if (custom) customDays.toLongOrNull()?.coerceIn(1, 365) ?: 21L else duration.toLong()

@@ -244,3 +244,7 @@ pre.prompt{background:var(--surface2);border:1px solid var(--outline);border-rad
 .not-due{margin-top:12px}
 .not-due summary{cursor:pointer;color:var(--muted);font-weight:500;padding:10px 4px}
 .not-due summary:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+
+.habit-edit-link{border:0;background:none;color:var(--primary);font:inherit;text-decoration:underline;cursor:pointer;padding:4px}
+.habit-edit-dialog{width:min(460px,calc(100% - 32px));max-height:90vh;overflow:auto;border:1px solid var(--outline);border-radius:20px;background:var(--surface1);color:var(--ink);padding:24px}
+.habit-edit-dialog::backdrop{background:#0009}.habit-edit-dialog h2{margin:0}.habit-edit-dialog .field{width:100%}.habit-edit-dialog .head-btns{margin-top:16px}

@@ -15,6 +15,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,7 +65,7 @@ internal fun formatShareText(
         lines += "- ${if (showHabitCompletion) mark else ""}${habit.title}"
     }
     if (showToday || showRun) lines += ""
-    if (showToday) lines += "Today: ${snapshot.todayPercent}%"
+    if (showToday) lines += "Day: ${snapshot.todayPercent}%"
     if (showRun) lines += "Whole run: ${snapshot.runPercent}%"
     return lines.joinToString("\n")
 }
@@ -73,8 +74,10 @@ internal fun formatShareText(
 internal fun buildShareSnapshot(
     database: HabitDatabase,
     today: String,
+    runUid: String? = null,
 ): ShareSnapshot? {
-    val run = database.currentRun() ?: return null
+    val run = if (runUid == null) database.currentRun() else database.schemaQueries.selectRunByUid(runUid).executeAsOneOrNull()
+    run ?: return null
     val days = run.duration_days.toInt()
     val offset = (0 until days).firstOrNull { addIsoDays(run.start_date, it) == today } ?: return null
     val habits = loadRunHabits(database, run.uid).filter { database.isHabitShareable(it.uid()) }
@@ -141,8 +144,25 @@ internal fun ShareHabitsPage(
     revision: Int,
     onBack: () -> Unit,
 ) {
-    val snapshot = remember(database, today, revision) { buildShareSnapshot(database, today) }
+    val runs = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList() }
+    var selectedRunUid by remember(database, revision) { mutableStateOf(database.currentRun()?.uid) }
+    val run = runs.firstOrNull { it.uid == selectedRunUid }
+    val lastShareOffset =
+        remember(run, today) {
+            if (run == null || today < run.start_date) {
+                -1
+            } else {
+                (0 until run.duration_days.toInt()).lastOrNull { addIsoDays(run.start_date, it) <= today } ?: -1
+            }
+        }
+    var selectedOffset by remember(run?.uid, lastShareOffset) { mutableStateOf(lastShareOffset) }
+    val selectedDate = if (run != null && selectedOffset >= 0) addIsoDays(run.start_date, selectedOffset) else today
+    val snapshot =
+        remember(database, selectedDate, selectedRunUid, revision) {
+            selectedRunUid?.let { buildShareSnapshot(database, selectedDate, it) }
+        }
     var settingsOpen by remember { mutableStateOf(false) }
+    PlatformBackHandler(enabled = settingsOpen, onProgress = {}, onBack = { settingsOpen = false })
     var showHabits by remember { mutableStateOf(database.pref(PREF_SHARE_HABITS) != "0") }
     var showToday by remember { mutableStateOf(database.pref(PREF_SHARE_TODAY) != "0") }
     var showRun by remember { mutableStateOf(database.pref(PREF_SHARE_RUN) != "0") }
@@ -177,7 +197,7 @@ internal fun ShareHabitsPage(
                     showToday = it
                     database.setPref(PREF_SHARE_TODAY, if (it) "1" else "0")
                 }
-                ShareOption("Whole-run completion", "Show completion through today.", showRun) {
+                ShareOption("Whole-run completion", "Show completion through the selected day.", showRun) {
                     showRun = it
                     database.setPref(PREF_SHARE_RUN, if (it) "1" else "0")
                 }
@@ -186,36 +206,61 @@ internal fun ShareHabitsPage(
                     color = muted,
                     style = MaterialTheme.typography.bodySmall,
                 )
-            } else if (snapshot == null) {
-                Text("Today's date is outside the selected run.", color = muted)
-            } else if (snapshot.habits.isEmpty()) {
-                Text("No habits are shared today. Open a habit and enable “Include when sharing.”", color = muted)
             } else {
-                Text("Day ${snapshot.dayNumber}", style = MaterialTheme.typography.headlineSmall)
-                snapshot.habits.forEach { habit ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(habit.title)
-                        if (showHabits) {
-                            Text(
-                                when (habit.state) {
-                                    "done" -> "✓"
-                                    "partial" -> "◐"
-                                    else -> "✕"
-                                },
-                                color = green,
-                            )
+                if (runs.size > 1) {
+                    val index = runs.indexOfFirst { it.uid == selectedRunUid }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(enabled = index > 0, onClick = { selectedRunUid = runs[index - 1].uid }) { Text("Previous run") }
+                        Text(run?.name.orEmpty(), modifier = Modifier.weight(1f))
+                        TextButton(enabled = index >= 0 && index < runs.lastIndex, onClick = { selectedRunUid = runs[index + 1].uid }) {
+                            Text("Next run")
                         }
                     }
                 }
-                if (showToday) Text("Today: ${snapshot.todayPercent}%")
-                if (showRun) Text("Whole run: ${snapshot.runPercent}%")
-                Card(colors = CardDefaults.cardColors(containerColor = surface)) {
-                    Text(formatShareText(snapshot, showHabits, showToday, showRun), Modifier.fillMaxWidth().padding(16.dp))
+                if (lastShareOffset >= 0) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(enabled = selectedOffset > 0, onClick = {
+                            selectedOffset--
+                            copied = false
+                        }) { Text("Previous day") }
+                        Text(selectedDate, modifier = Modifier.weight(1f))
+                        TextButton(enabled = selectedOffset < lastShareOffset, onClick = {
+                            selectedOffset++
+                            copied = false
+                        }) { Text("Next day") }
+                    }
                 }
-                Button(onClick = {
-                    clipboard.setText(AnnotatedString(formatShareText(snapshot, showHabits, showToday, showRun)))
-                    copied = true
-                }, modifier = Modifier.fillMaxWidth()) { Text(if (copied) "Copied ✓" else "Copy text") }
+                if (snapshot == null) {
+                    Text("No run day is available to share yet.", color = muted)
+                } else if (snapshot.habits.isEmpty()) {
+                    Text("No habits are shared on this day. Open a habit and enable sharing.", color = muted)
+                } else {
+                    Text("Day ${snapshot.dayNumber}", style = MaterialTheme.typography.headlineSmall)
+                    snapshot.habits.forEach { habit ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(habit.title)
+                            if (showHabits) {
+                                Text(
+                                    when (habit.state) {
+                                        "done" -> "\u2713"
+                                        "partial" -> "\u25d0"
+                                        else -> "\u2715"
+                                    },
+                                    color = green,
+                                )
+                            }
+                        }
+                    }
+                    if (showToday) Text("Day: ${snapshot.todayPercent}%")
+                    if (showRun) Text("Whole run: ${snapshot.runPercent}%")
+                    Card(colors = CardDefaults.cardColors(containerColor = surface)) {
+                        Text(formatShareText(snapshot, showHabits, showToday, showRun), Modifier.fillMaxWidth().padding(16.dp))
+                    }
+                    Button(onClick = {
+                        clipboard.setText(AnnotatedString(formatShareText(snapshot, showHabits, showToday, showRun)))
+                        copied = true
+                    }, modifier = Modifier.fillMaxWidth()) { Text(if (copied) "Copied \u2713" else "Copy text") }
+                }
             }
         }
     }

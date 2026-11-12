@@ -19,7 +19,7 @@ class ShareHabitsTest {
                 42,
             )
         assertEquals(
-            "# Day 12, 10 November\n\n- ✓ Morning light\n- ◐ Plan the day\n- ✕ Focused work block\n\nToday: 33%\nWhole run: 42%",
+            "# Day 12, 10 November\n\n- ✓ Morning light\n- ◐ Plan the day\n- ✕ Focused work block\n\nDay: 33%\nWhole run: 42%",
             formatShareText(snapshot, true, true, true),
         )
         assertEquals(
@@ -48,6 +48,11 @@ class ShareHabitsTest {
         assertEquals(listOf("Morning light"), snapshot.habits.map { it.title })
         assertEquals(0, snapshot.todayPercent)
         assertEquals(50, snapshot.runPercent)
+        val previousDay = buildShareSnapshot(database, "2026-11-09")!!
+        assertEquals(1, previousDay.dayNumber)
+        assertEquals("done", previousDay.habits.single().state)
+        assertEquals(100, previousDay.todayPercent)
+        assertEquals(100, previousDay.runPercent)
         driver.close()
     }
 }

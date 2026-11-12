@@ -4,6 +4,14 @@ Running record of what is built, what is live, and every operational lesson
 learned. Read this file first before continuing work; append to it when you
 finish a step (the owner commits after every step).
 
+
+## Navigation, charts, and habit management (2026-11-13)
+
+- Android now supports predictive back and destination transitions, date editing for current and past runs, past-run/day share selection, 21-day charts with a pace forecast, and Material completion colors. Web exposes direct habit editing and past-run editing while preserving check-ins.
+- Independent Android and web code reviews identified and prompted fixes for predictive destination feedback, run-date selection bounds, and interval validation. Android JVM tests, server tests, ktlint, QA and release assembly, isolated browser journey, JavaScript syntax and seven YAML tests passed. iOS simulator testing is unavailable on Windows.
+- Installed the separate QA APK on the connected Samsung SM-M075F. Checked Quick Log back, Share settings back, earlier-day/run controls, run date field and back to manager, and an edge back gesture. Visually checked all 21 chart labels, the forecast line and green/orange status boxes. Predictive gesture progress and cancellation were not separately verified frame by frame.
+- Android 1.3.0 (code 7) was signed and verified with v2/v3 signatures. Copied to `/home/aakash/apks/Rabit-1.3.0-release.apk`; local and remote SHA-256 matched `edb83e6d9d86abb592699b96f47324c56c2ee284025b49b25352cb68126463af`. Standalone web bundle deployed to test 8788 and production 8789, both health endpoints returned OK and both served the updated editor.
+
 ## Manual run activation (2026-11-10)
 
 - Android and web Manage runs can activate a stopped run. The current active run stops; all check-ins and habits remain. Android changes statuses in one local transaction, and web queues the status changes together for sync.

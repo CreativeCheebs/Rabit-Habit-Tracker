@@ -659,7 +659,7 @@ function habitTable(habits, startDate, count, todayIso, numberedBase, readOnly =
   let body = '';
   for (const h of habits) {
     body += `<div class="hrow"><div class="symbol">${groupIcon(h.group_name)}</div>
-      <div><div class="habit-name">${esc(h.title)}<span class="iteration">${roman(h.iteration || 1)}</span></div>
+      <div><div class="habit-name">${esc(h.title)}<span class="iteration">${roman(h.iteration || 1)}</span> <button class="habit-edit-link" data-click="openHabitEdit" data-a="${safeId(h.uid)}" aria-label="Edit ${esc(h.title)}">Edit</button></div>
       <div class="habit-meta">${habitMeta(h)}</div></div>
       <div class="dots" style="${cols}">`;
     for (let d = 0; d < count; d++) {
@@ -693,7 +693,7 @@ function standaloneSection() {
   for (const h of list) {
     const c = checkInsByDay(today)[h.uid];
     html += `<div class="hrow" style="grid-template-columns:34px minmax(170px,1.1fr) minmax(0,2fr) 44px"><div class="symbol">${groupIcon(h.group_name)}</div>
-      <div><div class="habit-name">${esc(h.title)}<span class="iteration">${roman(h.iteration || 1)}</span></div>
+      <div><div class="habit-name">${esc(h.title)}<span class="iteration">${roman(h.iteration || 1)}</span> <button class="habit-edit-link" data-click="openHabitEdit" data-a="${safeId(h.uid)}" aria-label="Edit ${esc(h.title)}">Edit</button></div>
       <div class="habit-meta">${habitMeta(h)}</div></div>
       <div><button class="btn${c && c.state === 'done' ? ' primary' : ''}" data-click="toggleDay" data-a="${safeId(h.uid)}" data-b="${today}">${c && c.state === 'done' ? '✓ Done today' : c ? esc(c.state) + ' · tap for done' : 'Log today'}</button></div>
       <div class="point">${h.impact_points}</div></div>`;
@@ -705,7 +705,7 @@ function runManagement() {
   const runs = allRuns();
   if (!runs.length) return '';
   return `<details class="run-management"><summary>Manage runs · ${runs.length}</summary><p class="caption">Stop an active run before starting another. Deleting a run keeps its habits and check-in history.</p>
-    ${runs.map((r) => `<div class="run-management-row"><div><strong>${esc(r.name)}</strong><div class="caption">${esc(r.start_date)} · ${r.duration_days} days · ${r.status === 'active' ? 'Active' : 'Stopped'}</div></div><div class="head-btns">${r.status === 'stopped' ? `<button class="btn" data-click="showRunHistory" data-a="${safeId(r.uid)}">History</button><button class="btn" data-click="activateRun" data-a="${safeId(r.uid)}">Make active</button>` : ''}${r.uid === latestRun()?.uid ? `<button class="btn" data-click="openEdit" data-a="${safeId(r.uid)}">Edit</button>` : ''}${r.status === 'active' ? `<button class="btn" data-click="stopRun" data-a="${safeId(r.uid)}">Stop run</button>` : ''}<button class="btn" data-click="deleteRun" data-a="${safeId(r.uid)}">Delete run</button></div></div>`).join('')}</details>`;
+    ${runs.map((r) => `<div class="run-management-row"><div><strong>${esc(r.name)}</strong><div class="caption">${esc(r.start_date)} · ${r.duration_days} days · ${r.status === 'active' ? 'Active' : 'Stopped'}</div></div><div class="head-btns">${r.status === 'stopped' ? `<button class="btn" data-click="showRunHistory" data-a="${safeId(r.uid)}">History</button><button class="btn" data-click="activateRun" data-a="${safeId(r.uid)}">Make active</button>` : ''}<button class="btn" data-click="openEdit" data-a="${safeId(r.uid)}">Edit</button>${r.status === 'active' ? `<button class="btn" data-click="stopRun" data-a="${safeId(r.uid)}">Stop run</button>` : ''}<button class="btn" data-click="deleteRun" data-a="${safeId(r.uid)}">Delete run</button></div></div>`).join('')}</details>`;
 }
 function activateRun(uid) {
   const target = allRuns().find((r) => r.uid === uid && r.status === 'stopped');
@@ -1327,6 +1327,44 @@ function saveEdit() {
   showView('runs');
 }
 
+/* Habit changes apply to the shared habit, without changing its check-ins. */
+function openHabitEdit(uid) {
+  const h = row('habit', uid)?.v;
+  if (!h || h._deleted || h.archived) return;
+  const dialog = document.createElement('dialog');
+  dialog.className = 'habit-edit-dialog';
+  dialog.innerHTML = `<form method="dialog"><h2>Edit habit</h2>
+    <p class="caption">Changes apply everywhere this habit is used. Check-ins are kept.</p>
+    <label class="field-label" for="habitEditName">Name</label><input class="field" id="habitEditName" required maxlength="200" value="${esc(h.title)}">
+    <label class="field-label" for="habitEditGroup">Group</label><input class="field" id="habitEditGroup" maxlength="200" value="${esc(h.group_name || '')}">
+    <label class="field-label" for="habitEditPoints">Points</label><input class="field" id="habitEditPoints" type="number" min="0" step="1" required value="${Number(h.impact_points) || 0}">
+    <label class="field-label" for="habitEditType">Schedule</label><select class="field" id="habitEditType"><option value="weekly"${h.recurrence_type !== 'interval' ? ' selected' : ''}>Days per week</option><option value="interval"${h.recurrence_type === 'interval' ? ' selected' : ''}>Every N days</option></select>
+    <label class="field-label" for="habitEditCount">Schedule value</label><input class="field" id="habitEditCount" type="number" min="1" step="1" required value="${Number(h.recurrence_value) || 1}">
+    <p class="form-errors" role="alert"></p><div class="head-btns"><button class="btn primary" type="submit" value="save">Save habit</button><button class="btn" type="button">Cancel</button></div></form>`;
+  document.body.append(dialog);
+  const form = dialog.querySelector('form');
+  const type = dialog.querySelector('#habitEditType');
+  const count = dialog.querySelector('#habitEditCount');
+  const updateMax = () => { count.max = type.value === 'weekly' ? '7' : '365'; };
+  type.addEventListener('change', updateMax);
+  updateMax();
+  dialog.querySelector('button[type="button"]').addEventListener('click', () => dialog.close());
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const name = dialog.querySelector('#habitEditName').value.trim();
+    const error = dialog.querySelector('[role="alert"]');
+    if (!name) { error.textContent = 'Name the habit first.'; return; }
+    const duplicate = runsUsingHabit(uid).some((run) => duplicateHabitName(habitsForRun(run.uid).map((habit) => ({ name: habit.uid === uid ? name : habit.title }))));
+    if (duplicate) { error.textContent = 'A habit with this name already exists in a run that uses it.'; return; }
+    putRow('habit', uid, { title: name, group_name: dialog.querySelector('#habitEditGroup').value.trim() || 'General', impact_points: Number(dialog.querySelector('#habitEditPoints').value), recurrence_type: type.value, recurrence_value: Number(count.value) });
+    dialog.close();
+    renderCurrent();
+    toast('Habit saved.');
+  });
+  dialog.addEventListener('close', () => dialog.remove());
+  dialog.showModal();
+}
+
 /* ---------- Standalone habits ---------- */
 function openStandalone() {
   const host = $('standaloneForm');
@@ -1386,6 +1424,7 @@ const editorRender = (ctx) => (ctx === 'builder' ? renderBuilder() : renderEdit(
 const ACTIONS = {
   toggleDay: (a, b) => toggleDay(a, b),
   openStandalone: () => openStandalone(),
+  openHabitEdit: (a) => openHabitEdit(a),
   openBuilder: () => openBuilder(),
   openEdit: (a) => openEdit(a),
   showRunHistory: (a) => showRunHistory(a),

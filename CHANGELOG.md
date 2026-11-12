@@ -10,6 +10,13 @@ All notable changes are documented here. Follow Keep a Changelog and Semantic Ve
 
 ## [Unreleased]
 
+## [1.3.0] - Navigation and habit management
+
+- Android shows a full 21-day history, a burnup forecast, and clearer completion colors.
+- Android supports back navigation with predictive gestures, animated transitions, editing past run dates, and copying share text for earlier run days.
+- Web allows direct habit editing and editing past runs. Existing check-ins are retained.
+- Increased Android version code to 7.
+
 ## [1.2.0] - Manual run activation
 
 - Android and web Manage runs can make a stopped run active. The previous active run is stopped and its habits and check-ins are kept.

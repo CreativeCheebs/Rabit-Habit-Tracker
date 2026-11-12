@@ -60,6 +60,21 @@ try {
   await page.getByRole('button', { name: 'Save changes' }).click();
   assert.equal(await page.locator('#runsBody').getByText('Edited habit').count(), 1);
 
+  // A habit can be edited directly without replacing its identity or check-ins.
+  await page.getByRole('button', { name: 'Edit Edited habit' }).click();
+  await page.locator('#habitEditName').fill('Directly edited habit');
+  await page.locator('#habitEditPoints').fill('4');
+  await page.locator('#habitEditType').selectOption('interval');
+  await page.locator('#habitEditCount').fill('366');
+  await page.getByRole('button', { name: 'Save habit' }).click();
+  assert.equal(await page.locator('#habitEditCount').evaluate((input) => input.validity.rangeOverflow), true);
+  await page.locator('#habitEditCount').fill('365');
+  await page.getByRole('button', { name: 'Save habit' }).click();
+  assert.equal(await page.locator('#runsBody').getByText('Directly edited habit').count(), 1);
+  await page.getByRole('button', { name: 'Edit Directly edited habit' }).click();
+  await page.locator('#habitEditName').fill('Edited habit');
+  await page.getByRole('button', { name: 'Save habit' }).click();
+
   // Names are unique inside a run even when case and whitespace differ.
   await page.getByRole('button', { name: 'Edit run' }).click();
   await page.locator('#editBody [data-click="addHabit"][data-a="edit"]').click();
@@ -94,6 +109,11 @@ try {
     .filter((entry) => entry.v.status === 'active' && !entry.v._deleted).length), 1);
   assert.equal(await page.locator('#runsBody').getByText('Edited habit').count(), 1);
   await page.locator('.run-management summary').click();
+  await page.locator('.run-management-row').filter({ hasText: 'Edited run' }).getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.locator('#editStart').fill('2020-01-02');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await page.locator('.run-management summary').click();
+  assert.match(await page.locator('.run-management-row').filter({ hasText: 'Edited run' }).textContent(), /2020-01-02/);
   await page.locator('.run-management-row').filter({ hasText: 'Edited run' }).getByRole('button', { name: 'History' }).click();
   assert.equal(await page.getByRole('button', { name: 'Back to current run' }).count(), 1);
   assert.equal(await page.locator('#runsBody .dots button').count(), 0);
