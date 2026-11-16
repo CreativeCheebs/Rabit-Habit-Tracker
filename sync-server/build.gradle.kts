@@ -4,7 +4,14 @@ plugins {
     alias(libs.plugins.ktor)
     application
 }
-kotlin { jvmToolchain(17) }
+kotlin {
+    jvmToolchain(25)
+    compilerOptions {
+        // Keep deployment compatible with the Java 21 runtime on the hosted server.
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+tasks.withType<JavaCompile>().configureEach { options.release.set(17) }
 dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)

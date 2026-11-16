@@ -9,6 +9,7 @@ Build a routine one day at a time. Rabit helps you plan a habit run, check in ea
 - **See your progress:** review daily completion, impact points, and run charts.
 - **Keep control of your data:** use Android offline, or sync through a server you host.
 - **Share an update:** on Android, choose which habits can appear in a copied daily text summary. Sharing choices currently stay on that device.
+- **Show it in Reskon:** connect the server to the [Reskon dashboard](docs/reskon-plugin.md) to see today's habits, daily counts, and streaks as widgets, and tick a habit from inside Reskon.
 
 ## Screenshots
 

@@ -462,3 +462,20 @@ superseded for this work. Everything below was checked on the ADB phone.
   `dense` / `hide-points`).
 - Verified live on 8788 with Playwright: switch to Light + Blue, dense on,
   persisted across reload, no JS errors. Deployed to 8788 and 8789.
+
+## Reskon connected app (2026-11-16)
+
+- Implemented Reskon contract v1 in the standalone sync server: discovery manifest, password login, one-use widget tickets, read-only feeds, tickable Today page, per-account change callbacks, frame restrictions, and contract documentation. Existing implementation and tests were already in progress when continued.
+- Connect now validates Reskon's /api/apps/changed callback address and schedules a data-changed notification after saving a refreshed callback key.
+- Initial test attempt was blocked by the uncached Gradle wrapper; after network access and JDK 25 configuration, sync-server tests passed. The plugin and server were subsequently deployed to test and production.
+
+## Sync server JDK 25 toolchain (2026-11-16)
+
+- Updated the standalone sync server to build with JDK 25, moving its Gradle wrapper to 9.1.0 (the first Gradle release with Java 25 support) and Kotlin to 2.3.0 (the first Kotlin release with Java 25 bytecode support). Root/app Gradle pins were left unchanged.
+- sync-server/gradlew.bat test --no-daemon --console=plain passed using the installed JDK 25. Kotlin daemon temp-file access was denied in this environment, so Kotlin fell back to in-process compilation; tests still completed successfully.
+
+## Reskon plugin deployment and JDK 25 release (2026-11-16)
+
+- Published Reskon discovery and widget routes on test 8788 and production 8789. Manifest reports contract version 1 and plugin version 1.3.1; widget HTML loads on both. Both service health checks returned OK. The plugin is available for the owner to connect in Reskon; no Reskon account pairing was performed in this step.
+- Server build uses JDK 25 with Java 17 bytecode to remain compatible with the host's Java 21 runtime. Gradle 9.1.0 and Kotlin 2.3.0 are pinned in the standalone server. Server tests and bbuildFatJar passed. Initial JDK 25 bytecode deployment was incompatible with the host; both services were promptly restored from backups, then redeployed successfully with Java 17-compatible bytecode. Backups are retained alongside each instance's fat jar.
+- Android release version advanced to 1.3.1 (code 8). APK signature schemes v2 and v3 verified. Copied to /home/aakash/apks/Rabit-1.3.1-release.apk; local and remote SHA-256 match 268d465dd63ddd62edaad7dffe36bea621b8bfec4a05e5f963ac89f2ce03d782.

@@ -73,6 +73,22 @@ object Accounts {
         }
     }
 
+    /** Every sign-in name on this server, environment users included. */
+    fun all(): List<String> {
+        val names = linkedSetOf<String>()
+        envUsers().forEach { (name, _) -> names += name }
+        try {
+            open().use { db ->
+                db.createStatement().use { st ->
+                    st.executeQuery("SELECT username FROM account").use { rs ->
+                        while (rs.next()) names += rs.getString(1)
+                    }
+                }
+            }
+        } catch (_: Exception) { }
+        return names.toList()
+    }
+
     fun register(rawUsername: String, password: String): RegisterResult {
         val username = rawUsername.trim()
         if (username.length < 3 || username.length > 64 || !isValidAccountId(username)) {

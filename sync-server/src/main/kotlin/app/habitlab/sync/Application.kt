@@ -28,6 +28,12 @@ import java.io.File
 
 private val wireJson = Json { ignoreUnknownKeys = true }
 
+/** The Reskon widget pages are the one exception to the framing ban below. */
+private fun framingCsp(): String = WEB_CSP.replace(
+    "frame-ancestors 'none'",
+    "frame-ancestors ${ReskonConfig.frameCsp()}",
+)
+
 fun requireSyncSecret(): String {
     val secret = System.getenv("HABITLAB_SYNC_SECRET")
         ?: error("HABITLAB_SYNC_SECRET is required")
@@ -89,14 +95,30 @@ fun main() {
 
 private fun Application.syncModule() {
     install(ContentNegotiation) { json(wireJson) }
+    // Resolves (and validates) the Reskon origin once, at startup.
+    val widgetOrigins = ReskonConfig.frameOrigins()
     intercept(ApplicationCallPipeline.Plugins) {
+        val path = call.request.local.uri
         call.response.headers.append("X-Content-Type-Options", "nosniff")
-        call.response.headers.append("X-Frame-Options", "DENY")
         call.response.headers.append("Referrer-Policy", "no-referrer")
-        call.response.headers.append("Content-Security-Policy", WEB_CSP)
-        if (call.request.local.uri.startsWith("/api/")) call.response.headers.append("Cache-Control", "no-store")
+        if (path.startsWith("/widgets/") || path.startsWith("/api/reskon/widget")) {
+            // Reskon embeds these pages in an iframe; frame-ancestors is the allow-list.
+            if (widgetOrigins.isNotEmpty()) {
+                call.response.headers.append("Content-Security-Policy", framingCsp())
+            } else {
+                call.response.headers.append("X-Frame-Options", "DENY")
+                call.response.headers.append("Content-Security-Policy", WEB_CSP)
+            }
+        } else {
+            call.response.headers.append("X-Frame-Options", "DENY")
+            call.response.headers.append("Content-Security-Policy", WEB_CSP)
+        }
+        if (path.startsWith("/api/") || path.startsWith("/widgets/")) {
+            call.response.headers.append("Cache-Control", "no-store")
+        }
     }
     routing {
+        reskonRoutes()
         get("/health") { call.respond(mapOf("status" to "ok", "service" to "habitlab-sync")) }
         post("/api/sign-in") {
             val credentials = call.receive<SignInRequest>()
@@ -250,6 +272,8 @@ private fun Application.syncModule() {
             // Byte size ahead of the body so a first download can show progress.
             call.response.header("X-Sync-Byte-Size", wireJson.encodeToString(SyncResponse.serializer(), response).length.toString())
             call.respond(response)
+            // Tell Reskon to re-read the feeds; coalesced and best-effort inside.
+            if (req.changes.isNotEmpty()) reskonDataChanged(account)
         }
         // Web app bundle (static, same origin as the API so no CORS is needed).
         staticResources("/", "webapp") { default("index.html") }
