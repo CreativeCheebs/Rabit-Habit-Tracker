@@ -4,6 +4,11 @@ Running record of what is built, what is live, and every operational lesson
 learned. Read this file first before continuing work; append to it when you
 finish a step (the owner commits after every step).
 
+## Reskon Today widget correction (2026-11-16)
+
+- Changed the **Today** data widget from a checklist to a table, sized like the Streaks table. It now shows one row per distinct habit linked to the active run, with today's status and recurrence schedule. Standalone, archived, and stopped-run habits are excluded from this data widget. The separate tickable **Today's habits** page keeps its existing behavior.
+- Updated the Reskon integration notes and bumped the connected-app version to 1.3.2. The standalone server `buildFatJar` build passed (Kotlin fell back to in-process compilation after its daemon could not write a temp file). Deployed the jar to test 8788 and production 8789; both health checks passed and both manifests now advertise Today as a table. No authenticated feed request or Reskon dashboard visual check was performed.
+
 
 ## Navigation, charts, and habit management (2026-11-13)
 

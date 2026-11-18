@@ -23,12 +23,12 @@ To disconnect, remove the app in Reskon. The key stops working and this server k
 | Widget | Kind | What it shows |
 | --- | --- | --- |
 | Today's habits | page | Today's habits as checkboxes. Ticking one writes a real check-in, visible in the app and on other devices. |
-| Today | data | Today's habits with whether each is done, skipped, or partial. |
+| Today | data table | One row per habit in the current run, with today's status and schedule. |
 | Done per day | data | How many habits were completed each day (or each week) over the range the person picked. |
 | Streaks | data | Each habit's current and longest run of consecutive days. |
 | Longest streak | data | The longest run of any habit, in days. |
 
-"Today" means today in the time zone Reskon passes along; without one it is UTC. Habits follow the same rule as the web app: the current run's habits plus standalone habits, never archived habits or habits from stopped runs.
+"Today" means today in the time zone Reskon passes along; without one it is UTC. The **Today** table shows only habits linked to the current active run. Duplicate links are collapsed to one row per habit; standalone habits, archived habits, and habits from stopped runs are excluded. The separate **Today's habits** page widget continues to show the web app's current-run and standalone habits.
 
 ## How it works
 

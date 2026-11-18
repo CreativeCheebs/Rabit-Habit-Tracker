@@ -261,6 +261,53 @@ object ReskonFeeds {
         }
     }
 
+    /** data widget "today_list": unique habits linked to the current run. */
+    fun todayTable(rows: AccountRows, today: String): JsonObject {
+        val activeRunUid = activeRun(rows)?.uid
+        val currentRunHabitUids = rows.links.asSequence()
+            .filter { it.runUid == activeRunUid }
+            .map { it.habitUid }
+            .toSet()
+        val habits = rows.habits.asSequence()
+            .filter { !it.archived && it.uid in currentRunHabitUids }
+            .distinctBy { it.uid }
+            .sortedWith(compareBy({ it.group + it.title }, { it.uid }))
+            .take(MAX_ITEMS)
+            .toList()
+        val states = statesOn(rows, today)
+        return buildJsonObject {
+            put("shape", "table")
+            put(
+                "columns",
+                buildJsonArray {
+                    add(buildJsonObject { put("key", "habit"); put("label", "Habit") })
+                    add(buildJsonObject { put("key", "status"); put("label", "Today") })
+                    add(buildJsonObject { put("key", "schedule"); put("label", "Schedule") })
+                },
+            )
+            put(
+                "rows",
+                buildJsonArray {
+                    for (habit in habits) {
+                        val status = when (states[habit.uid]) {
+                            "done" -> "Done"
+                            "partial" -> "Partial"
+                            "skipped" -> "Skipped"
+                            else -> "Not logged"
+                        }
+                        add(
+                            buildJsonObject {
+                                put("habit", cleanText(habit.title, 120, "Habit"))
+                                put("status", status)
+                                put("schedule", cleanText(recurrenceLabel(habit), 200, ""))
+                            },
+                        )
+                    }
+                },
+            )
+        }
+    }
+
     /** data widget "last_days": habits done each day over the range. */
     fun series(rows: AccountRows, from: String, to: String, group: String): JsonObject {
         val counts = hashMapOf<String, Int>()

@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit
  */
 
 /** Keep in step with composeApp's versionName. */
-private const val PLUGIN_VERSION = "1.3.1"
+private const val PLUGIN_VERSION = "1.3.2"
 
 private val MANIFEST =
     """
@@ -51,7 +51,7 @@ private val MANIFEST =
      "connect_url":"/api/reskon/connect",
      "widgets":[
       {"id":"today","title":"Today's habits","kind":"page","url":"/widgets/today","size":{"w":4,"h":4},"style":"reskon"},
-      {"id":"today_list","title":"Today","kind":"data","shape":"checklist","url":"/api/reskon/feeds/today_list","size":{"w":3,"h":3}},
+      {"id":"today_list","title":"Today","kind":"data","shape":"table","url":"/api/reskon/feeds/today_list","size":{"w":6,"h":4}},
       {"id":"last_days","title":"Done per day","kind":"data","shape":"series","url":"/api/reskon/feeds/last_days","ranged":true,"groups":["day","week"],"size":{"w":6,"h":3}},
       {"id":"streaks","title":"Streaks","kind":"data","shape":"table","url":"/api/reskon/feeds/streaks","size":{"w":6,"h":4}},
       {"id":"best_streak","title":"Longest streak","kind":"data","shape":"number","url":"/api/reskon/feeds/best_streak","size":{"w":3,"h":2}}
@@ -293,7 +293,7 @@ private fun feedAnswer(account: String, id: String, call: ApplicationCall): Json
     val today = ReskonFeeds.todayIn(tz)
     val rows = ReskonFeeds.load(accountFile(account))
     return when (id) {
-        "today_list" -> ReskonFeeds.checklist(rows, today)
+        "today_list" -> ReskonFeeds.todayTable(rows, today)
         "streaks" -> ReskonFeeds.streakTable(rows, today)
         "best_streak" -> ReskonFeeds.bestStreak(rows, today)
         else -> {
