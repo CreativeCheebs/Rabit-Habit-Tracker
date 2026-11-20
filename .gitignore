@@ -14,6 +14,7 @@ sync-server/gradle.properties
 ui-qa/node_modules/
 ui-qa/tools/
 TEST-CREDS.md
+private_instrucion.md
 .env
 .env.*
 !.env.example

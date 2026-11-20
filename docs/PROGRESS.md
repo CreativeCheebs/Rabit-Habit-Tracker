@@ -10,6 +10,11 @@ finish a step (the owner commits after every step).
 - Verified the served `app.js`/`styles.css` contain the delight code and the live test page loads with no JS errors (logged-out login view, correct). Test account data preserved; no accounts touched.
 - Owner said "all good": backed up the production jar, ran the full deploy helper (test + prod restarted, both health OK), verified production serves the new bundle, then committed (4 commits) and pushed to `main`.
 
+## F-Droid publish 1.4.0 (2026-11-20)
+
+- Owner supplied the self-hosted repo flow (kept in the gitignored `private_instrucion.md`, never in the repo). Signed 1.4.0 (code 13) with the owner's key, verified signatures, staged in `/home/aakash/apks/` with matching SHA-256.
+- The repo index topped at 1.3.5 and the name `Rabit-1.4.0-release.apk` returned 409 (orphan file, not indexed), so replaced it with `-f` per the documented rule. Upload returned 200, index now lists 1.4.0 code 13 with no warnings.
+
 ## Boxed habit list on web Today (2026-11-20)
 
 - Desktop columns were unbalanced with few habits: habit list is now one surface box (inner habit cards flattened into it) and the grid stretches both columns to equal height — measured exactly equal. Mobile is untouched (its flat card rows are preserved via the mobile override).
