@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Japanese theme palette</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 1280px; height: 820px; box-sizing: border-box; padding: 56px 64px; background: #F7F3EA; color: #23201C; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 32px">
+  <header style="display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1.4px; color: #165E83">THEME OPTION · WA 和</div>
+    <h1 style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -0.8px">Washi paper, sumi ink, indigo and vermilion.</h1>
+    <p style="margin: 0; font-size: 15px; color: #6E665C; max-width: 760px; line-height: 1.5">A second style you can switch on in Settings. Same layout and states; the surfaces, accent and the 11 habit colours swap to traditional Japanese colours. Light and dark both included.</p>
+  </header>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+    <sc-for list="{{modes}}" as="m" hint-placeholder-count="2">
+      <div style="background: {{m.bg}}; color: {{m.ink}}; border: 1px solid {{m.edge}}; border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0; font-size: 17px; font-weight: 800">{{m.label}}</h2>
+        <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
+          <sc-for list="{{m.tokens}}" as="t" hint-placeholder-count="6">
+            <div style="display: flex; flex-direction: column; gap: 5px">
+              <div style="height: 44px; border-radius: 12px; background: {{t.hex}}; border: 1px solid {{m.edge}}"></div>
+              <div style="font-size: 12px; font-weight: 700">{{t.name}}</div>
+              <div style="font-size: 10.5px; color: {{m.muted}}; font-family: ui-monospace, Menlo, monospace">{{t.hex}}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 14px">
+    <h2 style="margin: 0; font-size: 20px; font-weight: 800">Habit colours</h2>
+    <div style="display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{colors}}" as="c" hint-placeholder-count="11">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <div style="height: 60px; border-radius: 16px; background: {{c.tint}}; display: flex; align-items: center; justify-content: center">
+            <span style="width: 26px; height: 26px; border-radius: 50%; background: {{c.solid}}; box-shadow: 0 0 0 2px {{c.ink}}"></span>
+          </div>
+          <div style="height: 60px; border-radius: 16px; background: {{c.tintDark}}; display: flex; align-items: center; justify-content: center">
+            <span style="width: 26px; height: 26px; border-radius: 50%; background: {{c.solid}}"></span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 13px; font-weight: 800">{{c.name}}</span>
+            <span style="font-size: 11.5px; color: #6E665C">{{c.jp}} · {{c.en}}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const tk = (a) => a.map(([name, hex]) => ({ name, hex }));
+    const colors = [
+      ['Beni', '紅', 'crimson', '#C53D43', '#F9E4E3', '#A3262C', '#331517'],
+      ['Shu', '朱', 'vermilion', '#E2541C', '#FCE6DA', '#B23E0E', '#3A1A12'],
+      ['Yamabuki', '山吹', 'gold', '#F8B500', '#FEF3D0', '#8A5F00', '#2E2306'],
+      ['Matcha', '抹茶', 'tea green', '#7B8D42', '#EEF1DE', '#56652A', '#22281A'],
+      ['Wakatake', '若竹', 'bamboo', '#68BE8D', '#E3F3E9', '#2F7A52', '#152A1F'],
+      ['Asagi', '浅葱', 'blue-green', '#00A3AF', '#DDF3F4', '#00737B', '#0E2B2D'],
+      ['Sora', '空', 'sky', '#3E8FC9', '#E2EFF8', '#1F6699', '#13263A'],
+      ['Ai', '藍', 'indigo', '#165E83', '#E1EBF1', '#165E83', '#14232D'],
+      ['Fuji', '藤', 'wisteria', '#8F77B5', '#EEE8F5', '#6A4E96', '#261F33'],
+      ['Sakura', '桜', 'cherry', '#E4A3B5', '#FBEAEF', '#A8506A', '#33202A'],
+      ['Nezumi', '鼠', 'grey', '#9E9B95', '#EFEDEA', '#5E5B56', '#262523']
+    ].map(([name, jp, en, solid, tint, ink, tintDark]) => ({ name, jp, en, solid, tint, ink, tintDark }));
+    return {
+      colors,
+      modes: [
+        { label: 'Light · washi', bg: '#F7F3EA', ink: '#23201C', muted: '#6E665C', edge: '#E6DFD1', tokens: tk([['bg', '#F7F3EA'], ['surface', '#FFFDF8'], ['hero', '#E3ECF1'], ['ink', '#23201C'], ['accent', '#165E83'], ['streak', '#B5381A']]) },
+        { label: 'Dark · sumi', bg: '#161514', ink: '#EDE6DA', muted: '#A69E92', edge: '#35312C', tokens: tk([['bg', '#161514'], ['surface', '#201E1C'], ['hero', '#14232D'], ['ink', '#EDE6DA'], ['accent', '#6FA8C9'], ['streak', '#F08A64']]) }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

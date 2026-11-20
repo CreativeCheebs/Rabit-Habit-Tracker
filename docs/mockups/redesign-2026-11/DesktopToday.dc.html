@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Web today</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="min-height: 940px; background: #FBF8F3; color: #211D18; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; display: flex; flex-wrap: wrap">
+
+  <aside style="flex: 1 1 220px; max-width: 260px; min-width: 220px; box-sizing: border-box; padding: 24px 16px; background: #FFFFFF; border-right: 1px solid #ECE5DA; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+      <span style="width: 38px; height: 38px; border-radius: 12px; background: #1F7A4D; display: flex; align-items: center; justify-content: center">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+      </span>
+      <span style="font-size: 18px; font-weight: 800; letter-spacing: -0.3px">Habit Lab</span>
+    </div>
+    <nav aria-label="Main" style="display: flex; flex-direction: column; gap: 4px">
+      <sc-for list="{{tabs}}" as="tab" hint-placeholder-count="5">
+        <button type="button" style="height: 44px; border-radius: 12px; border: 0; padding: 0 12px; display: flex; align-items: center; gap: 12px; background: {{tab.bg}}; color: {{tab.fg}}; font: 700 14px 'Plus Jakarta Sans', sans-serif; text-align: left">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{tab.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{tab.icon}}"></path></svg>
+          {{tab.label}}
+        </button>
+      </sc-for>
+    </nav>
+    <div style="margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 0 8px; font-size: 12px; font-weight: 600; color: #6B6259">
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: #30A46C"></span> Synced just now
+    </div>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 22px; max-width: 1100px">
+    <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 13px; font-weight: 600; color: #6B6259">Thursday, 20 November</span>
+        <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.8px">Today</h1>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <span style="height: 40px; padding: 0 14px; border-radius: 999px; background: #FFEFD6; color: #CC4E00; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CC4E00" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+          4-day streak
+        </span>
+        <a href="DesktopEditor.dc.html" style="height: 40px; padding: 0 16px; border-radius: 12px; background: #DDF1E4; color: #165C3A; display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; text-decoration: none">Edit run</a>
+      </div>
+    </header>
+
+    <section aria-label="Active run" style="background: #E6F4EA; border-radius: 24px; padding: 20px 24px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap">
+      <div style="position: relative; width: 96px; height: 96px; flex-shrink: 0">
+        <svg width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="{{pctLabel}}">
+          <circle cx="48" cy="48" r="40" fill="none" stroke="#C9E6D2" stroke-width="11"></circle>
+          <circle cx="48" cy="48" r="40" fill="none" stroke="#1F7A4D" stroke-width="11" stroke-linecap="round" stroke-dasharray="{{ringDash}}" transform="rotate(-90 48 48)"></circle>
+        </svg>
+        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center">
+          <span style="font-size: 22px; font-weight: 800; line-height: 1">{{done}}/{{due}}</span>
+          <span style="font-size: 11px; font-weight: 700; color: #4A433C">done</span>
+        </div>
+      </div>
+      <div style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 6px; min-width: 0">
+        <span style="font-size: 11.5px; font-weight: 800; letter-spacing: 1.2px; color: #1F7A4D">RESET 21 · DAY 4 OF 21</span>
+        <span style="font-size: 22px; font-weight: 800; letter-spacing: -0.3px">{{headline}}</span>
+        <div style="display: grid; grid-template-columns: repeat(21, minmax(0, 1fr)); gap: 4px; max-width: 520px; padding-top: 6px" aria-label="Run days">
+          <sc-for list="{{runDays}}" as="d" hint-placeholder-count="21">
+            <span style="height: 10px; border-radius: 5px; background: {{d.bg}}; box-shadow: {{d.ring}}"></span>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; flex: 1 1 320px">
+        <div style="background: #FFFFFF; border-radius: 16px; padding: 12px 14px"><div style="font-size: 12px; font-weight: 600; color: #6B6259">Today</div><div style="font-size: 20px; font-weight: 800">+{{pts}} pts</div></div>
+        <div style="background: #FFFFFF; border-radius: 16px; padding: 12px 14px"><div style="font-size: 12px; font-weight: 600; color: #6B6259">Run so far</div><div style="font-size: 20px; font-weight: 800">71%</div></div>
+        <div style="background: #FFFFFF; border-radius: 16px; padding: 12px 14px"><div style="font-size: 12px; font-weight: 600; color: #6B6259">Total</div><div style="font-size: 20px; font-weight: 800">38 pts</div></div>
+      </div>
+    </section>
+
+    <div style="display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start">
+      <div style="flex: 2 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+          <section style="display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; justify-content: space-between; padding: 0 4px">
+              <h2 style="margin: 0; font-size: 14px; font-weight: 800">{{g.name}}</h2>
+              <span style="font-size: 12.5px; font-weight: 600; color: #6B6259">{{g.summary}}</span>
+            </div>
+            <div style="background: #FFFFFF; border-radius: 20px; padding: 4px 0">
+              <sc-for list="{{g.items}}" as="h" hint-placeholder-count="2">
+                <div style="display: flex; align-items: center; gap: 14px; padding: 10px 14px 10px 12px; border-top: {{h.sep}}">
+                  <span style="width: 44px; height: 44px; border-radius: 14px; background: {{h.tint}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{h.ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{h.icon}}"></path></svg>
+                  </span>
+                  <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                    <span style="font-size: 15px; font-weight: 700">{{h.name}}</span>
+                    <span style="font-size: 12.5px; font-weight: 500; color: #6B6259">{{h.meta}}</span>
+                  </span>
+                  <sc-if value="{{h.isDone}}" hint-placeholder-val="{{false}}">
+                    <span style="font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: {{h.tint}}; color: {{h.ink}}">+{{h.pts}}</span>
+                  </sc-if>
+                  <button type="button" aria-label="{{h.aria}}" onClick="{{h.tap}}" style="cursor: pointer; {{h.checkStyle}}">
+                    <sc-if value="{{h.isDone}}" hint-placeholder-val="{{false}}">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{h.onSolid}}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+                    </sc-if>
+                  </button>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+      </div>
+
+      <aside style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <section style="background: #FFFFFF; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <h2 style="margin: 0; font-size: 14px; font-weight: 800">This week</h2>
+          <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px">
+            <sc-for list="{{week}}" as="w" hint-placeholder-count="7">
+              <button type="button" aria-label="{{w.label}}" style="height: 58px; border-radius: 14px; border: 0; padding: 0; background: {{w.bg}}; color: {{w.fg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: 'Plus Jakarta Sans', sans-serif">
+                <span style="font-size: 10.5px; font-weight: 700">{{w.dow}}</span>
+                <span style="font-size: 15px; font-weight: 800">{{w.num}}</span>
+              </button>
+            </sc-for>
+          </div>
+        </section>
+        <section style="background: #FFFFFF; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline">
+            <h2 style="margin: 0; font-size: 14px; font-weight: 800">Points per day</h2>
+            <span style="font-size: 12px; font-weight: 600; color: #6B6259">avg 9.5</span>
+          </div>
+          <div style="height: 110px; display: flex; align-items: flex-end; gap: 8px" role="img" aria-label="Points per day: 12, 6, 11, and today so far">
+            <sc-for list="{{bars}}" as="b" hint-placeholder-count="7">
+              <span style="flex-grow: 1; height: {{b.h}}; border-radius: 8px 8px 4px 4px; background: {{b.bg}}"></span>
+            </sc-for>
+          </div>
+        </section>
+        <section style="background: #F4EFE7; border-radius: 20px; padding: 16px 18px; display: flex; gap: 12px; align-items: center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1F7A4D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10ZM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></svg>
+          <span style="font-size: 13px; font-weight: 600; color: #4A433C">Resting today: Evening walk is back on Saturday.</span>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":940}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { s: { ml: true, plan: false, water: true, focus: false, read: false, sleep: false } };
+  }
+  renderVals() {
+    const C = {
+      sun: ['#FFC53D', '#FFF7C2', '#9E6C00', '#3D2B00'], indigo: ['#3E63DD', '#EDF2FE', '#3A5BC7', '#FFFFFF'],
+      sky: ['#0090FF', '#E6F4FE', '#0D74CE', '#FFFFFF'], teal: ['#12A594', '#E0F8F3', '#008573', '#FFFFFF'],
+      pink: ['#D6409F', '#FEE9F5', '#C2298A', '#FFFFFF'], grape: ['#8E4EC6', '#F7EDFE', '#8145B5', '#FFFFFF']
+    };
+    const I = {
+      sun: 'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41',
+      target: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M6 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+      drop: 'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z',
+      timer: 'M4 13a8 8 0 1 0 16 0a8 8 0 1 0-16 0M12 9v4l2 2M10 2h4',
+      book: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z',
+      moon: 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'
+    };
+    const defs = [
+      ['Morning', [['ml', 'Morning light', 'sun', 'sun', '3× a week · 2 of 3 this week', 2], ['plan', 'Plan the day', 'indigo', 'target', 'Every day', 1], ['water', 'Drink 2 L water', 'sky', 'drop', 'Every day', 1]]],
+      ['Focus', [['focus', 'Focused work block', 'teal', 'timer', '3× a week · 1 of 3 this week', 4], ['read', 'Read 20 pages', 'pink', 'book', 'Every 2 days', 2]]],
+      ['Evening', [['sleep', 'Sleep before 11:30', 'grape', 'moon', 'Every day', 2]]]
+    ];
+    const s = this.state.s;
+    let due = 0, done = 0, pts = 0;
+    const groups = defs.map(([name, items]) => {
+      let g = 0;
+      const out = items.map(([id, title, col, icon, meta, p], i) => {
+        const c = C[col];
+        const on = !!s[id];
+        due += 1; if (on) { done += 1; g += 1; pts += p; }
+        const base = 'width: 40px; height: 40px; border-radius: 50%; box-sizing: border-box; flex-shrink: 0; padding: 0; display: flex; align-items: center; justify-content: center; ';
+        return {
+          name: title, meta: meta + ' · ' + p + ' pts', icon: I[icon], tint: c[1], ink: c[2], onSolid: c[3], pts: p, isDone: on,
+          sep: i === 0 ? '0' : '1px solid #ECE5DA',
+          checkStyle: on ? base + 'border: 0; background: ' + c[0] + ';' : base + 'border: 2.5px solid ' + c[2] + '; background: transparent;',
+          aria: title + (on ? ', done. Click to undo.' : ', not done. Click to mark done.'),
+          tap: () => this.setState({ s: Object.assign({}, s, { [id]: !on }) })
+        };
+      });
+      return { name, summary: g + ' of ' + items.length + ' done', items: out };
+    });
+    const pct = due ? done / due : 0;
+    const C2 = 2 * Math.PI * 40;
+    const past = ['#1F7A4D', '#FFC53D', '#1F7A4D'];
+    const runDays = Array.from({ length: 21 }, (_, i) => i < 3 ? { bg: past[i], ring: 'none' } : i === 3 ? { bg: pct >= 1 ? '#1F7A4D' : '#C9E6D2', ring: '0 0 0 2px #1F7A4D' } : { bg: '#FFFFFF', ring: 'none' });
+    const wk = [['M', 17, 'done'], ['T', 18, 'partial'], ['W', 19, 'done'], ['T', 20, 'today'], ['F', 21, 'f'], ['S', 22, 'f'], ['S', 23, 'f']];
+    const week = wk.map(([dow, num, k]) => ({
+      dow, num, label: num + ' November',
+      bg: k === 'today' ? '#211D18' : k === 'done' ? '#DDF1E4' : k === 'partial' ? '#FFF7C2' : '#F4EFE7',
+      fg: k === 'today' ? '#FBF8F3' : k === 'f' ? '#6B6259' : '#211D18'
+    }));
+    const vals = [12, 6, 11, pts, 0, 0, 0];
+    const bars = vals.map((v, i) => ({ h: Math.max(6, v * 7) + 'px', bg: i === 3 ? '#F76B15' : i < 3 ? '#1F7A4D' : '#ECE5DA' }));
+    const tabDefs = [
+      ['Today', 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M9 12l2 2 4-4', true],
+      ['Stats', 'M3 3v18h18M18 17V9M13 17V5M8 17v-3', false],
+      ['Quick log', 'M13 2 3 14h9l-1 8 10-12h-9l1-8z', false],
+      ['Goals', 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M6 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0', false],
+      ['Trackers', 'm22 7-8.5 8.5-5-5L2 17M16 7h6v6', false]
+    ];
+    return {
+      groups, runDays, week, bars, done, due, pts,
+      tabs: tabDefs.map(([label, icon, on]) => ({ label, icon, bg: on ? '#DDF1E4' : 'transparent', fg: on ? '#165C3A' : '#4A433C' })),
+      headline: done === due ? 'Perfect day!' : done === 0 ? 'Fresh day — let’s go' : 'Nice pace — ' + (due - done) + ' to go',
+      ringDash: (C2 * pct).toFixed(1) + ' ' + C2.toFixed(1),
+      pctLabel: Math.round(pct * 100) + ' percent of today done'
+    };
+  }
+}
+</script>
+</body>
+</html>

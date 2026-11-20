@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Habit Lab colour system</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F7A4D}a:hover{color:#165C3A}
+</style>
+</helmet>
+<div style="width: 1280px; height: 1400px; box-sizing: border-box; padding: 56px 64px; background: #FBF8F3; color: #211D18; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 36px">
+
+  <header style="display: flex; justify-content: space-between; align-items: flex-end; gap: 32px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 700; letter-spacing: 1.4px; color: #1F7A4D">HABIT LAB · FOUNDATIONS</div>
+      <h1 style="margin: 0; font-size: 40px; font-weight: 800; letter-spacing: -1px; line-height: 1.1">Warm paper, juicy habits, calm chrome.</h1>
+      <p style="margin: 0; font-size: 15px; color: #6B6259; max-width: 720px; line-height: 1.5">The app frame stays quiet and warm so each habit's own colour does the celebrating. Token names match the app's colour fields and the web's CSS variables one-to-one.</p>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0">
+      <div style="width: 44px; height: 44px; border-radius: 14px; background: #1F7A4D"></div>
+      <div style="width: 44px; height: 44px; border-radius: 14px; background: #F76B15"></div>
+      <div style="width: 44px; height: 44px; border-radius: 14px; background: #FFC53D"></div>
+      <div style="width: 44px; height: 44px; border-radius: 14px; background: #3E63DD"></div>
+      <div style="width: 44px; height: 44px; border-radius: 14px; background: #D6409F"></div>
+    </div>
+  </header>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+    <sc-for list="{{modes}}" as="m" hint-placeholder-count="2">
+      <div style="background: {{m.bg}}; color: {{m.ink}}; border-radius: 24px; padding: 22px; display: flex; flex-direction: column; gap: 14px; border: 1px solid {{m.edge}}">
+        <div style="display: flex; justify-content: space-between; align-items: baseline">
+          <h2 style="margin: 0; font-size: 18px; font-weight: 800">{{m.label}}</h2>
+          <span style="font-size: 12px; font-weight: 600; color: {{m.muted}}">{{m.note}}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
+          <sc-for list="{{m.tokens}}" as="t" hint-placeholder-count="12">
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <div style="height: 52px; border-radius: 14px; background: {{t.hex}}; border: 1px solid {{m.edge}}"></div>
+              <div style="font-size: 12px; font-weight: 700">{{t.name}}</div>
+              <div style="font-size: 10.5px; font-weight: 500; color: {{m.muted}}; font-family: ui-monospace, Menlo, monospace">{{t.hex}}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <h2 style="margin: 0; font-size: 20px; font-weight: 800">Habit colours</h2>
+      <span style="font-size: 13px; color: #6B6259">Each habit gets a solid (check fill), a tint (icon tile) and an ink (icon + text on tint). Top row light, bottom row dark.</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{habitColors}}" as="c" hint-placeholder-count="11">
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: stretch">
+          <div style="height: 64px; border-radius: 16px; background: {{c.tint}}; display: flex; align-items: center; justify-content: center">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{c.ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{c.icon}}"></path></svg>
+          </div>
+          <div style="height: 64px; border-radius: 16px; background: {{c.tintDark}}; display: flex; align-items: center; justify-content: center">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{c.inkDark}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{c.icon}}"></path></svg>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px">
+            <span style="width: 14px; height: 14px; border-radius: 50%; background: {{c.solid}}; flex-shrink: 0"></span>
+            <span style="font-size: 12.5px; font-weight: 700">{{c.name}}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+    <div style="background: #FFFFFF; border: 1px solid #ECE5DA; border-radius: 24px; padding: 22px; display: flex; flex-direction: column; gap: 16px">
+      <h2 style="margin: 0; font-size: 18px; font-weight: 800">Check-in states</h2>
+      <p style="margin: 0; font-size: 13px; color: #6B6259; line-height: 1.5">Shape carries the meaning, colour adds joy. Outlines use the habit's ink shade so even yellow stays visible on white.</p>
+      <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+          <div style="width: 40px; height: 40px; border-radius: 50%; box-sizing: border-box; border: 2.5px solid #18794E"></div>
+          <span style="font-size: 12.5px; font-weight: 700">To do</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+          <div style="width: 40px; height: 40px; border-radius: 50%; background: #30A46C; display: flex; align-items: center; justify-content: center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+          </div>
+          <span style="font-size: 12.5px; font-weight: 700">Done</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+          <div style="width: 40px; height: 40px; border-radius: 50%; box-sizing: border-box; border: 2.5px solid #18794E; background: linear-gradient(to top, #30A46C 50%, transparent 50%)"></div>
+          <span style="font-size: 12.5px; font-weight: 700">Partial</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+          <div style="width: 40px; height: 40px; border-radius: 50%; background: #F0F0F3; display: flex; align-items: center; justify-content: center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60646C" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"></path></svg>
+          </div>
+          <span style="font-size: 12.5px; font-weight: 700">Skipped</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+          <div style="width: 40px; height: 40px; border-radius: 50%; box-sizing: border-box; border: 2px dashed #CE2C31"></div>
+          <span style="font-size: 12.5px; font-weight: 700">Missed</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; padding-top: 4px">
+        <span style="font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 999px; background: #FFEFD6; color: #CC4E00; display: inline-flex; gap: 6px; align-items: center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CC4E00" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+          streak — carrot is the reward colour
+        </span>
+        <span style="font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 999px; background: #DDF1E4; color: #1F7A4D">+2 pts</span>
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #ECE5DA; border-radius: 24px; padding: 22px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 800">Type · Plus Jakarta Sans</h2>
+        <span style="font-size: 12px; color: #6B6259">Open font, bundled in app + web</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 92px; font-size: 11px; font-weight: 600; color: #6B6259">Display 28/800</span><span style="font-size: 28px; font-weight: 800; letter-spacing: -0.6px">Today</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 92px; font-size: 11px; font-weight: 600; color: #6B6259">Title 18/700</span><span style="font-size: 18px; font-weight: 700">Nice pace — 3 to go</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 92px; font-size: 11px; font-weight: 600; color: #6B6259">Body 15/600</span><span style="font-size: 15px; font-weight: 600">Morning light</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 92px; font-size: 11px; font-weight: 600; color: #6B6259">Meta 12.5/500</span><span style="font-size: 12.5px; font-weight: 500; color: #6B6259">3× a week · 2 of 3 done · +2 pts</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 92px; font-size: 11px; font-weight: 600; color: #6B6259">Label 11/700</span><span style="font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #1F7A4D">RESET 21 · DAY 4 OF 21</span></div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 14px">
+    <h2 style="margin: 0; font-size: 20px; font-weight: 800">Building blocks</h2>
+    <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap">
+      <button type="button" style="height: 48px; padding: 0 24px; border-radius: 16px; border: 0; background: #1F7A4D; color: #FFFFFF; font: 700 15px 'Plus Jakarta Sans', sans-serif">Create run</button>
+      <button type="button" style="height: 48px; padding: 0 22px; border-radius: 16px; border: 0; background: #DDF1E4; color: #165C3A; font: 700 15px 'Plus Jakarta Sans', sans-serif">Add existing</button>
+      <button type="button" style="height: 48px; padding: 0 16px; border-radius: 16px; border: 0; background: transparent; color: #1F7A4D; font: 700 15px 'Plus Jakarta Sans', sans-serif">Cancel</button>
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 999px; border: 0; background: #211D18; color: #FBF8F3; font: 700 14px 'Plus Jakarta Sans', sans-serif">21 days</button>
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #E2D9CC; background: #FFFFFF; color: #211D18; font: 600 14px 'Plus Jakarta Sans', sans-serif">14 days</button>
+      <div style="display: flex; flex-direction: column; gap: 6px; width: 250px">
+        <label for="demoName" style="font-size: 12px; font-weight: 700; color: #6B6259">Habit name</label>
+        <input id="demoName" value="Morning light" style="height: 46px; box-sizing: border-box; border-radius: 14px; border: 2px solid #CE2C31; background: #FFFFFF; padding: 0 14px; font: 600 15px 'Plus Jakarta Sans', sans-serif; color: #211D18">
+        <span style="font-size: 12px; font-weight: 600; color: #CE2C31">Another habit in this run already has this name.</span>
+      </div>
+      <div role="alert" style="display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 16px; background: #FFF7C2; color: #5C3D00; max-width: 300px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9E6C00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3ZM12 9v4M12 17h.01"></path></svg>
+        <span style="font-size: 13px; font-weight: 600; line-height: 1.4">Reset 21 is still running. Finish or stop it before starting a new run.</span>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const light = [
+      ['bg', '#FBF8F3'], ['surface', '#FFFFFF'], ['surfaceAlt', '#F4EFE7'], ['hero', '#E6F4EA'], ['divider', '#ECE5DA'], ['track', '#E9E2D7'],
+      ['ink', '#211D18'], ['muted', '#6B6259'], ['accent', '#1F7A4D'], ['accentSoft', '#DDF1E4'], ['streak', '#F76B15'], ['error', '#CE2C31']
+    ];
+    const dark = [
+      ['bg', '#131210'], ['surface', '#1C1A17'], ['surfaceAlt', '#252220'], ['hero', '#16291F'], ['divider', '#322E29'], ['track', '#34302A'],
+      ['ink', '#F2EDE6'], ['muted', '#A9A096'], ['accent', '#4CC38A'], ['accentSoft', '#183526'], ['streak', '#FFA057'], ['error', '#FF977D']
+    ];
+    const toks = (a) => a.map(([name, hex]) => ({ name, hex }));
+    const I = {
+      sun: 'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41',
+      moon: 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z',
+      book: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z',
+      drop: 'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z',
+      walk: 'M22 12h-4l-3 9L9 3l-3 9H2',
+      timer: 'M4 13a8 8 0 1 0 16 0a8 8 0 1 0-16 0M12 9v4l2 2M10 2h4',
+      target: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M6 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+      leaf: 'M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10ZM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12',
+      pencil: 'M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z',
+      heart: 'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z',
+      zap: 'M13 2 3 14h9l-1 8 10-12h-9l1-8z'
+    };
+    const habitColors = [
+      ['Tomato', '#E5484D', '#FEEBEC', '#CE2C31', '#3B1219', '#FF977D', I.heart],
+      ['Carrot', '#F76B15', '#FFEFD6', '#CC4E00', '#331E0B', '#FFA057', I.zap],
+      ['Sun', '#FFC53D', '#FFF7C2', '#9E6C00', '#2D2305', '#FFCA16', I.sun],
+      ['Leaf', '#30A46C', '#E6F6EB', '#18794E', '#132D21', '#3DD68C', I.leaf],
+      ['Teal', '#12A594', '#E0F8F3', '#008573', '#0D2D2A', '#0BD8B6', I.timer],
+      ['Sky', '#0090FF', '#E6F4FE', '#0D74CE', '#0D2847', '#70B8FF', I.drop],
+      ['Indigo', '#3E63DD', '#EDF2FE', '#3A5BC7', '#182449', '#9EB1FF', I.target],
+      ['Grape', '#8E4EC6', '#F7EDFE', '#8145B5', '#301C3B', '#D19DFF', I.moon],
+      ['Pink', '#D6409F', '#FEE9F5', '#C2298A', '#37172F', '#FF8DCC', I.book],
+      ['Cocoa', '#AD7F58', '#F6EEE7', '#815E46', '#2E201A', '#DBB594', I.pencil],
+      ['Slate', '#8B8D98', '#F0F0F3', '#60646C', '#212225', '#B0B4BA', I.walk]
+    ].map(([name, solid, tint, ink, tintDark, inkDark, icon]) => ({ name, solid, tint, ink, tintDark, inkDark, icon }));
+    return {
+      habitColors,
+      modes: [
+        { label: 'Light', note: 'Warm paper', bg: '#FBF8F3', ink: '#211D18', muted: '#6B6259', edge: '#ECE5DA', tokens: toks(light) },
+        { label: 'Dark', note: 'Warm charcoal, never pure black', bg: '#131210', ink: '#F2EDE6', muted: '#A9A096', edge: '#322E29', tokens: toks(dark) }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

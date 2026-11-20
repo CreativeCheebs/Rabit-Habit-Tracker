@@ -1,0 +1,28 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-11-20T12:00:00Z"},
+  "title": "Habit Lab redesign",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1280, "h": 1400, "title": "Colour & type system"},
+    "WaPalette.dc.html": {"x": 1360, "y": 0, "w": 1280, "h": 820, "title": "Japanese theme (Wa) palette"},
+    "TodayWa.dc.html": {"x": 1410, "y": 1760, "w": 390, "h": 1000, "title": "Today · Japanese theme", "is_interactive": true},
+    "Today.dc.html": {"x": 0, "y": 1760, "w": 390, "h": 1000, "title": "Today · light", "is_interactive": true},
+    "TodayDark.dc.html": {"x": 470, "y": 1760, "w": 390, "h": 1000, "title": "Today · dark", "is_interactive": true},
+    "Empty.dc.html": {"x": 940, "y": 1760, "w": 390, "h": 1000, "title": "First run (empty state)"},
+    "RunEditor.dc.html": {"x": 0, "y": 3120, "w": 390, "h": 1440, "title": "Run editor · New", "is_interactive": true},
+    "RunEditorEdit.dc.html": {"x": 470, "y": 3120, "w": 390, "h": 1440, "title": "Run editor · Edit (same design)", "is_interactive": true},
+    "HabitSheet.dc.html": {"x": 940, "y": 3120, "w": 390, "h": 960, "title": "Habit sheet (shared by both)", "is_interactive": true},
+    "DesktopToday.dc.html": {"x": 0, "y": 4920, "w": 1280, "h": 940, "title": "Web · Today", "expand": "fill", "is_interactive": true},
+    "DesktopEditor.dc.html": {"x": 1360, "y": 4920, "w": 1280, "h": 1040, "title": "Web · Run editor", "expand": "fill"}
+  },
+  "order": ["Main.dc.html", "Today.dc.html", "TodayDark.dc.html", "Empty.dc.html", "RunEditor.dc.html", "RunEditorEdit.dc.html", "HabitSheet.dc.html", "DesktopToday.dc.html", "DesktopEditor.dc.html", "WaPalette.dc.html", "TodayWa.dc.html"],
+  "notes": {
+    "n1": {"x": 0, "y": -300, "text": "1 · Colour & type system (+ Japanese theme)", "kind": "title1", "maxW": 2640},
+    "n2": {"x": 0, "y": 1480, "text": "2 · Today: compact, joyful check-ins", "kind": "title1", "maxW": 1800},
+    "n3": {"x": 0, "y": 2840, "text": "3 · Run editor: one design for New and Edit", "kind": "title1", "maxW": 1330},
+    "n4": {"x": 0, "y": 4640, "text": "4 · Web app (same system)", "kind": "title1", "maxW": 2640}
+  },
+  "designSystems": []
+}

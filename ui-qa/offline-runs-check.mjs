@@ -14,10 +14,11 @@ try {
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith('/api/')) return route.abort();
-    const name = url.pathname === '/' ? 'index.html' : path.basename(url.pathname);
+    const name = url.pathname === '/' ? 'index.html' : path.normalize(decodeURIComponent(url.pathname)).replace(/^[\\/]+/, '');
+    if (name.startsWith('..')) return route.fulfill({ status: 404 });
     try {
       const body = await readFile(path.join(root, name));
-      const type = name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : name.endsWith('.html') ? 'text/html' : 'image/png';
+      const type = name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : name.endsWith('.html') ? 'text/html' : name.endsWith('.ttf') ? 'font/ttf' : 'image/png';
       await route.fulfill({ status: 200, contentType: type, body });
     } catch { await route.fulfill({ status: 404 }); }
   });
@@ -29,20 +30,55 @@ try {
   await page.goto('http://rabit.test/');
   await page.getByRole('button', { name: 'Build a run' }).click();
   await page.locator('#runName').fill('Scratch run');
-  await page.locator('[data-click="addHabit"]').click();
-  await page.locator('#builderHabits [aria-label="Habit name"]').fill('Scratch habit');
+  await page.getByRole('button', { name: 'New habit' }).click();
+  await page.locator('#habitEditName').fill('Scratch habit');
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.locator('dialog.sheet').waitFor({ state: 'detached' });
+  // Focus returns to the new habit's row after the sheet closes.
+  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), 'Edit Scratch habit');
   await page.getByRole('button', { name: 'Create run' }).click();
   assert.equal(await page.locator('#runsBody').getByText('Scratch habit').count(), 1);
 
+  // Tap cycle: not done -> done -> partial -> skipped -> not done; re-logging after a clear uses a fresh uid.
+  const circle = () => page.locator('#runsBody button.check').first();
+  for (const state of ['done', 'partial', 'skipped', 'none']) {
+    await circle().click();
+    assert.match(await circle().getAttribute('class'), new RegExp(`check ${state}`));
+  }
+  assert.equal(await page.evaluate(() => document.activeElement.classList.contains('check')), true);
+  await circle().click();
+  const cycleUids = await page.evaluate(() => Object.entries(JSON.parse(localStorage.getItem('habitlab.db')).check_in)
+    .map(([key, entry]) => [key, entry.v._deleted === true]));
+  assert.equal(cycleUids.length, 2);
+  assert.equal(cycleUids.filter(([, deleted]) => deleted).length, 1);
+  assert.match(cycleUids.find(([, deleted]) => !deleted)[0], /#/);
+  assert.match(await page.locator('#topActions').textContent(), /1-day streak/);
+  assert.equal(await page.locator('#runsBody .pts').first().isVisible(), true);
+  await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('habitlab.prefs') || '{}'); p.hidePoints = true; localStorage.setItem('habitlab.prefs', JSON.stringify(p)); });
+  await page.reload();
+  assert.equal(await page.locator('#runsBody .pts').first().isVisible(), false);
+  await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('habitlab.prefs') || '{}'); p.hidePoints = false; localStorage.setItem('habitlab.prefs', JSON.stringify(p)); });
+  await page.reload();
+
   // Only one run may be active at once.
-  await page.getByRole('button', { name: '＋ New run' }).click();
+  await page.getByRole('button', { name: 'New run' }).click();
+  assert.match(await page.locator('.banner.warn').textContent(), /Scratch run is still running/);
   await page.getByRole('button', { name: 'Create run' }).click();
-  assert.match(await page.locator('#builderRunError').textContent(), /Stop the active run/);
+  assert.match(await page.locator('#runError').textContent(), /Stop the active run/);
   await page.getByRole('button', { name: 'Cancel' }).click();
 
   await page.getByRole('button', { name: 'Edit run' }).click();
-  await page.locator('#editName').fill('Edited run');
-  await page.locator('#editBody [aria-label="Habit name"]').fill('Edited habit');
+  await page.locator('#runName').fill('Edited run');
+  assert.equal(await page.locator('#pvName').textContent(), 'Edited run');
+  await page.getByRole('button', { name: 'Edit Scratch habit' }).click();
+  await page.locator('#habitEditName').fill('Edited habit');
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  // Esc closes the sheet without saving and returns focus to the row button.
+  await page.getByRole('button', { name: 'Edit Edited habit' }).click();
+  await page.locator('#habitEditName').fill('Discarded name');
+  await page.keyboard.press('Escape');
+  await page.locator('dialog.sheet').waitFor({ state: 'detached' });
+  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), 'Edit Edited habit');
   await page.evaluate(() => {
     const originalClick = HTMLAnchorElement.prototype.click;
     HTMLAnchorElement.prototype.click = function () {
@@ -64,24 +100,29 @@ try {
   await page.getByRole('button', { name: 'Edit Edited habit' }).click();
   await page.locator('#habitEditName').fill('Directly edited habit');
   await page.locator('#habitEditPoints').fill('4');
-  await page.locator('#habitEditType').selectOption('interval');
+  await page.getByRole('button', { name: 'Every N days' }).click();
   await page.locator('#habitEditCount').fill('366');
-  await page.getByRole('button', { name: 'Save habit' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   assert.equal(await page.locator('#habitEditCount').evaluate((input) => input.validity.rangeOverflow), true);
   await page.locator('#habitEditCount').fill('365');
-  await page.getByRole('button', { name: 'Save habit' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   assert.equal(await page.locator('#runsBody').getByText('Directly edited habit').count(), 1);
   await page.getByRole('button', { name: 'Edit Directly edited habit' }).click();
   await page.locator('#habitEditName').fill('Edited habit');
-  await page.getByRole('button', { name: 'Save habit' }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
 
   // Names are unique inside a run even when case and whitespace differ.
   await page.getByRole('button', { name: 'Edit run' }).click();
-  await page.locator('#editBody [data-click="addHabit"][data-a="edit"]').click();
-  await page.locator('#editBody [aria-label="Habit name"]').last().fill('  EDITED   habit  ');
+  await page.getByRole('button', { name: 'New habit' }).click();
+  await page.locator('#habitEditName').fill('  EDITED   habit  ');
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  assert.match(await page.locator('#editorBody .banner.error[role="alert"]').last().textContent(), /Two habits are called/);
+  assert.equal(await page.locator('#editorBody .hrow.dup').count(), 2);
   await page.getByRole('button', { name: 'Save changes' }).click();
-  assert.match(await page.locator('#editRunError').textContent(), /appears more than once/);
-  await page.locator('#editBody [data-click="removeHabit"][data-a="edit"]').last().click();
+  assert.match(await page.locator('#runError').textContent(), /appears more than once/);
+  await page.locator('#editorBody [data-click="editDraft"]').last().click();
+  await page.getByRole('button', { name: 'Remove' }).click();
+  assert.equal(await page.locator('#editorBody .hrow.dup').count(), 0);
   await page.getByRole('button', { name: 'Save changes' }).click();
 
   // Resolve the active run before copying it into a new run.
@@ -89,7 +130,7 @@ try {
   await page.locator('.run-management summary').click();
   await page.getByRole('button', { name: 'Stop run' }).click();
   assert.match(await page.locator('.run-management').textContent(), /Stopped/);
-  assert.equal(await page.locator('#runsBody .dots button').count(), 0);
+  assert.equal(await page.locator('#runsBody .hgroup:not(.standalone) button.check').count(), 0);
   const stoppedCheckIns = await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('habitlab.db')).check_in).length);
   await page.evaluate(() => {
     const habit = Object.values(JSON.parse(localStorage.getItem('habitlab.db')).habit).find((entry) => entry.v.title === 'Edited habit').v;
@@ -100,8 +141,8 @@ try {
   assert.equal(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('habitlab.db')).check_in).length), stoppedCheckIns);
   await page.evaluate(() => window.showView('runs'));
 
-  await page.getByRole('button', { name: '＋ New run' }).click();
-  assert.equal(await page.locator('#builderHabits [aria-label="Habit name"]').inputValue(), 'Edited habit');
+  await page.getByRole('button', { name: 'New run' }).click();
+  assert.equal(await page.locator('#editorHabits .hname').first().textContent(), 'Edited habit');
   await page.locator('#runName').fill('Copied run');
   await page.getByRole('button', { name: 'Create run' }).click();
   assert.equal(await page.locator('#activeRunSelect').count(), 0);
@@ -110,21 +151,27 @@ try {
   assert.equal(await page.locator('#runsBody').getByText('Edited habit').count(), 1);
   await page.locator('.run-management summary').click();
   await page.locator('.run-management-row').filter({ hasText: 'Edited run' }).getByRole('button', { name: 'Edit', exact: true }).click();
-  await page.locator('#editStart').fill('2020-01-02');
+  await page.locator('#runStart').fill('2020-01-02');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await page.locator('.run-management summary').click();
   assert.match(await page.locator('.run-management-row').filter({ hasText: 'Edited run' }).textContent(), /2020-01-02/);
   await page.locator('.run-management-row').filter({ hasText: 'Edited run' }).getByRole('button', { name: 'History' }).click();
   assert.equal(await page.getByRole('button', { name: 'Back to current run' }).count(), 1);
-  assert.equal(await page.locator('#runsBody .dots button').count(), 0);
+  assert.equal(await page.locator('#runsBody .hgroup:not(.standalone) button.check').count(), 0);
   await page.getByRole('button', { name: 'Back to current run' }).click();
 
-  await page.getByRole('button', { name: '＋ New run' }).click();
+  await page.getByRole('button', { name: 'New run' }).click();
   await page.getByRole('button', { name: 'Cancel' }).click();
   await page.locator('.run-management summary').click();
   await page.getByRole('button', { name: 'Stop run' }).click();
-  await page.getByRole('button', { name: '＋ New run' }).click();
-  await page.getByRole('button', { name: 'From YAML' }).click();
+  await page.getByRole('button', { name: 'New run' }).click();
+  // Add existing works in New mode too.
+  await page.getByRole('button', { name: 'Blank' }).click();
+  await page.getByRole('button', { name: 'Add existing' }).click();
+  await page.locator('#attachSel').selectOption({ label: 'Edited habit · General' });
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  assert.equal(await page.locator('#editorHabits .hname').first().textContent(), 'Edited habit');
+  await page.getByRole('button', { name: 'Paste YAML' }).click();
   await page.locator('#yamlText').fill('name: YAML run\ndays: 7\nhabits:\n  - name: YAML habit\n    every: 2 days\n');
   await page.getByRole('button', { name: 'Load into editor' }).click();
   await page.getByRole('button', { name: 'Create run' }).click();
@@ -160,9 +207,23 @@ try {
     const db = JSON.parse(localStorage.getItem('habitlab.db'));
     return Object.values(db.habit).some((entry) => entry.v.title === 'Edited habit' && !entry.d);
   }), true);
-  await page.screenshot({ path: 'docs/screenshots/web-runs-desktop.png', fullPage: true });
+  const shots = process.env.SHOT_DIR || 'docs/screenshots';
+  await page.screenshot({ path: path.join(shots, 'web-runs-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: 'docs/screenshots/web-runs-mobile.png', fullPage: true });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+  await page.screenshot({ path: path.join(shots, 'web-runs-mobile.png'), fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // Switching to the Japanese style picks the Ai indigo accent once.
+  await page.evaluate(() => window.showView('settings'));
+  await page.getByRole('button', { name: 'Japanese' }).click();
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('habitlab.prefs')).accent), 'blue');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().toUpperCase()), '#F7F3EA');
+  await page.getByRole('button', { name: 'Accent Matcha' }).click();
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('habitlab.prefs')).accent), 'green');
+  await page.getByRole('button', { name: 'Classic' }).click();
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('habitlab.prefs')).accent), 'green');
+  assert.equal(await page.evaluate(() => document.fonts.check('16px "Plus Jakarta Sans"')), true);
+  await page.evaluate(() => window.showView('runs'));
   assert.deepEqual(errors, []);
   // A legacy parallel active run is stopped on load; its row and history survive.
   await page.evaluate(() => {

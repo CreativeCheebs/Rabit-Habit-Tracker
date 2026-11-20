@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Habit sheet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 960px; box-sizing: border-box; background: #4A453F; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #211D18; display: flex; flex-direction: column; justify-content: flex-end">
+  <div role="dialog" aria-label="Edit habit" style="background: #FFFFFF; border-radius: 28px 28px 0 0; padding: 10px 16px 18px; display: flex; flex-direction: column; gap: 16px">
+    <div style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #E2D9CC"></div>
+
+    <div style="display: flex; align-items: center; gap: 14px">
+      <div style="width: 60px; height: 60px; border-radius: 18px; background: {{sel.tint}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="{{sel.ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{iconPath}}"></path></svg>
+      </div>
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 800">Edit habit</h2>
+        <span style="font-size: 12.5px; font-weight: 600; color: #6B6259">{{summary}}</span>
+      </div>
+      <button type="button" style="height: 40px; padding: 0 12px; border-radius: 12px; border: 0; background: #FEEBEC; color: #CE2C31; font: 700 13px 'Plus Jakarta Sans', sans-serif">Remove</button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="hName" style="font-size: 12px; font-weight: 700; color: #6B6259">Name</label>
+      <input id="hName" value="Morning light" style="height: 48px; box-sizing: border-box; border-radius: 14px; border: 1.5px solid #E2D9CC; background: #FBF8F3; padding: 0 14px; font: 700 15px 'Plus Jakarta Sans', sans-serif; color: #211D18">
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 12px; font-weight: 700; color: #6B6259">Colour</span>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap">
+        <sc-for list="{{colors}}" as="c" hint-placeholder-count="11">
+          <button type="button" aria-label="{{c.name}}" aria-pressed="{{c.on}}" onClick="{{c.pick}}" style="width: 28px; height: 28px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: {{c.solid}}; box-shadow: {{c.ring}}"></button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 12px; font-weight: 700; color: #6B6259">Icon</span>
+      <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px">
+        <sc-for list="{{icons}}" as="ic" hint-placeholder-count="16">
+          <button type="button" aria-label="{{ic.name}}" aria-pressed="{{ic.on}}" onClick="{{ic.pick}}" style="height: 40px; border-radius: 12px; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; {{ic.style}}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{ic.stroke}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.path}}"></path></svg>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 12px; font-weight: 700; color: #6B6259">How often</span>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: #F4EFE7">
+        <button type="button" aria-pressed="{{weeklyOn}}" onClick="{{pickWeekly}}" style="height: 40px; border-radius: 11px; border: 0; cursor: pointer; font: 700 13.5px 'Plus Jakarta Sans', sans-serif; {{weeklyStyle}}">Days per week</button>
+        <button type="button" aria-pressed="{{intervalOn}}" onClick="{{pickInterval}}" style="height: 40px; border-radius: 11px; border: 0; cursor: pointer; font: 700 13.5px 'Plus Jakarta Sans', sans-serif; {{intervalStyle}}">Every N days</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <button type="button" aria-label="Fewer" onClick="{{dec}}" style="width: 44px; height: 44px; border-radius: 14px; border: 1.5px solid #E2D9CC; background: #FFFFFF; cursor: pointer; display: flex; align-items: center; justify-content: center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#211D18" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg>
+        </button>
+        <span style="font-size: 26px; font-weight: 800; min-width: 28px; text-align: center">{{count}}</span>
+        <button type="button" aria-label="More" onClick="{{inc}}" style="width: 44px; height: 44px; border-radius: 14px; border: 1.5px solid #E2D9CC; background: #FFFFFF; cursor: pointer; display: flex; align-items: center; justify-content: center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#211D18" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+        </button>
+        <span style="font-size: 14px; font-weight: 700; color: #4A433C">{{unit}}</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px" aria-hidden="true">
+        <sc-for list="{{preview}}" as="p" hint-placeholder-count="7">
+          <span style="height: 28px; border-radius: 9px; background: {{p.bg}}; color: {{p.fg}}; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center">{{p.d}}</span>
+        </sc-for>
+      </div>
+      <span style="font-size: 12.5px; font-weight: 500; color: #6B6259; line-height: 1.45">{{helper}}</span>
+    </div>
+
+    <div style="display: flex; gap: 12px">
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 12px; font-weight: 700; color: #6B6259">Points each time</span>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <button type="button" aria-label="Fewer points" onClick="{{pDec}}" style="width: 40px; height: 40px; border-radius: 12px; border: 1.5px solid #E2D9CC; background: #FFFFFF; cursor: pointer; font: 800 18px 'Plus Jakarta Sans', sans-serif; color: #211D18">−</button>
+          <span style="font-size: 20px; font-weight: 800; min-width: 22px; text-align: center">{{points}}</span>
+          <button type="button" aria-label="More points" onClick="{{pInc}}" style="width: 40px; height: 40px; border-radius: 12px; border: 1.5px solid #E2D9CC; background: #FFFFFF; cursor: pointer; font: 800 18px 'Plus Jakarta Sans', sans-serif; color: #211D18">+</button>
+        </div>
+      </div>
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 12px; font-weight: 700; color: #6B6259">Group</span>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap">
+          <span style="height: 32px; padding: 0 12px; border-radius: 999px; background: #211D18; color: #FBF8F3; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center">Morning</span>
+          <span style="height: 32px; padding: 0 12px; border-radius: 999px; border: 1.5px solid #E2D9CC; box-sizing: border-box; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center">Focus</span>
+          <span style="height: 32px; padding: 0 10px; border-radius: 999px; border: 1.5px dashed #E2D9CC; box-sizing: border-box; font-size: 13px; font-weight: 700; color: #1F7A4D; display: inline-flex; align-items: center">+ New</span>
+        </div>
+      </div>
+    </div>
+
+    <a href="RunEditor.dc.html" style="height: 52px; border-radius: 16px; background: #1F7A4D; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; text-decoration: none">Done</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":960}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { color: 'Sun', icon: 'sun', interval: false, count: 3, points: 2 };
+  }
+  renderVals() {
+    const s = this.state;
+    const colorDefs = [
+      ['Tomato', '#E5484D', '#FEEBEC', '#CE2C31'], ['Carrot', '#F76B15', '#FFEFD6', '#CC4E00'], ['Sun', '#FFC53D', '#FFF7C2', '#9E6C00'],
+      ['Leaf', '#30A46C', '#E6F6EB', '#18794E'], ['Teal', '#12A594', '#E0F8F3', '#008573'], ['Sky', '#0090FF', '#E6F4FE', '#0D74CE'],
+      ['Indigo', '#3E63DD', '#EDF2FE', '#3A5BC7'], ['Grape', '#8E4EC6', '#F7EDFE', '#8145B5'], ['Pink', '#D6409F', '#FEE9F5', '#C2298A'],
+      ['Cocoa', '#AD7F58', '#F6EEE7', '#815E46'], ['Slate', '#8B8D98', '#F0F0F3', '#60646C']
+    ];
+    const sel = colorDefs.find((c) => c[0] === s.color);
+    const colors = colorDefs.map(([name, solid]) => ({
+      name, solid, on: name === s.color ? 'true' : 'false',
+      ring: name === s.color ? '0 0 0 3px #FFFFFF, 0 0 0 5.5px ' + solid : 'none',
+      pick: () => this.setState({ color: name })
+    }));
+    const I = {
+      sun: 'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41',
+      moon: 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z',
+      book: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z',
+      water: 'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z',
+      move: 'M22 12h-4l-3 9L9 3l-3 9H2',
+      focus: 'M4 13a8 8 0 1 0 16 0a8 8 0 1 0-16 0M12 9v4l2 2M10 2h4',
+      target: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M6 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+      leaf: 'M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10ZM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12',
+      write: 'M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z',
+      heart: 'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z',
+      energy: 'M13 2 3 14h9l-1 8 10-12h-9l1-8z',
+      music: 'M9 18V5l12-2v13M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0M15 16a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+      coffee: 'M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4ZM6 2v2M10 2v2M14 2v2',
+      phone: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM12 18h.01',
+      chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+      star: 'm12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'
+    };
+    const icons = Object.keys(I).map((k) => {
+      const on = k === s.icon;
+      return {
+        name: k, path: I[k], on: on ? 'true' : 'false',
+        stroke: on ? sel[3] : '#4A433C',
+        style: on ? 'border: 2px solid ' + sel[1] + '; background: ' + sel[2] + ';' : 'border: 1.5px solid #ECE5DA; background: #FFFFFF;',
+        pick: () => this.setState({ icon: k })
+      };
+    });
+    const maxCount = s.interval ? 14 : 7;
+    const seg = (on) => on ? 'background: #FFFFFF; color: #211D18; box-shadow: 0 1px 3px rgba(33,29,24,0.12);' : 'background: transparent; color: #6B6259;';
+    const dows = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const preview = dows.map((d, i) => {
+      const hit = s.interval ? i % s.count === 0 : i < s.count;
+      return { d, bg: hit ? sel[1] : '#F4EFE7', fg: hit ? (s.color === 'Sun' ? '#3D2B00' : '#FFFFFF') : '#6B6259' };
+    });
+    return {
+      sel: { tint: sel[2], ink: sel[3] },
+      iconPath: I[s.icon], colors, icons, preview,
+      count: s.count, points: s.points,
+      unit: s.interval ? (s.count === 1 ? 'every day' : 'days between') : 'days per week',
+      helper: s.interval
+        ? 'Due every ' + s.count + ' days. If you miss it, it stays due until done.'
+        : 'Do it on any ' + s.count + ' days each week. It shows as due until you hit the target.',
+      summary: (s.interval ? 'Every ' + s.count + ' days' : s.count + '× a week') + ' · ' + s.points + ' pts · Morning',
+      weeklyOn: s.interval ? 'false' : 'true', intervalOn: s.interval ? 'true' : 'false',
+      weeklyStyle: seg(!s.interval), intervalStyle: seg(s.interval),
+      pickWeekly: () => this.setState({ interval: false, count: Math.min(s.count, 7) }),
+      pickInterval: () => this.setState({ interval: true }),
+      dec: () => this.setState({ count: Math.max(1, s.count - 1) }),
+      inc: () => this.setState({ count: Math.min(maxCount, s.count + 1) }),
+      pDec: () => this.setState({ points: Math.max(0, s.points - 1) }),
+      pInc: () => this.setState({ points: Math.min(20, s.points + 1) })
+    };
+  }
+}
+</script>
+</body>
+</html>

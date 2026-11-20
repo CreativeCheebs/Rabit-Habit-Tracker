@@ -57,10 +57,11 @@ if (user && pass) {
   check('sidebar visible', await page.locator('.sidenav').isVisible());
   // Build a run from scratch through the desktop builder.
   await page.getByRole('button', { name: 'Build a run' }).click();
-  await page.waitForSelector('#v-builder.active');
-  await page.getByRole('button', { name: 'Start from scratch' }).click();
-  await page.locator('.add-habit').click();
-  await page.locator('#builderHabits .habit-editor input.field').first().fill('Drink water');
+  await page.waitForSelector('#v-editor.active');
+  await page.getByRole('button', { name: 'Blank' }).click();
+  await page.getByRole('button', { name: 'New habit' }).click();
+  await page.locator('#habitEditName').fill('Drink water');
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await page.locator('#runName').fill(RUNNAME);
   await page.getByRole('button', { name: 'Create run' }).click();
   await page.waitForSelector('#v-runs.active');
@@ -70,26 +71,26 @@ if (user && pass) {
   // Build a second run from pasted YAML (starts tomorrow so it is latest).
   const tomorrow = new Date(Date.now() + 86400000);
   const ty = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
-  await page.getByRole('button', { name: '＋ New run' }).click();
-  await page.getByRole('button', { name: 'From YAML' }).click();
+  await page.getByRole('button', { name: 'New run' }).click();
+  await page.getByRole('button', { name: 'Paste YAML' }).click();
   await page.locator('#yamlText').fill(
     `name: ${YAMLNAME}\ndays: 7\nstart: ${ty}\nhabits:\n  - name: E2E yaml one\n    group: E2E\n    points: 2\n    every: 1 day\n  - name: E2E yaml two\n    days_per_week: 3\n`);
   await page.getByRole('button', { name: 'Load into editor' }).click();
-  check('yaml loads two editors', await page.locator('#builderHabits .habit-editor').count() === 2);
+  check('yaml loads two editors', await page.locator('#editorHabits .hrow').count() === 2);
   await page.getByRole('button', { name: 'Create run' }).click();
   await page.waitForSelector('#v-runs.active');
   await waitSynced();
   check('yaml habit shows', await page.locator('#runsBody').getByText('E2E yaml one').count() === 1);
   // Edit that run's name through the edit view (it is latest: starts tomorrow).
   await page.getByRole('button', { name: 'Edit run' }).click();
-  await page.waitForSelector('#v-edit.active');
-  await page.locator('#editName').fill(YAMLNEW);
+  await page.waitForSelector('#v-editor.active');
+  await page.locator('#runName').fill(YAMLNEW);
   await page.getByRole('button', { name: 'Save changes' }).click();
   await page.waitForSelector('#v-runs.active');
   await waitSynced();
   await page.getByRole('button', { name: 'Edit run' }).click();
-  await page.waitForSelector('#v-edit.active');
-  check('edited name saved', await page.locator('#editName').inputValue() === YAMLNEW);
+  await page.waitForSelector('#v-editor.active');
+  check('edited name saved', await page.locator('#runName').inputValue() === YAMLNEW);
   await page.getByRole('button', { name: 'Cancel' }).click();
   // Log both YAML habits Done with real swipes (nav hidden; reach it directly).
   await page.evaluate(() => window.showView('quicklog'));

@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habit Lab · Run End Mockup Designs</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
+:root {
+  color-scheme: dark;
+  --bg: #101713;
+  --surface: #161f18;
+  --surface1: #1b261e;
+  --surface2: #223026;
+  --surface3: #2a3a2f;
+  --ink: #e5ece6;
+  --muted: #a1b0a4;
+  --outline: #3d4f42;
+  --primary: #a4d0ad;
+  --on-primary: #143820;
+  --secondary: #b8cbbd;
+  --tertiary: #dfbd82;
+  --success: #88c994;
+  --card-border: #2e3e32;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #0c120e;
+  color: var(--ink);
+  font: 14px/1.5 Roboto, Arial, sans-serif;
+  padding: 24px;
+}
+header {
+  max-width: 1200px;
+  margin: 0 auto 28px;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 20px;
+}
+.kicker {
+  font: 11px/1 'Roboto Mono', monospace;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+h1 {
+  font-size: 28px;
+  font-weight: 500;
+  margin: 8px 0 6px;
+  letter-spacing: -0.3px;
+}
+p.sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+}
+.tab-bar {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0 8px;
+}
+.tab-btn {
+  background: var(--surface1);
+  color: var(--muted);
+  border: 1px solid var(--outline);
+  border-radius: 100px;
+  padding: 8px 18px;
+  font: 500 13px Roboto, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Canvas & Frame Layouts */
+.canvas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 32px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.mockup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mockup-label {
+  font: 12px 'Roboto Mono', monospace;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  text-align: center;
+}
+
+/* Phone Frame */
+.phone {
+  width: 380px;
+  min-height: 780px;
+  border: 8px solid #2f3b33;
+  border-radius: 40px;
+  background: var(--bg);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.55);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.status-bar {
+  height: 38px;
+  padding: 12px 22px 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.top-bar {
+  height: 52px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.top-bar h2 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 16px 20px;
+}
+.bottom-nav {
+  height: 68px;
+  background: var(--surface1);
+  border-top: 1px solid var(--card-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 6px 4px 10px;
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+.nav-item.active {
+  color: var(--ink);
+  font-weight: 600;
+}
+.nav-pill {
+  width: 48px;
+  height: 26px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+}
+.nav-item.active .nav-pill {
+  background: #2b3e30;
+  color: var(--primary);
+}
+
+/* Completion Banner & Hero */
+.completion-banner {
+  background: linear-gradient(145deg, #1f3325, #16241a);
+  border: 1px solid #36553e;
+  border-radius: 22px;
+  padding: 18px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.completion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #2b4933;
+  color: #c0ecc6;
+  font: 700 11px/1 'Roboto Mono', monospace;
+  padding: 5px 10px;
+  border-radius: 100px;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+.completion-title {
+  font-size: 21px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+.completion-meta {
+  font-size: 12px;
+  color: var(--secondary);
+  margin-bottom: 14px;
+}
+.score-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.score-big {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+}
+.score-detail {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+}
+.progress-track {
+  height: 8px;
+  border-radius: 8px;
+  background: #2d4032;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.progress-fill {
+  height: 100%;
+  width: 84%;
+  background: var(--primary);
+  border-radius: 8px;
+}
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.btn-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+  border: 0;
+  border-radius: 14px;
+  padding: 12px;
+  font: 600 13px Roboto, sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--secondary);
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+  padding: 10px;
+  font: 500 12px Roboto, sans-serif;
+  cursor: pointer;
+  text-align: center;
+}
+
+/* Review / Read-Only Section */
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--secondary);
+  margin: 18px 2px 8px;
+}
+.read-only-badge {
+  font: 10px 'Roboto Mono', monospace;
+  color: var(--muted);
+  background: var(--surface2);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+.habit-card {
+  background: var(--surface1);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.habit-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--surface2);
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.habit-info {
+  flex: 1;
+}
+.habit-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+.habit-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.habit-stat {
+  text-align: right;
+  font: 12px 'Roboto Mono', monospace;
+  color: var(--primary);
+}
+.habit-stat small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* Quick Log End State */
+.quick-empty {
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+.trophy-circle {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #2d4c35, #1b291e);
+  border: 2px solid #4a7554;
+  color: #dfbd82;
+  display: grid;
+  place-items: center;
+  font-size: 42px;
+  margin-bottom: 22px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+}
+.quick-empty h3 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.quick-empty p {
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 270px;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+/* Share Preview Box */
+.share-box {
+  background: #0f1611;
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+  padding: 16px;
+  font: 12px/1.6 'Roboto Mono', monospace;
+  color: #d1ded3;
+  white-space: pre-wrap;
+  margin: 12px 0 16px;
+}
+
+/* Webapp Desktop Frame */
+.browser-frame {
+  width: 1040px;
+  background: #111813;
+  border: 1px solid #334237;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+.browser-top {
+  height: 38px;
+  background: #18221b;
+  border-bottom: 1px solid #28362b;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+}
+.traffic-lights {
+  display: flex;
+  gap: 6px;
+}
+.traffic-lights i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #39483c;
+  display: block;
+}
+.url-bar {
+  flex: 1;
+  max-width: 460px;
+  height: 24px;
+  background: #101612;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font: 11px 'Roboto Mono', monospace;
+  color: var(--muted);
+}
+.browser-body {
+  display: flex;
+  min-height: 520px;
+}
+.web-sidebar {
+  width: 210px;
+  background: #131b15;
+  border-right: 1px solid #253328;
+  padding: 18px 12px;
+}
+.web-brand {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding-left: 8px;
+}
+.web-nav-item {
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+.web-nav-item.active {
+  background: #1e2c21;
+  color: var(--ink);
+  font-weight: 500;
+}
+.web-main {
+  flex: 1;
+  padding: 24px 32px;
+}
+.web-hero {
+  background: #19251c;
+  border: 1px solid #2e4233;
+  border-radius: 18px;
+  padding: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.web-hero-stats {
+  display: flex;
+  gap: 28px;
+  margin-top: 14px;
+}
+.web-stat small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+.web-stat b {
+  font-size: 16px;
+  color: var(--ink);
+}
+.web-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.web-table th {
+  text-align: left;
+  padding: 8px 12px;
+  color: var(--muted);
+  border-bottom: 1px solid #28362c;
+  font-size: 11px;
+  font-family: 'Roboto Mono', monospace;
+}
+.web-table td {
+  padding: 12px;
+  border-bottom: 1px solid #1f2a22;
+}
+
+/* Reskon Widgets Frame */
+.reskon-board {
+  width: 900px;
+  background: #0f1411;
+  border: 1px solid #263329;
+  border-radius: 20px;
+  padding: 28px;
+}
+.reskon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #233026;
+}
+.reskon-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 20px;
+}
+.reskon-card {
+  background: #172019;
+  border: 1px solid #2c3a2f;
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.widget-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.widget-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.widget-kind {
+  font: 10px 'Roboto Mono', monospace;
+  color: var(--primary);
+  background: #233527;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.reskon-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 28px 14px;
+}
+.reskon-empty-state p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 8px 0 16px;
+  line-height: 1.45;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">Rabit · Run End Experience</div>
+  <h1>Interactive Mockup Designs</h1>
+  <p class="sub">Visual preview of what happens when a habit run ends across the Android app, hosted web app, and Reskon plugin.</p>
+  
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="setTab('android')">1. Android App</button>
+    <button class="tab-btn" onclick="setTab('web')">2. Web App</button>
+    <button class="tab-btn" onclick="setTab('reskon')">3. Reskon Plugin</button>
+  </div>
+</header>
+
+<!-- TAB 1: ANDROID APP -->
+<section id="tab-android" class="tab-content active">
+  <div class="canvas">
+    
+    <!-- Phone 1: Runs Screen (End of Run) -->
+    <div class="mockup-card">
+      <div class="mockup-label">Screen 1 · Runs Tab (Run Completed)</div>
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><span>● ▰</span></div>
+        <div class="top-bar">
+          <h2><span>🐰</span> Rabit</h2>
+          <button class="btn-primary" style="padding:6px 12px;font-size:12px;border-radius:100px;">＋ New run</button>
+        </div>
+        <div class="app-content">
+          <!-- Completion Hero Card -->
+          <div class="completion-banner">
+            <span class="completion-badge">🏆 RUN COMPLETED</span>
+            <div class="completion-title">21-day habit run</div>
+            <div class="completion-meta">Finished yesterday · 21 of 21 days logged</div>
+            
+            <div class="score-row">
+              <span class="score-big">84%</span>
+              <span class="score-detail">126 / 150 impact pts<br>6.0 pts / day avg</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill"></div></div>
+            
+            <div class="action-grid">
+              <button class="btn-primary"><span>＋</span> Start next run</button>
+              <button class="btn-secondary">Manage runs · View past</button>
+            </div>
+          </div>
+          
+          <!-- Read-Only Review Section -->
+          <div class="section-title">
+            <span>FINAL RESULTS BY HABIT</span>
+            <span class="read-only-badge">READ ONLY</span>
+          </div>
+          
+          <div class="habit-card">
+            <div class="habit-icon">☀</div>
+            <div class="habit-info">
+              <div class="habit-name">Morning light <span style="font-size:10px;color:var(--primary);font-family:'Roboto Mono'">I</span></div>
+              <div class="habit-sub">2 pts · daily</div>
+            </div>
+            <div class="habit-stat">19 / 21<small>90% done</small></div>
+          </div>
+          
+          <div class="habit-card">
+            <div class="habit-icon">◉</div>
+            <div class="habit-info">
+              <div class="habit-name">Plan the day <span style="font-size:10px;color:var(--primary);font-family:'Roboto Mono'">I</span></div>
+              <div class="habit-sub">3 pts · 5 days/wk</div>
+            </div>
+            <div class="habit-stat">15 / 15<small>100% done</small></div>
+          </div>
+          
+          <div class="habit-card">
+            <div class="habit-icon">⌁</div>
+            <div class="habit-info">
+              <div class="habit-name">Focused work block <span style="font-size:10px;color:var(--primary);font-family:'Roboto Mono'">I</span></div>
+              <div class="habit-sub">4 pts · weekdays</div>
+            </div>
+            <div class="habit-stat">11 / 15<small>73% done</small></div>
+          </div>
+          
+          <div class="habit-card">
+            <div class="habit-icon">☾</div>
+            <div class="habit-info">
+              <div class="habit-name">Sleep before 11:30 PM <span style="font-size:10px;color:var(--primary);font-family:'Roboto Mono'">II</span></div>
+              <div class="habit-sub">2 pts · every 3 days</div>
+            </div>
+            <div class="habit-stat">6 / 7<small>86% done</small></div>
+          </div>
+        </div>
+        
+        <nav class="bottom-nav">
+          <div class="nav-item active"><div class="nav-pill">◷</div>Runs</div>
+          <div class="nav-item"><div class="nav-pill">⇆</div>Quick Log</div>
+          <div class="nav-item"><div class="nav-pill">◎</div>Goals</div>
+          <div class="nav-item"><div class="nav-pill">⚙</div>Settings</div>
+        </nav>
+      </div>
+    </div>
+    
+    <!-- Phone 2: Quick Log (No Active Run) -->
+    <div class="mockup-card">
+      <div class="mockup-label">Screen 2 · Quick Log Tab (Run Completed)</div>
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><span>● ▰</span></div>
+        <div class="top-bar">
+          <h2>Quick Log</h2>
+        </div>
+        <div class="app-content">
+          <div class="quick-empty">
+            <div class="trophy-circle">🏁</div>
+            <h3>Run completed!</h3>
+            <p>Your <strong>21-day habit run</strong> ended yesterday. There are no habits due today until you start your next run.</p>
+            <button class="btn-primary" style="width:100%;max-width:240px;margin-bottom:12px;">Start next run</button>
+            <button class="btn-secondary" style="width:100%;max-width:240px;">View last run results</button>
+          </div>
+        </div>
+        
+        <nav class="bottom-nav">
+          <div class="nav-item"><div class="nav-pill">◷</div>Runs</div>
+          <div class="nav-item active"><div class="nav-pill">⇆</div>Quick Log</div>
+          <div class="nav-item"><div class="nav-pill">◎</div>Goals</div>
+          <div class="nav-item"><div class="nav-pill">⚙</div>Settings</div>
+        </nav>
+      </div>
+    </div>
+    
+    <!-- Phone 3: Share (Summary Export) -->
+    <div class="mockup-card">
+      <div class="mockup-label">Screen 3 · Share (Final Summary)</div>
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><span>● ▰</span></div>
+        <div class="top-bar">
+          <h2>Share run summary</h2>
+        </div>
+        <div class="app-content">
+          <div class="section-title">
+            <span>COMPLETED RUN TEXT</span>
+            <span class="read-only-badge">PREVIEW</span>
+          </div>
+          
+          <div class="share-box"># 21-day habit run — Final Summary
+Finished: 17 November 2026
+
+- ✓ Morning light (19/21 · 90%)
+- ✓ Plan the day (15/15 · 100%)
+- ◐ Focused work block (11/15 · 73%)
+- ✓ Sleep before 11:30 PM (6/7 · 86%)
+
+Score: 84%
+Total Impact: 126 pts earned</div>
+
+          <button class="btn-primary" style="width:100%;">Copy summary text</button>
+          <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;">Includes all habits opted into sharing.</p>
+        </div>
+        
+        <nav class="bottom-nav">
+          <div class="nav-item active"><div class="nav-pill">◷</div>Runs</div>
+          <div class="nav-item"><div class="nav-pill">⇆</div>Quick Log</div>
+          <div class="nav-item"><div class="nav-pill">◎</div>Goals</div>
+          <div class="nav-item"><div class="nav-pill">⚙</div>Settings</div>
+        </nav>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<!-- TAB 2: WEB APP -->
+<section id="tab-web" class="tab-content">
+  <div class="canvas">
+    <div class="browser-frame">
+      <div class="browser-top">
+        <div class="traffic-lights"><i></i><i></i><i></i></div>
+        <div class="url-bar">http://192.168.0.8:8788/</div>
+      </div>
+      <div class="browser-body">
+        <aside class="web-sidebar">
+          <div class="web-brand"><span>🐰</span> Rabit</div>
+          <div class="web-nav-item active">Runs & Habits</div>
+          <div class="web-nav-item">Goals</div>
+          <div class="web-nav-item" style="color:#6e7d72">Settings</div>
+        </aside>
+        <main class="web-main">
+          <!-- Web Hero -->
+          <div class="web-hero">
+            <div>
+              <div style="font:700 11px/1 'Roboto Mono',monospace;color:var(--primary);margin-bottom:8px">RUN COMPLETED · READ ONLY</div>
+              <h2 style="font-size:24px;margin:0 0 4px">21-day habit run</h2>
+              <div style="font-size:12px;color:var(--muted)">Oct 28 — Nov 17 · 4 habits</div>
+              <div class="web-hero-stats">
+                <div class="web-stat"><small>Final score</small><b style="color:var(--primary);font-size:20px">84%</b></div>
+                <div class="web-stat"><small>Impact points</small><b>126 / 150</b></div>
+                <div class="web-stat"><small>Days logged</small><b>21 of 21</b></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+              <button class="btn-primary" style="padding:10px 18px">＋ Start next run</button>
+              <button class="btn-secondary" style="padding:8px 14px">Manage runs</button>
+              <span style="font-size:11px;color:var(--muted)">No blocker: build new run directly</span>
+            </div>
+          </div>
+          
+          <!-- Web Habit Table -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <h3 style="font-size:16px;margin:0">Completed Habits</h3>
+            <span style="font-size:12px;color:var(--muted)">Past check-ins are preserved</span>
+          </div>
+          
+          <table class="web-table">
+            <thead>
+              <tr>
+                <th>HABIT</th>
+                <th>SCHEDULE</th>
+                <th>IMPACT</th>
+                <th>TOTAL LOGGED</th>
+                <th>COMPLETION</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Morning light</strong></td>
+                <td>Daily</td>
+                <td>2 pts</td>
+                <td>19 days</td>
+                <td style="color:var(--primary);font-family:'Roboto Mono'">90%</td>
+              </tr>
+              <tr>
+                <td><strong>Plan the day</strong></td>
+                <td>5 days / wk</td>
+                <td>3 pts</td>
+                <td>15 days</td>
+                <td style="color:var(--primary);font-family:'Roboto Mono'">100%</td>
+              </tr>
+              <tr>
+                <td><strong>Focused work block</strong></td>
+                <td>Weekdays</td>
+                <td>4 pts</td>
+                <td>11 days</td>
+                <td style="color:var(--tertiary);font-family:'Roboto Mono'">73%</td>
+              </tr>
+              <tr>
+                <td><strong>Sleep before 11:30 PM</strong></td>
+                <td>Every 3 days</td>
+                <td>2 pts</td>
+                <td>6 cycles</td>
+                <td style="color:var(--primary);font-family:'Roboto Mono'">86%</td>
+              </tr>
+            </tbody>
+          </table>
+        </main>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TAB 3: RESKON PLUGIN -->
+<section id="tab-reskon" class="tab-content">
+  <div class="canvas">
+    <div class="reskon-board">
+      <div class="reskon-header">
+        <div>
+          <div class="kicker">Reskon Dashboard Integration</div>
+          <h2 style="font-size:20px;margin:4px 0 0">Habit Lab Connected App</h2>
+        </div>
+        <div style="font-size:12px;color:var(--muted)">contract version 1</div>
+      </div>
+      
+      <div class="reskon-grid">
+        <!-- Widget 1: Today Page Widget -->
+        <div class="reskon-card">
+          <div class="widget-head">
+            <span class="widget-title">Today's habits</span>
+            <span class="widget-kind">PAGE WIDGET</span>
+          </div>
+          
+          <div class="reskon-empty-state">
+            <div style="font-size:36px;margin-bottom:12px">🏆</div>
+            <strong style="font-size:15px;color:var(--ink)">Run completed!</strong>
+            <p>Your 21-day habit run has finished. Check back once you start your next run in Habit Lab.</p>
+            <div style="font-size:11px;color:var(--primary);font-family:'Roboto Mono'">No stale habits displayed</div>
+          </div>
+        </div>
+        
+        <!-- Widget 2: Today List Data Feed -->
+        <div class="reskon-card">
+          <div class="widget-head">
+            <span class="widget-title">Today (Table)</span>
+            <span class="widget-kind">DATA FEED</span>
+          </div>
+          
+          <div class="reskon-empty-state">
+            <div style="font-size:32px;color:var(--muted);margin-bottom:10px">◫</div>
+            <strong style="font-size:14px;color:var(--muted)">No active run habits today</strong>
+            <p>The previous run ended on Nov 17. The data widget cleanly clears instead of showing old checkboxes.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+function setTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  
+  if (tabName === 'android') {
+    document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    document.getElementById('tab-android').classList.add('active');
+  } else if (tabName === 'web') {
+    document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    document.getElementById('tab-web').classList.add('active');
+  } else if (tabName === 'reskon') {
+    document.querySelectorAll('.tab-btn')[2].classList.add('active');
+    document.getElementById('tab-reskon').classList.add('active');
+  }
+}
+</script>
+
+</body>
+</html>

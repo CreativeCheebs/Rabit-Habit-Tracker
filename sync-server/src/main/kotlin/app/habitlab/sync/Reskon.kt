@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit
  */
 
 /** Keep in step with composeApp's versionName. */
-private const val PLUGIN_VERSION = "1.3.2"
+private const val PLUGIN_VERSION = "1.3.3"
 
 private val MANIFEST =
     """
@@ -381,7 +381,7 @@ fun Routing.reskonRoutes() {
         val today = ReskonFeeds.todayIn(request.tz.ifBlank { call.request.queryParameters["tz"] })
         val file = accountFile(session.account)
         val rows = ReskonFeeds.load(file)
-        if (request.key !in ReskonFeeds.todayHabits(rows).map { it.uid }) {
+        if (request.key !in ReskonFeeds.todayHabits(rows, today).map { it.uid }) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No such habit"))
             return@post
         }

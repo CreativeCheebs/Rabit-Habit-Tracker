@@ -68,7 +68,9 @@
       li.appendChild(label);
       list.appendChild(li);
     });
-    if (!(data.habits || []).length) msg.textContent = "No habits today.";
+    if (!(data.habits || []).length) {
+      msg.textContent = data.run_ended ? "Run completed! Start your next run in Habit Lab." : "No habits today.";
+    }
   }
 
   function load() {

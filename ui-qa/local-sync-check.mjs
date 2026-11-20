@@ -23,17 +23,26 @@ try {
   await login();
   await page.getByRole('button', { name: 'Build a run' }).click();
   await page.locator('#runName').fill('Server test run');
-  await page.locator('[data-click="addHabit"]').click();
-  await page.locator('#builderHabits [aria-label="Habit name"]').fill('Server test habit');
+  await page.getByRole('button', { name: 'New habit' }).click();
+  await page.locator('#habitEditName').fill('Server test habit');
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await page.getByRole('button', { name: 'Create run' }).click();
   await page.waitForFunction(() => document.querySelector('#syncLabel').textContent === 'Synced');
   await page.getByRole('button', { name: 'Edit run' }).click();
-  await page.locator('#editBody [aria-label="Habit name"]').fill('Edited server habit');
+  await page.getByRole('button', { name: 'Edit Server test habit' }).click();
+  await page.locator('#habitEditName').fill('Edited server habit');
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   await page.getByRole('button', { name: 'Save changes' }).click();
   await page.waitForFunction(() => document.querySelector('#syncLabel').textContent === 'Synced');
+  // Clearing a check-in tombstones it on the server; logging the day again must survive a fresh download.
+  for (let i = 0; i < 5; i++) {
+    await page.locator('#runsBody button.check').first().click();
+    await page.waitForFunction(() => document.querySelector('#syncLabel').textContent === 'Synced');
+  }
   await page.context().close();
   page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await login();
   assert.equal(await page.locator('#runsBody').getByText('Edited server habit').count(), 1);
-  console.log('PASS local server: registration, sign-in, creation, edit, sync and fresh-browser recovery');
+  assert.match(await page.locator('#runsBody button.check').first().getAttribute('class'), /check done/);
+  console.log('PASS local server: registration, sign-in, creation, edit, check-in clear and re-log, sync and fresh-browser recovery');
 } finally { await browser.close(); }

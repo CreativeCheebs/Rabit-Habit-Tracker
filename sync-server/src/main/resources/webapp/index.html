@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rabit - Habit and Goals Tracker</title>
-<meta name="theme-color" content="#087d6e">
+<meta name="theme-color" content="#FBF8F3">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" href="fonts/PlusJakartaSans-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -17,17 +18,17 @@
 <aside class="side">
 <div class="brand"><img class="brand-mark" src="icon-192.png" alt=""><div><b>Rabit</b><small id="brandSub">Desktop</small></div></div>
 <nav class="sidenav" aria-label="Main navigation">
-<button class="active" data-view="runs"><span class="ic">◷</span><span class="lbl">Runs &amp; Habits</span></button>
-<button data-view="analytics" hidden><span class="ic">▥</span><span class="lbl">Analytics</span></button>
-<button data-view="goals"><span class="ic">◎</span><span class="lbl">Goals</span></button>
-<button data-view="trackers" hidden><span class="ic">⌁</span><span class="lbl">Trackers</span></button>
-<button data-view="quicklog" hidden><span class="ic">⇆</span><span class="lbl">Quick Log</span></button>
-<button data-view="settings"><span class="ic">⚙</span><span class="lbl">Settings</span></button>
+<button type="button" class="active" data-view="runs" aria-current="page"><span class="ic-wrap"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M9 12l2 2 4-4"/></svg></span><span class="lbl">Today</span></button>
+<button type="button" data-view="analytics" hidden><span class="ic-wrap"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/></svg></span><span class="lbl">Stats</span></button>
+<button type="button" data-view="goals"><span class="ic-wrap"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M6 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/></svg></span><span class="lbl">Goals</span></button>
+<button type="button" data-view="trackers" hidden><span class="ic-wrap"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m22 7-8.5 8.5-5-5L2 17M16 7h6v6"/></svg></span><span class="lbl">Trackers</span></button>
+<button type="button" data-view="quicklog" hidden><span class="ic-wrap"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></span><span class="lbl">Quick Log</span></button>
+<button type="button" data-view="settings"><span class="ic-wrap"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></span><span class="lbl">Settings</span></button>
 </nav>
 <div class="side-foot"><div class="sync-line"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Offline</span></div><div id="sideUser"></div></div>
 </aside>
 <div class="main">
-<header class="topbar"><h1 id="topTitle">Runs &amp; Habits</h1><div class="acct-wrap"><button class="avatar" id="acctBtn" aria-label="Account">?</button><div class="acct-menu" id="acctMenu"></div></div></header>
+<header class="topbar"><div class="top-titles"><span class="top-date" id="topDate"></span><h1 id="topTitle">Today</h1></div><div class="top-actions" id="topActions"></div><div class="acct-wrap"><button type="button" class="avatar" id="acctBtn" aria-label="Account" aria-haspopup="true">?</button><div class="acct-menu" id="acctMenu"></div></div></header>
 <main class="content">
 <section class="view active" id="v-runs"><div id="runsBody"></div></section>
 <section class="view" id="v-analytics"><div id="analyticsBody"></div></section>
@@ -35,8 +36,7 @@
 <section class="view" id="v-trackers"><div id="trackersBody"></div></section>
 <section class="view" id="v-quicklog"><div id="quickBody"></div></section>
 <section class="view" id="v-settings"><div id="settingsBody"></div></section>
-<section class="view" id="v-builder"><div id="builderBody"></div></section>
-<section class="view" id="v-edit"><div id="editBody"></div></section>
+<section class="view" id="v-editor"><div id="editorBody"></div></section>
 </main>
 </div>
 </div>

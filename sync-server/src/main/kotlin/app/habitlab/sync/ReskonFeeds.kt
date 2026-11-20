@@ -42,7 +42,12 @@ object ReskonFeeds {
         val archived: Boolean,
     )
 
-    data class RunRow(val uid: String, val status: String, val startDate: String)
+    data class RunRow(
+        val uid: String,
+        val status: String,
+        val startDate: String,
+        val durationDays: Int = 21,
+    )
     data class LinkRow(val runUid: String, val habitUid: String)
 
     /** An account's rows: habit uid -> day -> check-in state. */
@@ -152,7 +157,8 @@ object ReskonFeeds {
         val runs = byTable["run"].orEmpty().mapNotNull { uid ->
             val row = rowFields("run", uid)
             if (!alive(row)) return@mapNotNull null
-            RunRow(uid, text(row, "status") ?: "", text(row, "start_date") ?: "")
+            val dur = text(row, "duration_days")?.toIntOrNull() ?: 21
+            RunRow(uid, text(row, "status") ?: "", text(row, "start_date") ?: "", dur)
         }
 
         val links = byTable["run_habit"].orEmpty().mapNotNull { uid ->
@@ -175,9 +181,18 @@ object ReskonFeeds {
         return AccountRows(habits, runs, links, checkIns)
     }
 
+    fun isRunEnded(run: RunRow, today: String): Boolean {
+        if (run.startDate.isBlank() || !isDay(run.startDate) || !isDay(today)) return false
+        val end = try {
+            LocalDate.parse(run.startDate).plusDays(run.durationDays.toLong() - 1)
+        } catch (_: Exception) { return false }
+        val current = try { LocalDate.parse(today) } catch (_: Exception) { return false }
+        return current.isAfter(end)
+    }
+
     /** The newest active run; clients keep exactly one. */
-    fun activeRun(rows: AccountRows): RunRow? =
-        rows.runs.filter { it.status == "active" }
+    fun activeRun(rows: AccountRows, today: String? = null): RunRow? =
+        rows.runs.filter { it.status == "active" && (today == null || !isRunEnded(it, today)) }
             .sortedWith(compareByDescending<RunRow> { it.startDate }.thenByDescending { it.uid })
             .firstOrNull()
 
@@ -185,8 +200,10 @@ object ReskonFeeds {
      * Today's habits, as the web app shows them: habits of the active run
      * plus standalone habits, never archived or stopped-run history.
      */
-    fun todayHabits(rows: AccountRows): List<HabitRow> {
-        val active = activeRun(rows)?.uid
+    fun todayHabits(rows: AccountRows, today: String? = null): List<HabitRow> {
+        val activeRun = activeRun(rows, today)
+        if (today != null && activeRun == null && rows.runs.any { it.status == "active" && isRunEnded(it, today) }) return emptyList()
+        val active = activeRun?.uid
         val linkedAny = rows.links.map { it.habitUid }.toSet()
         val linkedActive = rows.links.filter { it.runUid == active }.map { it.habitUid }.toSet()
         return rows.habits
@@ -211,12 +228,16 @@ object ReskonFeeds {
     /** The page widget's list: {"day": ..., "habits": [{key,label,done}]}. */
     fun pageList(rows: AccountRows, day: String): JsonObject {
         val states = statesOn(rows, day)
+        val active = activeRun(rows, day)
+        val hasEndedRun = active == null && rows.runs.any { it.status == "active" && isRunEnded(it, day) }
+        val habits = if (hasEndedRun) emptyList() else todayHabits(rows, day).take(MAX_ITEMS)
         return buildJsonObject {
             put("day", day)
+            put("run_ended", hasEndedRun)
             put(
                 "habits",
                 buildJsonArray {
-                    for (habit in todayHabits(rows).take(MAX_ITEMS)) {
+                    for (habit in habits) {
                         add(
                             buildJsonObject {
                                 put("key", habit.uid)
@@ -239,7 +260,7 @@ object ReskonFeeds {
             put(
                 "items",
                 buildJsonArray {
-                    for (habit in todayHabits(rows).take(MAX_ITEMS)) {
+                    for (habit in todayHabits(rows, today).take(MAX_ITEMS)) {
                         val state = states[habit.uid]
                         val detail = when (state) {
                             "partial" -> "Partial"
@@ -263,8 +284,8 @@ object ReskonFeeds {
 
     /** data widget "today_list": unique habits linked to the current run. */
     fun todayTable(rows: AccountRows, today: String): JsonObject {
-        val activeRunUid = activeRun(rows)?.uid
-        val currentRunHabitUids = rows.links.asSequence()
+        val activeRunUid = activeRun(rows, today)?.uid
+        val currentRunHabitUids = if (activeRunUid == null) emptySet() else rows.links.asSequence()
             .filter { it.runUid == activeRunUid }
             .map { it.habitUid }
             .toSet()
@@ -275,8 +296,11 @@ object ReskonFeeds {
             .take(MAX_ITEMS)
             .toList()
         val states = statesOn(rows, today)
+        val runEnded = activeRun(rows, today) == null && rows.runs.any { it.status == "active" && isRunEnded(it, today) }
         return buildJsonObject {
             put("shape", "table")
+            put("run_ended", runEnded)
+            if (runEnded) put("empty_message", "Run completed! Start a new run in Habit Lab.")
             put(
                 "columns",
                 buildJsonArray {

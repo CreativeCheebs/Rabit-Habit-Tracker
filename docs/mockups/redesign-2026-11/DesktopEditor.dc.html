@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Web run editor</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="min-height: 1040px; background: #FBF8F3; color: #211D18; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; box-sizing: border-box; padding: 28px 32px 48px">
+  <div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px">
+    <header style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+      <a href="DesktopToday.dc.html" aria-label="Back to Today" style="width: 44px; height: 44px; border-radius: 14px; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#211D18" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7M19 12H5"></path></svg>
+      </a>
+      <h1 style="margin: 0; flex-grow: 1; font-size: 28px; font-weight: 800; letter-spacing: -0.6px">New run</h1>
+      <span style="font-size: 13px; font-weight: 600; color: #6B6259">Same editor opens for Edit run — only the top card and the button text change.</span>
+    </header>
+
+    <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start">
+      <div style="flex: 2 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+
+        <section style="display: flex; flex-direction: column; gap: 10px">
+          <h2 style="margin: 0; font-size: 14px; font-weight: 800">Start from</h2>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+            <button type="button" aria-pressed="true" style="border-radius: 18px; border: 2px solid #1F7A4D; background: #DDF1E4; padding: 14px; display: flex; gap: 12px; align-items: center; text-align: left; font-family: 'Plus Jakarta Sans', sans-serif; color: #211D18">
+              <span style="width: 38px; height: 38px; border-radius: 12px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#18794E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2zM4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"></path></svg></span>
+              <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 800">Copy a run</span><span style="font-size: 12px; font-weight: 500; color: #4A433C">Reset 21 · 6 habits</span></span>
+            </button>
+            <button type="button" aria-pressed="false" style="border-radius: 18px; border: 1.5px solid #E2D9CC; background: #FFFFFF; padding: 14px; display: flex; gap: 12px; align-items: center; text-align: left; font-family: 'Plus Jakarta Sans', sans-serif; color: #211D18">
+              <span style="width: 38px; height: 38px; border-radius: 12px; background: #E6F4FE; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D74CE" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 12h8M12 8v8"></path></svg></span>
+              <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 800">Blank</span><span style="font-size: 12px; font-weight: 500; color: #6B6259">Pick habits yourself</span></span>
+            </button>
+            <button type="button" aria-pressed="false" style="border-radius: 18px; border: 1.5px solid #E2D9CC; background: #FFFFFF; padding: 14px; display: flex; gap: 12px; align-items: center; text-align: left; font-family: 'Plus Jakarta Sans', sans-serif; color: #211D18">
+              <span style="width: 38px; height: 38px; border-radius: 12px; background: #F7EDFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8145B5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"></path></svg></span>
+              <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 800">Paste YAML</span><span style="font-size: 12px; font-weight: 500; color: #6B6259">Plan it with an AI chat</span></span>
+            </button>
+          </div>
+        </section>
+
+        <section style="background: #FFFFFF; border-radius: 20px; padding: 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="dName" style="font-size: 12px; font-weight: 700; color: #6B6259">Run name</label>
+            <input id="dName" value="Spring reset" style="height: 48px; box-sizing: border-box; border-radius: 14px; border: 1.5px solid #E2D9CC; background: #FBF8F3; padding: 0 14px; font: 700 15px 'Plus Jakarta Sans', sans-serif; color: #211D18">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="dStart" style="font-size: 12px; font-weight: 700; color: #6B6259">Starts</label>
+            <input id="dStart" type="date" value="2026-12-08" style="height: 48px; box-sizing: border-box; border-radius: 14px; border: 1.5px solid #E2D9CC; background: #FBF8F3; padding: 0 14px; font: 700 15px 'Plus Jakarta Sans', sans-serif; color: #211D18">
+          </div>
+          <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 8px">
+            <span style="font-size: 12px; font-weight: 700; color: #6B6259">Length</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap">
+              <button type="button" style="height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #E2D9CC; background: #FFFFFF; color: #211D18; font: 700 14px 'Plus Jakarta Sans', sans-serif">7 days</button>
+              <button type="button" style="height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #E2D9CC; background: #FFFFFF; color: #211D18; font: 700 14px 'Plus Jakarta Sans', sans-serif">14 days</button>
+              <button type="button" aria-pressed="true" style="height: 40px; padding: 0 16px; border-radius: 999px; border: 0; background: #211D18; color: #FBF8F3; font: 700 14px 'Plus Jakarta Sans', sans-serif">21 days</button>
+              <button type="button" style="height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #E2D9CC; background: #FFFFFF; color: #211D18; font: 700 14px 'Plus Jakarta Sans', sans-serif">30 days</button>
+              <button type="button" style="height: 40px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #E2D9CC; background: #FFFFFF; color: #211D18; font: 700 14px 'Plus Jakarta Sans', sans-serif">Custom</button>
+            </div>
+          </div>
+        </section>
+
+        <section style="display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; justify-content: space-between; align-items: center">
+            <h2 style="margin: 0; font-size: 14px; font-weight: 800">Habits · 6</h2>
+            <div style="display: flex; gap: 8px">
+              <button type="button" style="height: 38px; padding: 0 14px; border-radius: 12px; border: 0; background: #DDF1E4; color: #165C3A; font: 700 13px 'Plus Jakarta Sans', sans-serif">Add existing</button>
+              <button type="button" style="height: 38px; padding: 0 14px; border-radius: 12px; border: 0; background: #211D18; color: #FBF8F3; font: 700 13px 'Plus Jakarta Sans', sans-serif">+ New habit</button>
+            </div>
+          </div>
+          <div role="alert" style="display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 16px; background: #FEEBEC; color: #8C1D22">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#CE2C31" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3ZM12 9v4M12 17h.01"></path></svg>
+            <span style="font-size: 13px; font-weight: 600">Two habits are called “Read 20 pages”. Rename one to continue.</span>
+          </div>
+          <div style="background: #FFFFFF; border-radius: 20px; padding: 4px 0">
+            <sc-for list="{{habits}}" as="h" hint-placeholder-count="6">
+              <div style="display: flex; align-items: center; gap: 14px; padding: 10px 14px 10px 12px; border-top: {{h.sep}}; background: {{h.rowBg}}">
+                <span style="width: 44px; height: 44px; border-radius: 14px; background: {{h.tint}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{h.ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{h.icon}}"></path></svg>
+                </span>
+                <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                  <span style="font-size: 15px; font-weight: 700">{{h.name}}</span>
+                  <span style="font-size: 12.5px; font-weight: 500; color: {{h.metaColor}}">{{h.meta}}</span>
+                </span>
+                <span style="font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: {{h.tint}}; color: {{h.ink}}">{{h.pts}} pts</span>
+                <button type="button" aria-label="Edit {{h.name}}" style="height: 36px; padding: 0 12px; border-radius: 10px; border: 1.5px solid #E2D9CC; background: #FFFFFF; color: #211D18; font: 700 13px 'Plus Jakarta Sans', sans-serif">Edit</button>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+
+      <aside style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+        <section style="background: #E6F4EA; border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+          <span style="font-size: 11px; font-weight: 800; letter-spacing: 1.2px; color: #1F7A4D">PREVIEW</span>
+          <span style="font-size: 24px; font-weight: 800; letter-spacing: -0.4px">Spring reset</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <span style="font-size: 12.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: #FFFFFF">21 days</span>
+            <span style="font-size: 12.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: #FFFFFF">8 Dec – 28 Dec</span>
+            <span style="font-size: 12.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: #FFFFFF">6 habits</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 4px">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600"><span style="color: #4A433C">Check-ins per week</span><span style="font-weight: 800">≈ 30</span></div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600"><span style="color: #4A433C">Max points per week</span><span style="font-weight: 800">≈ 64</span></div>
+          </div>
+          <button type="button" style="height: 52px; border-radius: 16px; border: 0; background: #1F7A4D; color: #FFFFFF; font: 800 16px 'Plus Jakarta Sans', sans-serif">Create run</button>
+          <a href="DesktopToday.dc.html" style="align-self: center; color: #1F7A4D; font-size: 14px; font-weight: 700; text-decoration: none; padding: 6px">Cancel</a>
+        </section>
+        <div style="display: flex; gap: 10px; align-items: flex-start; padding: 0 6px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6259" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M12 16v-4M12 8h.01"></path></svg>
+          <span style="font-size: 12.5px; font-weight: 500; color: #6B6259; line-height: 1.45">Copied habits stay linked to Reset 21 — editing one here updates both runs.</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const I = {
+      sun: 'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41',
+      target: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M6 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+      drop: 'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z',
+      timer: 'M4 13a8 8 0 1 0 16 0a8 8 0 1 0-16 0M12 9v4l2 2M10 2h4',
+      book: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'
+    };
+    const defs = [
+      ['Morning light', '#FFF7C2', '#9E6C00', 'sun', 'Morning · 3× a week', 2, false],
+      ['Plan the day', '#EDF2FE', '#3A5BC7', 'target', 'Morning · every day', 1, false],
+      ['Drink 2 L water', '#E6F4FE', '#0D74CE', 'drop', 'Health · every day', 1, false],
+      ['Focused work block', '#E0F8F3', '#008573', 'timer', 'Focus · 3× a week', 4, false],
+      ['Read 20 pages', '#FEE9F5', '#C2298A', 'book', 'Focus · every 2 days', 2, false],
+      ['Read 20 pages', '#FEE9F5', '#C2298A', 'book', 'Same name as another habit', 2, true]
+    ];
+    return {
+      habits: defs.map(([name, tint, ink, icon, meta, pts, err], i) => ({
+        name, tint, ink, icon: I[icon], meta, pts,
+        metaColor: err ? '#CE2C31' : '#6B6259',
+        rowBg: err ? '#FFF8F8' : 'transparent',
+        sep: i === 0 ? '0' : '1px solid #ECE5DA'
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

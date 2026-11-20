@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today · visual delight mock</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #FBF8F3; --surface: #FFFFFF; --soft: #F4EFE7; --hero: #E6F4EA;
+    --ink: #211D18; --muted: #6B6259; --line: #ECE5DA; --accent: #1F7A4D;
+    --accent-soft: #DDF1E4; --streak: #F76B15; --streak-soft: #FFEFD6; --streak-ink: #CC4E00;
+    --partial: #FFC53D; --track: #E9E2D7;
+    --shadow: 0 1px 2px rgb(33 29 24 / 6%), 0 8px 24px rgb(33 29 24 / 6%);
+  }
+  body { margin: 0; background: #e7e0d3; font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; display: flex; justify-content: center; padding: 24px 12px; }
+  .wrap { max-width: 1280px; width: 100%; }
+  .app { display: grid; grid-template-columns: 240px 1fr; background: var(--bg); color: var(--ink); border-radius: 24px; overflow: hidden; box-shadow: 0 20px 60px rgb(33 29 24 / 25%); min-height: 900px; }
+  .side { background: var(--surface); border-right: 1px solid var(--line); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
+  .mark { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, #1F7A4D, #4CC38A); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; }
+  .brand b { display: block; font-size: 16px; }
+  .brand small { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .nav button { width: 100%; border: 0; background: transparent; color: var(--muted); font: 700 14px inherit; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; cursor: pointer; transition: background .15s, color .15s, transform .15s; }
+  .nav button:hover { background: var(--soft); color: var(--ink); }
+  .nav button.on { background: var(--accent-soft); color: var(--ink); }
+  .nav svg { width: 20px; height: 20px; }
+  .side-foot { margin-top: auto; border-top: 1px solid var(--line); padding: 12px 10px 2px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .main { padding: 26px 30px 30px; }
+  .top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .top .date { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .top h1 { margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -.8px; }
+  .top .sp { flex: 1; }
+  .streak { height: 38px; padding: 0 14px; border-radius: 999px; background: var(--streak-soft); color: var(--streak-ink); display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 800; }
+  .streak svg { width: 17px; height: 17px; }
+  .avatar { width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--soft); color: var(--accent); font-weight: 800; font-size: 16px; cursor: pointer; }
+  .hero { background: var(--hero); border-radius: 26px; padding: 22px 24px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; right: -90px; top: -90px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgb(76 195 138 / 22%), transparent 70%); pointer-events: none; }
+  .hero-row { display: flex; align-items: center; gap: 18px; position: relative; z-index: 1; }
+  .ring { position: relative; width: 92px; height: 92px; flex-shrink: 0; }
+  .ring .fg { transform: rotate(-90deg); transform-origin: center; stroke-dasharray: 201; stroke-dashoffset: 201; animation: ring 1.1s .2s cubic-bezier(.3,1.4,.4,1) forwards; }
+  @keyframes ring { to { stroke-dashoffset: 134; } }
+  .ring .c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring .c b { font-size: 21px; font-weight: 800; }
+  .ring .c span { font-size: 11px; font-weight: 700; color: var(--muted); }
+  .eyebrow { font-size: 11.5px; font-weight: 800; letter-spacing: 1.4px; color: var(--accent); }
+  .headline { font-size: 24px; font-weight: 800; letter-spacing: -.3px; margin: 2px 0; }
+  .sub { font-size: 13.5px; font-weight: 600; color: var(--muted); }
+  .metrics { display: flex; gap: 10px; margin-left: auto; position: relative; z-index: 1; }
+  .metric { background: rgba(255,255,255,.75); backdrop-filter: blur(2px); border: 1px solid rgb(31 122 77 / 14%); border-radius: 16px; padding: 10px 16px; min-width: 108px; }
+  .metric span { display: block; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+  .metric b { font-size: 20px; font-weight: 800; }
+  .runbars { display: grid; grid-template-columns: repeat(21, minmax(0, 1fr)); gap: 5px; margin-top: 14px; position: relative; z-index: 1; }
+  .runbars i { height: 10px; border-radius: 5px; background: rgb(255 255 255 / 65%); }
+  .runbars i.hit { background: var(--accent); }
+  .runbars i.now { background: var(--partial); box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent); }
+  .hero-actions { display: flex; gap: 8px; margin-top: 14px; position: relative; z-index: 1; }
+  .btn { height: 38px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--surface); font: 700 13.5px inherit; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; box-shadow: var(--shadow); transition: transform .12s; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.text { background: transparent; box-shadow: none; color: var(--accent); }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; margin-top: 18px; align-items: start; }
+  .group { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 2px 8px; }
+  .group b { font-size: 15px; font-weight: 800; }
+  .group span { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .hab { background: var(--surface); border-radius: 18px; padding: 12px 12px 12px 14px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow); transition: transform .12s, box-shadow .12s; cursor: default; }
+  .hab:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgb(33 29 24 / 8%), 0 14px 30px rgb(33 29 24 / 10%); }
+  .hab + .hab { margin-top: 10px; }
+  .tile { width: 44px; height: 44px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .tile svg { width: 22px; height: 22px; }
+  .hab .t { flex: 1; min-width: 0; }
+  .hab .t b { display: block; font-size: 15px; }
+  .hab .t span { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .mini { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px; }
+  .mini:hover { color: var(--ink); background: var(--soft); }
+  .mini svg { width: 16px; height: 16px; display: block; }
+  .circle { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--accent); background: #fff; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; transition: background .15s, transform .1s; }
+  .circle:active { transform: scale(.9); }
+  .circle svg { width: 20px; height: 20px; opacity: 0; transform: scale(.4); transition: opacity .18s, transform .22s cubic-bezier(.3,1.6,.5,1); }
+  .circle.done { background: var(--accent); border-color: var(--accent); }
+  .circle.done svg { opacity: 1; transform: scale(1); }
+  .circle.partial { background: conic-gradient(var(--accent) 0 50%, #fff 50% 100%); }
+  .rest { margin-top: 10px; background: var(--soft); border-radius: 16px; padding: 12px 14px; font-size: 13.5px; font-weight: 600; color: var(--muted); display: flex; gap: 8px; align-items: center; cursor: pointer; border: 0; width: 100%; font-family: inherit; }
+  .rest:hover { color: var(--ink); }
+  .tip { text-align: center; font-size: 12.5px; color: var(--muted); font-weight: 600; margin: 12px 0; }
+  .ghost { width: 100%; border: 2px dashed #D8CFC2; border-radius: 16px; background: transparent; padding: 13px; font: 700 14px inherit; color: var(--accent); cursor: pointer; }
+  .ghost:hover { background: rgb(31 122 77 / 6%); }
+  .runs { margin-top: 18px; }
+  .runs-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .runs-head b { font-size: 15px; font-weight: 800; }
+  .pillbtn { border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--ink); font: 700 13px inherit; padding: 8px 14px; cursor: pointer; }
+  .runrow { background: var(--surface); border-radius: 16px; padding: 12px 16px; font-weight: 700; box-shadow: var(--shadow); display: flex; gap: 8px; align-items: center; }
+  .rail { display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--surface); border-radius: 18px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .card h3 { margin: 0 0 4px; font-size: 14px; font-weight: 800; display: flex; justify-content: space-between; }
+  .card h3 span { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .wk { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 8px; }
+  .wk div { aspect-ratio: 1; border-radius: 11px; background: var(--soft); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--muted); }
+  .wk div b { font-size: 13px; color: var(--ink); }
+  .wk div.sel { background: var(--ink); color: #fff; }
+  .wk div.sel b { color: #fff; }
+  .bars { display: flex; align-items: flex-end; gap: 4px; height: 96px; margin-top: 10px; }
+  .bars i { flex: 1; border-radius: 3px; background: var(--accent); min-height: 4px; transform-origin: bottom; animation: grow .7s cubic-bezier(.2,.9,.3,1.2) backwards; }
+  .bars i.f { background: var(--track); }
+  @keyframes grow { from { transform: scaleY(0); } }
+  .burnup path.line { stroke-dasharray: 600; stroke-dashoffset: 600; animation: draw 1.4s .3s ease-out forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .fade { animation: rise .5s ease-out backwards; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .ring .fg, .burnup path.line { stroke-dashoffset: 0; }
+  }
+  .note { max-width: 1280px; margin: 14px 0 24px; font-size: 13px; color: #5c554b; }
+  kbd { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font: 700 12px inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span><div><b>Rabit</b><small>Desktop</small></div></div>
+    <nav class="nav" aria-label="Main">
+      <button class="on" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a10 10 0 1 0 20 0 10 10 0 1 0-20 0"/><path d="M9 12l2 2 4-4"/></svg>Today</button>
+      <button type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Goals</button>
+      <button type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>Settings</button>
+    </nav>
+    <div class="side-foot"><div>● Offline</div><div>test</div></div>
+  </aside>
+  <div class="main">
+    <div class="top fade">
+      <div><div class="date">Friday, November 20</div><h1>Today</h1></div>
+      <div class="sp"></div>
+      <span class="streak"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>3-day streak</span>
+      <button class="avatar" type="button">T</button>
+    </div>
+    <section class="hero fade" style="animation-delay:.06s" aria-label="Active run">
+      <div class="hero-row">
+        <div class="ring" role="img" aria-label="2 of 4 done">
+          <svg width="92" height="92" viewBox="0 0 92 92"><circle cx="46" cy="46" r="32" fill="none" stroke="#ffffff" stroke-opacity=".7" stroke-width="11"/><circle class="fg" cx="46" cy="46" r="32" fill="none" stroke="#1F7A4D" stroke-width="11" stroke-linecap="round"/></svg>
+          <div class="c"><b>2/4</b><span>done</span></div>
+        </div>
+        <div>
+          <div class="eyebrow">RESET 21 · DAY 4 OF 21</div>
+          <div class="headline">Nice pace — 2 to go</div>
+          <div class="sub">+2 pts today · 70% of run so far</div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><span>Today</span><b>+2 pts</b></div>
+          <div class="metric"><span>Run so far</span><b>70%</b></div>
+          <div class="metric"><span>Total</span><b>31 pts</b></div>
+        </div>
+      </div>
+      <div class="runbars" aria-hidden="true"><i class="hit"></i><i class="hit"></i><i class="hit"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="hero-actions">
+        <button class="btn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Edit run</button>
+        <button class="btn text" type="button">All runs</button>
+      </div>
+    </section>
+    <div class="cols">
+      <div>
+        <div class="group fade" style="animation-delay:.12s"><b>Focus</b><span>1 of 2 done</span></div>
+        <div class="hab fade" style="animation-delay:.16s"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span class="t"><b>Focused work block</b><span>Skipped today</span></span><button class="mini" type="button" aria-label="Edit habit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button><button class="circle" type="button" aria-label="Log check-in"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button></div>
+        <div class="hab fade" style="animation-delay:.2s"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg></span><span class="t"><b>Plan the day</b><span>7 days per week · 4 of 7 this week · 1 pt</span></span><button class="mini" type="button" aria-label="Edit habit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button><button class="circle partial" type="button" aria-label="Log check-in"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button></div>
+        <div class="group fade" style="animation-delay:.24s"><b>Wellbeing</b><span>1 of 1 done</span></div>
+        <div class="hab fade" style="animation-delay:.28s"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span><span class="t"><b>Morning light</b><span>3 days per week · 4 of 3 this week · 2 pts</span></span><button class="mini" type="button" aria-label="Edit habit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button><button class="circle done" type="button" aria-label="Log check-in"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button></div>
+        <button class="rest fade" style="animation-delay:.32s" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>Resting today · 1 habit <span style="margin-left:auto">›</span></button>
+        <div class="tip fade" style="animation-delay:.34s">Tap a circle or press <kbd>1</kbd>–<kbd>9</kbd> to log a habit.</div>
+        <button class="ghost fade" style="animation-delay:.36s" type="button">+ New standalone habit</button>
+        <div class="runs fade" style="animation-delay:.4s">
+          <div class="runs-head"><b>Your runs</b><button class="pillbtn" type="button">+ New run</button></div>
+          <div class="runrow">▸ Manage runs · 1</div>
+        </div>
+      </div>
+      <div class="rail">
+        <div class="card fade" style="animation-delay:.14s"><h3>This week <span>‹ ›</span></h3>
+          <div class="wk"><div>M<b>16</b></div><div>T<b>17</b></div><div>W<b>18</b></div><div>T<b>19</b></div><div class="sel">F<b>20</b></div><div>S<b>21</b></div><div>S<b>22</b></div></div>
+        </div>
+        <div class="card fade" style="animation-delay:.2s"><h3>Points per day <span>Whole run</span></h3>
+          <div class="bars"><i style="height:88%;animation-delay:.3s"></i><i style="height:64%;animation-delay:.35s"></i><i style="height:80%;animation-delay:.4s"></i><i style="height:34%;animation-delay:.45s"></i><i class="f" style="height:10%;animation-delay:.5s"></i><i class="f" style="height:10%;animation-delay:.55s"></i><i class="f" style="height:10%;animation-delay:.6s"></i></div>
+        </div>
+        <div class="card burnup fade" style="animation-delay:.26s"><h3>Points burnup <span>Day 4 of 21</span></h3>
+          <svg viewBox="0 0 300 130" width="100%" role="img" aria-label="Burnup chart">
+            <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1F7A4D" stop-opacity=".28"/><stop offset="1" stop-color="#1F7A4D" stop-opacity="0"/></linearGradient></defs>
+            <path d="M8 118 L40 100 L60 92 L75 86 L75 118 L8 118 Z" fill="url(#ag)"/>
+            <line x1="8" y1="118" x2="292" y2="118" stroke="#ECE5DA"/>
+            <path class="line" d="M8 118 L40 100 L60 92 L75 86" fill="none" stroke="#1F7A4D" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M75 86 L292 12" fill="none" stroke="#F76B15" stroke-width="2" stroke-dasharray="5 5"/>
+            <circle cx="75" cy="86" r="4.5" fill="#1F7A4D" stroke="#fff" stroke-width="2"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">Mock: same features as today's web Today. New — staggered entrance, animated ring + bars + burnup draw, hover lift on rows, animated check pop (click a circle), soft area fill under burnup, metric chips, keyboard hint (<kbd>1</kbd>–<kbd>9</kbd> logging is a proposal). Nothing removed.</p>
+</div>
+<script>
+  document.querySelectorAll('.circle').forEach((c) => {
+    c.addEventListener('click', () => {
+      if (c.classList.contains('done')) { c.classList.remove('done'); c.classList.add('partial'); }
+      else if (c.classList.contains('partial')) { c.classList.remove('partial'); }
+      else { c.classList.add('done'); }
+    });
+  });
+</script>
+</body>
+</html>

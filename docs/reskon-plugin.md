@@ -28,7 +28,7 @@ To disconnect, remove the app in Reskon. The key stops working and this server k
 | Streaks | data | Each habit's current and longest run of consecutive days. |
 | Longest streak | data | The longest run of any habit, in days. |
 
-"Today" means today in the time zone Reskon passes along; without one it is UTC. The **Today** table shows only habits linked to the current active run. Duplicate links are collapsed to one row per habit; standalone habits, archived habits, and habits from stopped runs are excluded. The separate **Today's habits** page widget continues to show the web app's current-run and standalone habits.
+"Today" means today in the time zone Reskon passes along; without one it is UTC. The **Today** table shows only habits linked to the current active run. Duplicate links are collapsed to one row per habit; standalone habits, archived habits, and habits from stopped runs are excluded. When an active run has passed its final date, both Today feeds are empty and carry a completed-run message; the tickable page explains that a new run must be started in Habit Lab. The separate **Today's habits** page widget otherwise continues to show the web app's current-run and standalone habits.
 
 ## How it works
 

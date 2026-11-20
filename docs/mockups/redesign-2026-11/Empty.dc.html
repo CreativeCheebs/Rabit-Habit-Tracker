@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>First run</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 1000px; box-sizing: border-box; background: #FBF8F3; color: #211D18; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; display: flex; flex-direction: column">
+  <div style="flex-grow: 1; padding: 20px 16px; display: flex; flex-direction: column; gap: 20px">
+    <header style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 12.5px; font-weight: 600; color: #6B6259">Thursday, 20 Nov</span>
+      <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.6px">Today</h1>
+    </header>
+
+    <div style="background: #FFFFFF; border-radius: 28px; padding: 28px 20px 22px; display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center">
+      <div style="position: relative; width: 200px; height: 120px" aria-hidden="true">
+        <div style="position: absolute; left: 14px; top: 26px; width: 64px; height: 64px; border-radius: 20px; background: #FFF7C2; transform: rotate(-10deg); display: flex; align-items: center; justify-content: center">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#9E6C00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+        </div>
+        <div style="position: absolute; left: 68px; top: 4px; width: 72px; height: 72px; border-radius: 22px; background: #30A46C; display: flex; align-items: center; justify-content: center; z-index: 1">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+        </div>
+        <div style="position: absolute; left: 124px; top: 34px; width: 64px; height: 64px; border-radius: 20px; background: #F7EDFE; transform: rotate(9deg); display: flex; align-items: center; justify-content: center">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#8145B5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+        </div>
+        <div style="position: absolute; left: 52px; top: 92px; width: 14px; height: 14px; border-radius: 50%; background: #F76B15"></div>
+        <div style="position: absolute; left: 150px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #3E63DD"></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.3px">Let's build your first run</h2>
+        <p style="margin: 0; font-size: 14px; font-weight: 500; color: #6B6259; line-height: 1.5">A run is a short stretch — 7, 14 or 21 days — of habits you want to try. You'll check them off here each day.</p>
+      </div>
+      <div style="width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <a href="RunEditor.dc.html" style="text-decoration: none; color: #211D18; border-radius: 18px; border: 2px solid #1F7A4D; background: #DDF1E4; padding: 14px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; text-align: left">
+          <span style="width: 36px; height: 36px; border-radius: 12px; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F7A4D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 12h8M12 8v8"></path></svg>
+          </span>
+          <span style="font-size: 14px; font-weight: 800">Start blank</span>
+          <span style="font-size: 12px; font-weight: 500; color: #6B6259">Pick habits yourself</span>
+        </a>
+        <a href="RunEditor.dc.html" style="text-decoration: none; color: #211D18; border-radius: 18px; border: 1.5px solid #E2D9CC; background: #FFFFFF; padding: 14px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; text-align: left">
+          <span style="width: 36px; height: 36px; border-radius: 12px; background: #F7EDFE; display: flex; align-items: center; justify-content: center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8145B5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"></path></svg>
+          </span>
+          <span style="font-size: 14px; font-weight: 800">Paste YAML</span>
+          <span style="font-size: 12px; font-weight: 500; color: #6B6259">Plan it with an AI chat</span>
+        </a>
+      </div>
+      <a href="RunEditor.dc.html" style="width: 100%; height: 52px; border-radius: 16px; background: #1F7A4D; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; text-decoration: none">Build a run</a>
+    </div>
+
+    <div style="display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 18px; background: #F4EFE7">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1F7A4D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10ZM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></svg>
+      <span style="font-size: 13px; font-weight: 600; color: #4A433C; line-height: 1.45">Tip: start with 3–5 habits. You can add more any time from Edit run.</span>
+    </div>
+  </div>
+
+  <nav aria-label="Main" style="height: 76px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #ECE5DA; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <sc-for list="{{tabs}}" as="tab" hint-placeholder-count="5">
+      <button type="button" style="border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; color: {{tab.fg}}; font: 700 11px 'Plus Jakarta Sans', sans-serif; padding: 0">
+        <span style="width: 56px; height: 30px; border-radius: 999px; background: {{tab.pill}}; display: flex; align-items: center; justify-content: center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{tab.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{tab.icon}}"></path></svg>
+        </span>
+        {{tab.label}}
+      </button>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const defs = [
+      ['Today', 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M9 12l2 2 4-4', true],
+      ['Stats', 'M3 3v18h18M18 17V9M13 17V5M8 17v-3', false],
+      ['Quick log', 'M13 2 3 14h9l-1 8 10-12h-9l1-8z', false],
+      ['Goals', 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M6 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0', false],
+      ['Trackers', 'm22 7-8.5 8.5-5-5L2 17M16 7h6v6', false]
+    ];
+    return { tabs: defs.map(([label, icon, on]) => ({ label, icon, fg: on ? '#211D18' : '#6B6259', pill: on ? '#DDF1E4' : 'transparent' })) };
+  }
+}
+</script>
+</body>
+</html>

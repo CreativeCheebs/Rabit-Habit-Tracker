@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Today</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 1000px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <div style="flex-grow: 1; padding: 20px 16px 16px; display: flex; flex-direction: column; gap: 16px">
+
+    <header style="display: flex; align-items: center; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 12.5px; font-weight: 600; color: {{t.muted}}">Thursday, 20 Nov</span>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.6px">Today</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px">
+        <span style="height: 36px; padding: 0 12px; border-radius: 999px; background: {{t.streakSoft}}; color: {{t.streakInk}}; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{t.streakInk}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+          4 days
+        </span>
+        <button type="button" aria-label="Account" style="width: 40px; height: 40px; border-radius: 50%; border: 0; background: {{t.surfaceAlt}}; color: {{t.accent}}; font: 800 15px 'Plus Jakarta Sans', sans-serif">T</button>
+      </div>
+    </header>
+
+    <section aria-label="Active run" style="background: {{t.hero}}; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: center; gap: 14px">
+        <div style="position: relative; width: 76px; height: 76px; flex-shrink: 0">
+          <svg width="76" height="76" viewBox="0 0 76 76" role="img" aria-label="{{pctLabel}}">
+            <circle cx="38" cy="38" r="32" fill="none" stroke="{{t.track}}" stroke-width="9"></circle>
+            <circle cx="38" cy="38" r="32" fill="none" stroke="{{t.accent}}" stroke-width="9" stroke-linecap="round" stroke-dasharray="{{ringDash}}" transform="rotate(-90 38 38)"></circle>
+          </svg>
+          <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center">
+            <span style="font-size: 18px; font-weight: 800; line-height: 1">{{doneCount}}/{{dueCount}}</span>
+            <span style="font-size: 10px; font-weight: 700; color: {{t.muted}}">done</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+          <span style="font-size: 11px; font-weight: 800; letter-spacing: 1.2px; color: {{t.accentInk}}">RESET 21 · DAY 4 OF 21</span>
+          <span style="font-size: 18px; font-weight: 800; letter-spacing: -0.2px">{{headline}}</span>
+          <span style="font-size: 12.5px; font-weight: 600; color: {{t.muted}}">+{{pointsToday}} pts today · 71% of run so far</span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(21, minmax(0, 1fr)); gap: 3px" aria-label="Run days">
+        <sc-for list="{{runDays}}" as="d" hint-placeholder-count="21">
+          <span style="height: 8px; border-radius: 4px; background: {{d.bg}}; box-shadow: {{d.ring}}"></span>
+        </sc-for>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <a href="RunEditorEdit.dc.html" style="height: 36px; padding: 0 14px; border-radius: 12px; background: {{t.surface}}; color: {{t.ink}}; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; text-decoration: none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{t.ink}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg>
+          Edit run
+        </a>
+        <button type="button" style="height: 36px; padding: 0 14px; border-radius: 12px; border: 0; background: transparent; color: {{t.accentInk}}; font: 700 13px 'Plus Jakarta Sans', sans-serif">All runs</button>
+      </div>
+    </section>
+
+    <nav aria-label="Pick a day" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px">
+      <sc-for list="{{week}}" as="w" hint-placeholder-count="7">
+        <button type="button" aria-label="{{w.label}}" style="height: 64px; border-radius: 16px; border: 0; background: {{w.bg}}; color: {{w.fg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-family: 'Plus Jakarta Sans', sans-serif; padding: 0">
+          <span style="font-size: 11px; font-weight: 700; opacity: 0.8">{{w.dow}}</span>
+          <span style="font-size: 16px; font-weight: 800">{{w.num}}</span>
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: {{w.dot}}"></span>
+        </button>
+      </sc-for>
+    </nav>
+
+    <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+      <section style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px">
+          <h2 style="margin: 0; font-size: 13px; font-weight: 800; letter-spacing: 0.4px">{{g.name}}</h2>
+          <span style="font-size: 12px; font-weight: 600; color: {{t.muted}}">{{g.summary}}</span>
+        </div>
+        <div style="background: {{t.surface}}; border-radius: 20px; padding: 4px 0">
+          <sc-for list="{{g.items}}" as="h" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 12px; padding: 9px 12px 9px 10px; border-top: {{h.sep}}">
+              <div style="width: 42px; height: 42px; border-radius: 13px; background: {{h.tint}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{h.ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{h.icon}}"></path></svg>
+              </div>
+              <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                <span style="font-size: 15px; font-weight: 700; opacity: {{h.nameOpacity}}">{{h.name}}</span>
+                <span style="font-size: 12.5px; font-weight: 500; color: {{t.muted}}">{{h.meta}}</span>
+              </div>
+              <sc-if value="{{h.showPts}}" hint-placeholder-val="{{false}}">
+                <span style="font-size: 12px; font-weight: 800; padding: 4px 8px; border-radius: 999px; background: {{h.tint}}; color: {{h.ink}}">+{{h.earned}}</span>
+              </sc-if>
+              <button type="button" aria-label="{{h.aria}}" onClick="{{h.tap}}" style="cursor: pointer; {{h.checkStyle}}">
+                <sc-if value="{{h.isDone}}" hint-placeholder-val="{{false}}">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{h.onSolid}}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+                </sc-if>
+                <sc-if value="{{h.isSkipped}}" hint-placeholder-val="{{false}}">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{t.skipInk}}" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"></path></svg>
+                </sc-if>
+              </button>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+
+    <button type="button" style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; border: 1.5px dashed {{t.divider}}; background: transparent; color: {{t.muted}}; font: 600 13px 'Plus Jakarta Sans', sans-serif; text-align: left">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{t.muted}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10ZM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></svg>
+      <span style="flex-grow: 1">Resting today · Evening walk is back Sat</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{t.muted}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+    </button>
+    <span style="font-size: 12px; color: {{t.muted}}; text-align: center">Tap a circle: done → partial → skipped. Swipe still works.</span>
+  </div>
+
+  <nav aria-label="Main" style="height: 76px; flex-shrink: 0; background: {{t.surface}}; border-top: 1px solid {{t.divider}}; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px">
+    <sc-for list="{{tabs}}" as="tab" hint-placeholder-count="5">
+      <button type="button" style="border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; color: {{tab.fg}}; font: 700 11px 'Plus Jakarta Sans', sans-serif; padding: 0">
+        <span style="width: 56px; height: 30px; border-radius: 999px; background: {{tab.pill}}; display: flex; align-items: center; justify-content: center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{tab.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{tab.icon}}"></path></svg>
+        </span>
+        {{tab.label}}
+      </button>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"theme":{"editor":"enum","options":["classic","wa"],"default":"classic"},"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { s: { ml: 'done', plan: 'todo', water: 'done', focus: 'partial', read: 'todo', sleep: 'todo' } };
+  }
+  renderVals() {
+    const dark = !!this.props.dark;
+    const wa = this.props.theme === 'wa';
+    let t = dark ? {
+      bg: '#131210', surface: '#1C1A17', surfaceAlt: '#252220', hero: '#16291F', ink: '#F2EDE6', muted: '#A9A096', divider: '#322E29', track: '#2A4434',
+      accent: '#4CC38A', accentInk: '#4CC38A', accentSoft: '#183526', streakSoft: '#331E0B', streakInk: '#FFA057', skipBg: '#2B2A2E', skipInk: '#B0B4BA', future: '#2A2723', partial: '#C99A2E'
+    } : {
+      bg: '#FBF8F3', surface: '#FFFFFF', surfaceAlt: '#F4EFE7', hero: '#E6F4EA', ink: '#211D18', muted: '#6B6259', divider: '#ECE5DA', track: '#C9E6D2',
+      accent: '#1F7A4D', accentInk: '#1F7A4D', accentSoft: '#DDF1E4', streakSoft: '#FFEFD6', streakInk: '#CC4E00', skipBg: '#F0F0F3', skipInk: '#60646C', future: '#E9E2D7', partial: '#FFC53D'
+    };
+    if (wa) t = dark ? {
+      bg: '#161514', surface: '#201E1C', surfaceAlt: '#2A2724', hero: '#14232D', ink: '#EDE6DA', muted: '#A69E92', divider: '#35312C', track: '#23394A',
+      accent: '#6FA8C9', accentInk: '#8DBBD6', accentSoft: '#1B3140', streakSoft: '#3A1A12', streakInk: '#F08A64', skipBg: '#2C2A27', skipInk: '#B5B0A8', future: '#2B2825', partial: '#D9A21C'
+    } : {
+      bg: '#F7F3EA', surface: '#FFFDF8', surfaceAlt: '#EFE8DA', hero: '#E3ECF1', ink: '#23201C', muted: '#6E665C', divider: '#E6DFD1', track: '#BFD3DF',
+      accent: '#165E83', accentInk: '#165E83', accentSoft: '#DCE8EF', streakSoft: '#FBE4DA', streakInk: '#B5381A', skipBg: '#EFEDEA', skipInk: '#5E5B56', future: '#E8E1D3', partial: '#F8B500'
+    };
+    let C = {
+      sun: ['#FFC53D', '#FFF7C2', '#9E6C00', '#2D2305', '#FFCA16', '#3D2B00'],
+      indigo: ['#3E63DD', '#EDF2FE', '#3A5BC7', '#182449', '#9EB1FF', '#FFFFFF'],
+      sky: ['#0090FF', '#E6F4FE', '#0D74CE', '#0D2847', '#70B8FF', '#FFFFFF'],
+      teal: ['#12A594', '#E0F8F3', '#008573', '#0D2D2A', '#0BD8B6', '#FFFFFF'],
+      pink: ['#D6409F', '#FEE9F5', '#C2298A', '#37172F', '#FF8DCC', '#FFFFFF'],
+      grape: ['#8E4EC6', '#F7EDFE', '#8145B5', '#301C3B', '#D19DFF', '#FFFFFF']
+    };
+    if (wa) C = {
+      sun: ['#F8B500', '#FEF3D0', '#8A5F00', '#2E2306', '#F5C342', '#3A2A00'],
+      indigo: ['#165E83', '#E1EBF1', '#165E83', '#14232D', '#8DBBD6', '#FFFFFF'],
+      sky: ['#3E8FC9', '#E2EFF8', '#1F6699', '#13263A', '#86BCE6', '#FFFFFF'],
+      teal: ['#00A3AF', '#DDF3F4', '#00737B', '#0E2B2D', '#4FCBD3', '#FFFFFF'],
+      pink: ['#E4A3B5', '#FBEAEF', '#A8506A', '#33202A', '#F0B5C5', '#4A1F2C'],
+      grape: ['#8F77B5', '#EEE8F5', '#6A4E96', '#261F33', '#BBA6DD', '#FFFFFF']
+    };
+    const I = {
+      sun: 'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41',
+      target: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M6 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+      drop: 'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z',
+      timer: 'M4 13a8 8 0 1 0 16 0a8 8 0 1 0-16 0M12 9v4l2 2M10 2h4',
+      book: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z',
+      moon: 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'
+    };
+    const defs = [
+      ['Morning', [['ml', 'Morning light', 'sun', 'sun', '3× a week', 2], ['plan', 'Plan the day', 'indigo', 'target', 'Every day', 1], ['water', 'Drink 2 L water', 'sky', 'drop', 'Every day', 1]]],
+      ['Focus', [['focus', 'Focused work block', 'teal', 'timer', '3× a week', 4], ['read', 'Read 20 pages', 'pink', 'book', 'Every 2 days', 2]]],
+      ['Evening', [['sleep', 'Sleep before 11:30', 'grape', 'moon', 'Every day', 2]]]
+    ];
+    const next = { todo: 'done', done: 'partial', partial: 'skipped', skipped: 'todo' };
+    const s = this.state.s;
+    let due = 0, done = 0, score = 0, pts = 0;
+    const groups = defs.map(([gname, items]) => {
+      let gDone = 0;
+      const out = items.map(([id, name, col, icon, freq, p], i) => {
+        const st = s[id];
+        const c = C[col];
+        const solid = c[0], tint = dark ? c[3] : c[1], ink = dark ? c[4] : c[2];
+        if (st !== 'skipped') due += 1;
+        if (st === 'done') { done += 1; gDone += 1; score += 1; pts += p; }
+        if (st === 'partial') { score += 0.5; pts += Math.floor(p / 2); }
+        const base = 'width: 40px; height: 40px; border-radius: 50%; box-sizing: border-box; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; ';
+        const checkStyle = st === 'done' ? base + 'border: 0; background: ' + solid + ';'
+          : st === 'partial' ? base + 'border: 2.5px solid ' + ink + '; background: linear-gradient(to top, ' + solid + ' 50%, transparent 50%);'
+          : st === 'skipped' ? base + 'border: 0; background: ' + t.skipBg + ';'
+          : base + 'border: 2.5px solid ' + ink + '; background: transparent;';
+        const label = { todo: 'not done yet', done: 'done', partial: 'partly done', skipped: 'skipped' }[st];
+        const earned = st === 'done' ? p : st === 'partial' ? Math.floor(p / 2) : 0;
+        return {
+          name, icon: I[icon], tint, ink, checkStyle, onSolid: c[5],
+          meta: st === 'skipped' ? 'Skipped today' : freq + ' · ' + p + ' pts',
+          isDone: st === 'done', isSkipped: st === 'skipped', showPts: earned > 0, earned,
+          nameOpacity: st === 'skipped' ? '0.55' : '1',
+          sep: i === 0 ? '0' : '1px solid ' + t.divider,
+          aria: name + ', ' + label + '. Tap to change.',
+          tap: () => this.setState({ s: Object.assign({}, s, { [id]: next[st] }) })
+        };
+      });
+      return { name: gname, summary: gDone + ' of ' + items.length + ' done', items: out };
+    });
+    const pct = due ? score / due : 0;
+    const left = due - done;
+    const headline = done === due && due > 0 ? 'Perfect day!' : done === 0 ? 'Fresh day — let’s go' : 'Nice pace — ' + left + ' to go';
+    const C2 = 2 * Math.PI * 32;
+    const past = [1, 0.5, 1];
+    const runDays = Array.from({ length: 21 }, (_, i) => {
+      if (i < 3) return { bg: past[i] === 1 ? t.accent : t.partial, ring: 'none' };
+      if (i === 3) return { bg: pct >= 1 ? t.accent : t.track, ring: '0 0 0 2px ' + t.accent };
+      return { bg: t.future, ring: 'none' };
+    });
+    const wk = [['M', 17, 'done'], ['T', 18, 'partial'], ['W', 19, 'done'], ['T', 20, 'today'], ['F', 21, 'future'], ['S', 22, 'future'], ['S', 23, 'future']];
+    const week = wk.map(([dow, num, k]) => ({
+      dow, num,
+      label: (k === 'today' ? 'Today, ' : '') + num + ' November',
+      bg: k === 'today' ? t.ink : t.surface,
+      fg: k === 'today' ? t.bg : (k === 'future' ? t.muted : t.ink),
+      dot: k === 'done' ? t.accent : k === 'partial' ? t.partial : k === 'today' ? (pct >= 1 ? t.accent : t.bg) : 'transparent'
+    }));
+    const tabDefs = [
+      ['Today', 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M9 12l2 2 4-4', true],
+      ['Stats', 'M3 3v18h18M18 17V9M13 17V5M8 17v-3', false],
+      ['Quick log', 'M13 2 3 14h9l-1 8 10-12h-9l1-8z', false],
+      ['Goals', 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M6 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0', false],
+      ['Trackers', 'm22 7-8.5 8.5-5-5L2 17M16 7h6v6', false]
+    ];
+    const tabs = tabDefs.map(([label, icon, on]) => ({ label, icon, fg: on ? t.ink : t.muted, pill: on ? t.accentSoft : 'transparent' }));
+    return {
+      t, groups, runDays, week, tabs, headline,
+      doneCount: done, dueCount: due, pointsToday: pts,
+      ringDash: (C2 * pct).toFixed(1) + ' ' + C2.toFixed(1),
+      pctLabel: Math.round(pct * 100) + ' percent of today done'
+    };
+  }
+}
+</script>
+</body>
+</html>
