@@ -5,7 +5,7 @@ description: Discover and run relevant Habit Lab Gradle, browser, Android UI, an
 
 # Project quality tools
 
-Read root `AGENTS.md`, `CLAUDE.md`, current module build files, `.github/workflows/quality.yml`, and `ui-qa/package.json`. For device or browser UI checks also read `ui-qa/README.md` and inspect the script being run.
+Read root `AGENTS.md`, current module build files, `.github/workflows/quality.yml`, and `ui-qa/package.json`. For device or browser UI checks also read `ui-qa/README.md` and inspect the script being run.
 
 Choose checks relevant to the change or requested audit. For a full audit, inventory all gates below and mark unavailable or unconfigured gates explicitly. Preserve existing dependency pins and lockfiles while checking the project; install missing prerequisites only when the task calls for setup or fixing them.
 

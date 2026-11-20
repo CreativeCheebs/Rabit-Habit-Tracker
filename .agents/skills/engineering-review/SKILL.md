@@ -5,7 +5,7 @@ description: Review Habit Lab changes from architecture, Android, hosted web, QA
 
 # Engineering review
 
-Read root `AGENTS.md` and shared `CLAUDE.md`, then inspect the relevant diff or requested feature. Choose the perspectives needed for the request and read only their reference files:
+Read root `AGENTS.md`, then inspect the relevant diff or requested feature. Choose the perspectives needed for the request and read only their reference files:
 
 | Perspective | Reference |
 |---|---|

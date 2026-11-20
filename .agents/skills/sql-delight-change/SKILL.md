@@ -4,7 +4,7 @@ description: Safely evolve SQLDelight schema and queries across Android, iOS, an
 ---
 # SQLDelight change workflow
 
-Read root `AGENTS.md` and `CLAUDE.md` for scope and ownership. Inspect the current SQLDelight configuration before choosing commands: the project has no schema-output snapshot verification configured at the time of this port. Establish a reviewed baseline and upgrade path when the requested schema work requires it; never claim migration verification passed merely because a task was absent.
+Read root `AGENTS.md` for scope and ownership. Inspect the current SQLDelight configuration before choosing commands: the project has no schema-output snapshot verification configured at the time of this port. Establish a reviewed baseline and upgrade path when the requested schema work requires it; never claim migration verification passed merely because a task was absent.
 
 1. Read current schema, generated schema snapshots, all migrations, and configured driver factories.
 2. Never edit released migration files; add a new forward migration for each schema evolution.

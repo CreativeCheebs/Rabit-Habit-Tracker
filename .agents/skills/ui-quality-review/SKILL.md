@@ -4,7 +4,7 @@ description: Review Compose screens and the hosted browser app for usability, Ma
 ---
 # UI quality review
 
-Read root `AGENTS.md` and `CLAUDE.md`. Consult `ui-qa/README.md` for existing Playwright, Pixelmatch, ADB, and Maestro workflows. Inspect test scripts and use an authorized test instance before invoking hosted browser journeys; some flows write and delete account data.
+Read root `AGENTS.md`. Consult `ui-qa/README.md` for existing Playwright, Pixelmatch, ADB, and Maestro workflows. Inspect test scripts and use an authorized test instance before invoking hosted browser journeys; some flows write and delete account data.
 
 Inspect the implementation and, when available, screenshots or the running application. Evaluate hierarchy, task clarity, spacing, responsive/adaptive layouts, Material 3 token use, product distinctiveness, keyboard and touch interactions, focus order, semantics, contrast, text scaling, theme modes, and loading/empty/error states.
 

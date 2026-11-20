@@ -6,7 +6,7 @@ description: Implement a Kotlin Multiplatform feature across Android and iOS wit
 
 Respect current ownership restrictions in `docs/PROGRESS.md`; a generic feature request does not authorize editing a module reserved for another agent. Use `$project-quality` for existing check entry points and `$engineering-review` for requested specialist review.
 
-1. Read `AGENTS.md`, `CLAUDE.md`, module Gradle files, design docs, and relevant tests.
+1. Read `AGENTS.md`, module Gradle files, design docs, and relevant tests.
 2. Translate the request into acceptance criteria and platform scope.
 3. Discover targets and tasks with `./gradlew tasks --all`; inspect dependency compatibility before adding libraries.
 4. Put portable domain/state/UI in common code only if all targets support its APIs. Keep Android, iOS, and JVM integrations in their respective source sets. The browser app is separate JavaScript/HTML/CSS.

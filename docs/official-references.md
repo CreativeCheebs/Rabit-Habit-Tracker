@@ -18,7 +18,7 @@ These live pages change. Recheck them before upgrades; upstream docs and compati
 - [SQLDelight releases](https://github.com/sqldelight/sqldelight/releases) — release compatibility and Wasm driver updates.
 
 ## Claude Code and CI
-- [Claude Code memory/instructions](https://docs.anthropic.com/en/docs/claude-code/memory) — `CLAUDE.md` conventions.
+- [Claude Code memory/instructions](https://docs.anthropic.com/en/docs/claude-code/memory) — repository instruction (`AGENTS.md`) conventions.
 - [Claude Code subagents](https://docs.anthropic.com/en/docs/claude-code/sub-agents) — repository-local agent definitions.
 - [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills) — repository-local slash skills.
 - [Gradle setup action](https://github.com/gradle/actions/blob/main/docs/setup-gradle.md) — caching and wrapper validation.

@@ -12,7 +12,7 @@ Persistence uses SQLDelight with Android, Native/iOS, and SQLite/JVM drivers. SQ
 
 ## 3. Install Claude Code workflow
 
-Claude Code discovers repository instructions from `CLAUDE.md`, subagents in `.claude/agents/`, and skills in `.claude/skills/<skill>/SKILL.md`. Review any generated edits; agents are role prompts, not isolated security boundaries. Start with `/kmp-feature` or `/ui-quality-review`.
+Claude Code discovers repository instructions from `AGENTS.md`, subagents in `.claude/agents/`, and skills in `.claude/skills/<skill>/SKILL.md`. Review any generated edits; agents are role prompts, not isolated security boundaries. Start with `/kmp-feature` or `/ui-quality-review`.
 
 ## 4. Enable quality checks
 
