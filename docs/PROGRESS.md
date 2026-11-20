@@ -4,10 +4,83 @@ Running record of what is built, what is live, and every operational lesson
 learned. Read this file first before continuing work; append to it when you
 finish a step (the owner commits after every step).
 
+## Test deploy of web delight (2026-11-20)
+
+- Rebuilt the standalone server jar (`sync-server/gradlew.bat buildFatJar`) and deployed to the TEST instance only (8788) with the established `deploy_test_only.py`: previous jar backed up, restarted by exact PID, health `{ok}`. Production (8789) untouched.
+- Verified the served `app.js`/`styles.css` contain the delight code and the live test page loads with no JS errors (logged-out login view, correct). Test account data preserved; no accounts touched.
+- Awaiting owner's "all good" before production deploy and commit.
+
+## Boxed habit list on web Today (2026-11-20)
+
+- Desktop columns were unbalanced with few habits: habit list is now one surface box (inner habit cards flattened into it) and the grid stretches both columns to equal height — measured exactly equal. Mobile is untouched (its flat card rows are preserved via the mobile override).
+- Verified via screenshots (desktop boxed + aligned, phone unchanged). CSS-only; no behavior change.
+- Deployed to TEST only (8788): rebuilt jar, previous backed up, health OK, served CSS contains the boxed rule, live page loads with no JS errors. Production untouched. Awaiting owner's "all good".
+
+## Web Today visual delight (2026-11-20)
+
+- Approved mock `docs/mockups/redesign-2026-11/TodayDelight.html` (Today page, visual delight; keyboard logging proposed but not approved).
+- Implemented in the hosted web app, same features: staggered entrance once per view switch (guarded so later re-renders never replay it), ring sweep, bar grow, burnup draw-in with soft area fill, row hover, check tap-pop that survives the sync re-render, bordered metric chips. Reduced-motion disables all of it.
+- Verified: `node --check`, yaml (7) + streak (6) tests, `offline-runs-check` PASS, `redesign-shots` + `run-end-shots` inspected (phone + desktop, light + dark, ended-run views all settled and complete). Motion proven live via computed-style probes (mid-entrance opacity/offset, pop present at 30/120ms, gone by 300ms). Shot scripts now wait for entrance to settle before capturing.
+- Still pending owner decisions: test-server (8788) deploy of the web bundle, the "all good" before production/commit.
+
+## Compact Today (2026-11-20)
+
+- Approved mock `docs/mockups/redesign-2026-11/TodayCompact.html`: no header date, no week label, smaller hero without buttons, no sync line, square day cells, Share in the dock.
+- Implemented on Android: hero card opens run management (edit still via Manage runs), week strip keeps arrows/Today jump without the label, day cells are square, header date and sync-status line removed (sync progress bar kept, errors still in Settings), Share is now a fifth bottom tab; old Share overlay removed.
+- Verified: `compileKotlinJvm`, `ktlintCheck`, `jvmTest`, fresh QA APK on the Samsung (dense mode): compact hero, square strip, 5-tab dock, hero tap opens All runs, Share tab renders. A stray skipped state from testing was cleared; QA data unchanged. No new maintained test: layout-only change with no Compose UI harness; device screenshots are the verification. Minor: Share tab shows both the app header and the page's own Share bar (back + settings gear kept working). Owner decision: compact Today stays Android-only; desktop web UI is not to be compacted.
+
+## Device check of redesign (2026-11-20)
+
+- Built a fresh QA APK (`app.habitlab.qa`, redesign included) and installed it on the connected Samsung SM-M075F with `-r`; the release app and its data were untouched.
+- Verified on device: Today renders in dark mode (hero ring, week strip, streak pill, habit cards with icons/dots, bottom nav); tapping a check circle logs Done and the hero updates at once (1/4, +3 pts); the new Edit run page renders (summary, stats, name/date/length, sticky save bar); Cancel returns without saving.
+- No issues found. Both test check-ins made during the check were cycled back off, so the QA account is as it was. No device test of sync conflicts or configuration change was run.
+
+## Guidance merge (2026-11-20)
+
+- Merged `CLAUDE.md` into `AGENTS.md` (new Engineering rules section) and deleted `CLAUDE.md`; updated references in `.agents/skills/*/SKILL.md`, `.claude/skills/kmp-feature/SKILL.md`, `docs/SETUP.md`, and `docs/official-references.md`. Docs-only change, uncommitted pending owner approval.
+
+## Redesign continuation (2026-11-20)
+
+- Picked up the half-finished Plus Jakarta Sans redesign (Today, run editor, habit sheet, empty state, web + Android). It was closer to done than it looked: the new Android `RunBuilderPage`/`HabitSheet` are wired, the web editor/empty/expired views render, fonts are bundled, and the expired-run milestone flow is intact.
+- Fixed what was actually unfinished: `ktlintCheck` failed on the redesign's new code (auto-format plus a shared password-field variable for two over-length lines; gate now passes), and `ui-qa/run-end-shots.mjs` was an empty file — implemented it to capture ended-run Today/Quick Log views, and verified the completed state renders (COMPLETED hero, read-only history, Start next run).
+- Filed the loose 2.1 MB `Habit Lab redesign.html` export from the repo root into `docs/mockups/redesign-2026-11/Habit-Lab-redesign.html`.
+- Verified: `:composeApp:jvmTest`, `:composeApp:assembleDebug`, `:composeApp:ktlintCheck`, `:sync-server:test` (40 tests), `yaml-test` (7), `streak-test` (6), `offline-runs-check`, `redesign-shots` + new `run-end-shots` screenshots (inspected). Detekt is still NO-SOURCE for KMP (unconfigured, pre-existing). `local-sync-check`/`webapp-check` need a live or disposable server and were not run; no device test was run.
+- Still pending owner decisions: independent review passes, test-server (8788) deploy of the redesign, and the "all good" before production/commit.
+
+## Run start date picker (2026-11-20)
+
+- The Android run builder's Start date field has a calendar button that opens the Material 3 date picker. Typing the date still works. Added a JVM test for the date conversion. `:composeApp:jvmTest :composeApp:assembleRelease` passed. Signed `Rabit-1.3.5-release.apk` (versionCode 12) with the 1.3.3 key and published it to F-Droid. No device test was run.
+
+## Android run states, standalone habits, and one completion formula (2026-11-20)
+
+- Android Runs now shows standalone habits (not linked to any run) in their own card with a count and a "Log today" toggle, matching the web app's Standalone habits section. They also show when no run exists.
+- The run card now has three date states: Upcoming (start date in the future), Active ("Day X of N · Y% so far"), and Completed, which says the next run is waiting to be started.
+- Whole-run completion now uses one shared formula (`runCompletion`): impact points earned ÷ impact points possible, with resting interval days excluded and the result rounded, the same as the web run card. The Share page previously counted habits instead of points and only shareable habits, so its "Whole run %" disagreed with the Runs screen; Share's Day % still covers only the shared habits it lists.
+- `:composeApp:jvmTest` passed (new tests for the formula, standalone habits, and run-end dates). Built and signed `Rabit-1.3.4-release.apk` (versionCode 11) with the same key as 1.3.3. The first F-Droid upload got a 401; a retry later the same day succeeded and the repo lists 1.3.4 (code 11). No device test was run.
+
+## Customizable app navigation (2026-11-18)
+
+- Added Settings > App Screens controls to reorder bottom tabs, show or hide Quick Log and Goals, and restore the default layout. Runs and Settings always remain available. These preferences are saved locally on each device and are not synced.
+- `:composeApp:jvmMainClasses :composeApp:compileDebugKotlinAndroid` passed using the existing Gradle cache. No tests or device-level visual checks were run; no APK was packaged or distributed.
+
 ## Reskon Today widget correction (2026-11-16)
 
 - Changed the **Today** data widget from a checklist to a table, sized like the Streaks table. It now shows one row per distinct habit linked to the active run, with today's status and recurrence schedule. Standalone, archived, and stopped-run habits are excluded from this data widget. The separate tickable **Today's habits** page keeps its existing behavior.
 - Updated the Reskon integration notes and bumped the connected-app version to 1.3.2. The standalone server `buildFatJar` build passed (Kotlin fell back to in-process compilation after its daemon could not write a temp file). Deployed the jar to test 8788 and production 8789; both health checks passed and both manifests now advertise Today as a table. No authenticated feed request or Reskon dashboard visual check was performed.
+
+## Date-driven completed-run experience (2026-11-18)
+
+- Android Runs now recognizes a run after its last scheduled date, shows the completion rate, impact points, days logged, and a carry-forward action, keeps the charts for review, and disables day logging. Quick Log changes to a completion milestone with a next-run action. Android Share exports a final run summary for completed runs.
+- The hosted web app uses the same date rule, keeps the full run table and charts read-only without an active-day marker, shows a next-run action that copies the previous habits, allows a new run after the old one expires, and replaces Quick Log's stale checklist with the completion milestone.
+- Reskon's tickable page and Today table feed now suppress habits when a run expires; the feed includes completion state and a message, and check-in writes reject those expired habits. Updated `docs/reskon-plugin.md` to describe this.
+- Implemented in the working tree. Independent code review found no correctness blocker; UI review findings about completed Android rows and cross-client logged-day counts were fixed and re-reviewed. The verification review's `:composeApp:jvmTest :composeApp:assembleDebug` attempt first failed creating a Gradle lock under `C:\.gradle`; the workspace-cache retry was blocked by denied network access. After approval for a network-enabled attempt, Gradle still failed during root configuration because it could not read cached transform `metadata.bin` files, so no tests or build tasks ran. Server tests, JS checks, device/browser review, release packaging, and deployment remain unverified; no commit was made.
+- Follow-up: using the existing user Gradle cache exposed and fixed an Android compilation error. `:composeApp:jvmTest :composeApp:assembleDebug`, standalone server `test buildFatJar`, JavaScript syntax checks, seven YAML parser tests, and the isolated offline browser journey passed. The server bundle was backed up and deployed to test 8788 only; health returned OK and the served JavaScript contains the completed-run controls. No authenticated completed-run journey, device visual check, or Reskon dashboard visual check has been performed. Production and Git release actions await the owner's approval.
+
+## Production account password reset (2026-11-16)
+
+- Reset the production sign-in credential for `aakash1` in the salted PBKDF2 account store. The password was read locally from the owner's reset file; neither its value nor the derived hash was written to project documentation or output.
+- Backed up `~/HabitLab-prod/habitlab.env` and `data/accounts.sqlite` before the update, with owner-only permissions. Verified the updated database values against the locally derived credential and confirmed production health returned OK. The environment file did not contain this account, so no configuration edit or server restart was needed.
+- Removed the temporary credential payload from the server staging folder after verification.
 
 
 ## Navigation, charts, and habit management (2026-11-13)
@@ -484,3 +557,14 @@ superseded for this work. Everything below was checked on the ADB phone.
 - Published Reskon discovery and widget routes on test 8788 and production 8789. Manifest reports contract version 1 and plugin version 1.3.1; widget HTML loads on both. Both service health checks returned OK. The plugin is available for the owner to connect in Reskon; no Reskon account pairing was performed in this step.
 - Server build uses JDK 25 with Java 17 bytecode to remain compatible with the host's Java 21 runtime. Gradle 9.1.0 and Kotlin 2.3.0 are pinned in the standalone server. Server tests and bbuildFatJar passed. Initial JDK 25 bytecode deployment was incompatible with the host; both services were promptly restored from backups, then redeployed successfully with Java 17-compatible bytecode. Backups are retained alongside each instance's fat jar.
 - Android release version advanced to 1.3.1 (code 8). APK signature schemes v2 and v3 verified. Copied to /home/aakash/apks/Rabit-1.3.1-release.apk; local and remote SHA-256 match 268d465dd63ddd62edaad7dffe36bea621b8bfec4a05e5f963ac89f2ce03d782.
+
+## Android password visibility (2026-11-16)
+
+- Added Show/Hide controls to the server sign-in and account creation password fields, including repeat-password entry. Passwords remain masked by default and are not stored by the app; only the sync access token is retained.
+- Android release assembled successfully, signed and verified with APK signature schemes v2/v3, then copied to /home/aakash/apks/Rabit-1.3.2-release.apk. Local and remote SHA-256 match 6b883b467758a8a9b0548a82a4264e01e21fd265daf0e3731d3b9da1d01b73c4.
+
+## Android full database backup (2026-11-16)
+
+- Added Android settings actions to export the complete local SQLite database through the system Save dialog and restore one through the system file picker. Restore checks SQLite integrity, Habit Lab tables, and schema version before replacing local data; it keeps a rollback copy during replacement and reopens the database afterward. Restoring affects this phone only, not the server.
+- Backup includes the sync session token, so the app warns users to keep the file private. A local new_password file is not used: the app does not store account passwords and the server does not accept password resets through client-side files.
+- Android release 1.3.3 (code 10) assembled, signed and verified with APK signature schemes v2/v3. Transferred to /home/aakash/apks/Rabit-1.3.3-release.apk; local and remote SHA-256 match a743cbad979f82e786e22dd28b8ab683032f3a07022d57b4fa4650623fb4189f. Build passed; no device-level restore interaction test was performed.
