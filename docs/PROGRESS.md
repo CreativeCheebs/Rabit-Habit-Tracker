@@ -8,13 +8,13 @@ finish a step (the owner commits after every step).
 
 - Rebuilt the standalone server jar (`sync-server/gradlew.bat buildFatJar`) and deployed to the TEST instance only (8788) with the established `deploy_test_only.py`: previous jar backed up, restarted by exact PID, health `{ok}`. Production (8789) untouched.
 - Verified the served `app.js`/`styles.css` contain the delight code and the live test page loads with no JS errors (logged-out login view, correct). Test account data preserved; no accounts touched.
-- Awaiting owner's "all good" before production deploy and commit.
+- Owner said "all good": backed up the production jar, ran the full deploy helper (test + prod restarted, both health OK), verified production serves the new bundle, then committed (4 commits) and pushed to `main`.
 
 ## Boxed habit list on web Today (2026-11-20)
 
 - Desktop columns were unbalanced with few habits: habit list is now one surface box (inner habit cards flattened into it) and the grid stretches both columns to equal height — measured exactly equal. Mobile is untouched (its flat card rows are preserved via the mobile override).
 - Verified via screenshots (desktop boxed + aligned, phone unchanged). CSS-only; no behavior change.
-- Deployed to TEST only (8788): rebuilt jar, previous backed up, health OK, served CSS contains the boxed rule, live page loads with no JS errors. Production untouched. Awaiting owner's "all good".
+- Deployed to TEST only (8788): rebuilt jar, previous backed up, health OK, served CSS contains the boxed rule, live page loads with no JS errors. Included in the production rollout and push below.
 
 ## Web Today visual delight (2026-11-20)
 
