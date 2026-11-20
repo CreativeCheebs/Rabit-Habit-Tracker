@@ -6,8 +6,11 @@ import app.habitlab.db.HabitDatabase
 internal const val PREF_DENSE_LAYOUT = "ui_dense_layout"
 internal const val PREF_THEME_MODE = "ui_theme_mode"
 internal const val PREF_ACCENT = "ui_accent"
+internal const val PREF_STYLE = "ui_style"
 internal const val PREF_HIDE_POINTS = "ui_hide_points"
 internal const val PREF_CURRENT_RUN = "ui_current_run"
+internal const val PREF_SCREEN_ORDER = "ui_screen_order"
+internal const val PREF_HIDDEN_SCREENS = "ui_hidden_screens"
 private const val ICON_PREFIX = "habit_icon:"
 private const val SHARE_PREFIX = "habit_share:"
 internal const val PREF_SHARE_HABITS = "ui_share_habit_completion"
@@ -28,16 +31,33 @@ internal fun HabitDatabase.setHabitShareable(
     shareable: Boolean,
 ) = setPref(SHARE_PREFIX + habitUid, if (shareable) "1" else "0")
 
-internal fun HabitDatabase.currentRun(): app.habitlab.db.Run? {
-    val runs = schemaQueries.selectRuns().executeAsList()
-    return runs
-        .filter {
-            it.status == "active"
-        }.sortedWith(compareByDescending<app.habitlab.db.Run> { it.start_date }.thenByDescending { it.uid })
-        .firstOrNull() ?: runs.firstOrNull()
+internal fun HabitDatabase.isRunEnded(
+    run: app.habitlab.db.Run,
+    today: String,
+): Boolean {
+    if (run.start_date.isBlank() || today.isBlank()) return false
+    val days = run.duration_days.toInt()
+    val end = addIsoDays(run.start_date, days - 1)
+    return today > end
 }
 
-internal fun HabitDatabase.activeRuns() = schemaQueries.selectRuns().executeAsList().filter { it.status == "active" }
+internal fun HabitDatabase.currentRun(today: String? = null): app.habitlab.db.Run? {
+    val runs = schemaQueries.selectRuns().executeAsList()
+    val active =
+        runs
+            .filter { it.status == "active" }
+            .sortedWith(compareByDescending<app.habitlab.db.Run> { it.start_date }.thenByDescending { it.uid })
+    if (today != null) {
+        val ongoing = active.firstOrNull { !isRunEnded(it, today) }
+        if (ongoing != null) return ongoing
+    }
+    return active.firstOrNull() ?: runs.firstOrNull()
+}
+
+internal fun HabitDatabase.activeRuns(today: String? = null) =
+    schemaQueries.selectRuns().executeAsList().filter {
+        it.status == "active" && (today == null || !isRunEnded(it, today))
+    }
 
 /** Resolve old or concurrently synced parallel runs without deleting their habits or check-ins. */
 internal fun HabitDatabase.ensureSingleActiveRun(): Int {

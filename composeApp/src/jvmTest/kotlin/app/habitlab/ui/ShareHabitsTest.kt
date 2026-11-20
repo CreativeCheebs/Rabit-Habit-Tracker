@@ -52,7 +52,32 @@ class ShareHabitsTest {
         assertEquals(1, previousDay.dayNumber)
         assertEquals("done", previousDay.habits.single().state)
         assertEquals(100, previousDay.todayPercent)
-        assertEquals(100, previousDay.runPercent)
+        // Whole run counts every run habit by impact points: 2 of 6 points on day one.
+        assertEquals(33, previousDay.runPercent)
+        driver.close()
+    }
+
+    @Test
+    fun wholeRunMatchesRunCompletionAndSkipsRestDays() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        HabitDatabase.Schema.create(driver)
+        val database = HabitDatabase(driver)
+        database.schemaQueries.insertRun("run", "Run", "2026-11-01", 3)
+        database.schemaQueries.insertHabit("daily", "Read", "Mind", 1, 1, "weekly", 7)
+        database.schemaQueries.insertHabit("every2", "Run", "Body", 1, 3, "interval", 2)
+        database.schemaQueries.attachHabitToRun("l1", "run", "daily")
+        database.schemaQueries.attachHabitToRun("l2", "run", "every2")
+        database.setHabitShareable("daily", true)
+        database.schemaQueries.insertCheckIn("c1", "every2", "2026-11-01", "done", null)
+        database.schemaQueries.insertCheckIn("c2", "daily", "2026-11-02", "done", null)
+        database.schemaQueries.insertCheckIn("c3", "daily", "2026-11-03", "done", null)
+        // Day 1: 4 possible, 3 earned. Day 2: interval habit rests, 1 possible, 1 earned. Day 3: 4 possible, 1 earned.
+        val habits = loadRunHabits(database, "run")
+        val completion = runCompletion(database, habits, "2026-11-01", "2026-11-03")
+        assertEquals(RunCompletion(5, 9), completion)
+        assertEquals(56, completion.percent)
+        assertEquals(56, buildShareSnapshot(database, "2026-11-03", "run")!!.runPercent)
+        assertEquals(56, completedRunShare(database, database.schemaQueries.selectRunByUid("run").executeAsOne()).completionPercent)
         driver.close()
     }
 }

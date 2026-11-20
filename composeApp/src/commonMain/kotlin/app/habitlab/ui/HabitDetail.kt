@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -34,8 +33,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.habitlab.db.HabitDatabase
@@ -53,7 +50,8 @@ import kotlin.math.max
     var colorKey by remember(habit.uid()) { mutableStateOf(habit.color) }
     var showPicker by remember { mutableStateOf(false) }
     var shareable by remember(habit.uid()) { mutableStateOf(database.isHabitShareable(habit.uid())) }
-    val tint = habitColorOf(colorKey) ?: green
+    val tone = palette.habitTone(colorKey)
+    val tint = tone.solid
 
     val run = remember(database) { database.currentRun() }
     val runStart = run?.start_date ?: today
@@ -89,13 +87,7 @@ import kotlin.math.max
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = onBack,
-                modifier =
-                    Modifier.semantics {
-                        contentDescription = "Back"
-                    },
-            ) { Text("←", style = MaterialTheme.typography.titleLarge) }
+            RoundIconButton(LinePaths.BACK, "Back", onClick = onBack)
             Text("Habit", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
         }
         Column(
@@ -109,14 +101,14 @@ import kotlin.math.max
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     Box(
-                        Modifier.size(64.dp).clip(RoundedCornerShape(18.dp)).background(tint.copy(alpha = .2f)),
+                        Modifier.size(64.dp).clip(RoundedCornerShape(18.dp)).background(tone.tint),
                         contentAlignment = Alignment.Center,
                     ) {
-                        IconGlyph(icon.ifBlank { legacyIcon(habit.name) }, Modifier.size(34.dp), tint)
+                        IconGlyph(icon.ifBlank { legacyIcon(habit.name) }, Modifier.size(34.dp), tone.ink)
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(habit.name, style = MaterialTheme.typography.titleLarge)
-                        Text("Iteration ${habit.iteration} · ${habit.group}", style = MaterialTheme.typography.bodyMedium, color = tint)
+                        Text("Iteration ${habit.iteration} · ${habit.group}", style = MaterialTheme.typography.bodyMedium, color = tone.ink)
                         Text(
                             if (hidePointsPref) habit.recurrence else "${habit.recurrence} · ${habit.points} impact points",
                             style = MaterialTheme.typography.bodySmall,
@@ -233,7 +225,7 @@ import kotlin.math.max
     if (showPicker) {
         IconPickerSheet(
             selected = icon.ifBlank { legacyIcon(habit.name) },
-            tint = tint,
+            tint = tone.ink,
             onPick = {
                 icon = it
                 database.setHabitIcon(habit.uid(), it)

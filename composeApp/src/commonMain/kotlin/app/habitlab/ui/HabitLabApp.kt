@@ -42,9 +42,12 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import app.habitlab.db.HabitDatabase
@@ -57,7 +60,6 @@ import app.habitlab.sync.createHttpClient
 import app.habitlab.sync.isUnencryptedRemote
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 internal val ink get() = palette.ink
 internal val muted get() = palette.muted
@@ -152,40 +154,76 @@ private enum class Destination(
     val title: String,
     val glyph: String,
 ) {
-    Runs("Runs", "◷"),
-    Analytics("Analytics", "▥"),
+    Runs("Today", "◷"),
+    Analytics("Stats", "▥"),
     QuickLog("Quick Log", "⇆"),
     Goals("Goals", "◎"),
     Trackers("Trackers", "⌁"),
+    Share("Share", "⇪"),
     Settings("Settings", "⚙"),
 }
 
-/** Analytics and Trackers stay in the code but are hidden from the dock for now. */
-private val visibleDestinations = listOf(Destination.Runs, Destination.QuickLog, Destination.Goals, Destination.Settings)
+private val defaultDestinations =
+    listOf(Destination.Runs, Destination.QuickLog, Destination.Goals, Destination.Share, Destination.Settings)
+private val requiredDestinations = setOf(Destination.Runs, Destination.Settings)
+
+private fun Destination.preferenceKey(): String =
+    when (this) {
+        Destination.Runs -> "runs"
+        Destination.QuickLog -> "quick_log"
+        Destination.Goals -> "goals"
+        Destination.Settings -> "settings"
+        Destination.Analytics -> "analytics"
+        Destination.Trackers -> "trackers"
+        Destination.Share -> "share"
+    }
+
+private fun readScreenOrder(saved: String?): List<Destination> {
+    val restored =
+        saved
+            .orEmpty()
+            .split(',')
+            .mapNotNull { key -> defaultDestinations.firstOrNull { it.preferenceKey() == key } }
+            .distinct()
+    return restored + defaultDestinations.filterNot { it in restored }
+}
+
+private fun readHiddenScreens(saved: String?): Set<Destination> =
+    saved
+        .orEmpty()
+        .split(',')
+        .mapNotNull { key -> defaultDestinations.firstOrNull { it.preferenceKey() == key } }
+        .filterNot { it in requiredDestinations }
+        .toSet()
 
 @Composable
 fun HabitLabApp(
     database: HabitDatabase,
     today: String,
+    onExportBackup: () -> Unit = {},
+    onImportBackup: () -> Unit = {},
 ) {
     var page by remember { mutableStateOf(Destination.Runs) }
+    var screenOrder by remember(database) { mutableStateOf(readScreenOrder(database.pref(PREF_SCREEN_ORDER))) }
+    var hiddenScreens by remember(database) { mutableStateOf(readHiddenScreens(database.pref(PREF_HIDDEN_SCREENS))) }
+    val visibleDestinations = screenOrder.filterNot { it in hiddenScreens }
     val pageHistory = remember { mutableStateListOf<Destination>() }
     var backProgress by remember { mutableFloatStateOf(0f) }
     var detailHabit by remember { mutableStateOf<Habit?>(null) }
     var dense by remember(database) { mutableStateOf(database.pref(PREF_DENSE_LAYOUT) == "1") }
     var runsRevision by remember { mutableIntStateOf(0) }
     var builderCopy by remember { mutableStateOf<Boolean?>(null) }
+    var builderSource by remember { mutableStateOf<Int?>(null) }
     var editRunUid by remember { mutableStateOf<String?>(null) }
     var manageRuns by remember { mutableStateOf(false) }
-    var shareOpen by remember { mutableStateOf(false) }
     var groupHabits by remember(database) { mutableStateOf(database.pref("ui_group_habits") != "0") }
     var historyDays by remember(database) { mutableIntStateOf(database.pref("ui_history_days")?.toIntOrNull()?.coerceIn(7, 21) ?: 7) }
     val syncClient = remember(database) { SyncClient(database, createHttpClient()) }
     var syncMode by remember(database) { mutableStateOf(syncClient.mode()) }
-    var syncing by remember { mutableStateOf(false) }
-    var syncDirty by remember { mutableStateOf(false) }
-    var syncStatus by remember { mutableStateOf<String?>(null) }
-    var syncProgress by remember { mutableStateOf<Pair<Long, Long?>?>(null) }
+    var syncing by remember(database) { mutableStateOf(false) }
+    var syncDirty by remember(database) { mutableStateOf(false) }
+    var syncStatus by remember(database) { mutableStateOf<String?>(null) }
+    var syncProgress by remember(database) { mutableStateOf<Pair<Long, Long?>?>(null) }
     var showFirstStart by remember(database) { mutableStateOf(syncClient.mode() == null) }
     var showSignIn by remember { mutableStateOf(false) }
     var signInError by remember { mutableStateOf<String?>(null) }
@@ -265,7 +303,7 @@ fun HabitLabApp(
             }
         }
     }
-    LaunchedEffect(syncMode) {
+    LaunchedEffect(syncMode, database) {
         if (syncMode != SYNC_MODE_SERVER) return@LaunchedEffect
         doSync()
         while (true) {
@@ -276,18 +314,18 @@ fun HabitLabApp(
     remember(database) {
         themeModePref = database.pref(PREF_THEME_MODE) ?: "system"
         accentPref = database.pref(PREF_ACCENT) ?: "green"
+        stylePref = if (database.pref(PREF_STYLE) == STYLE_WA) STYLE_WA else STYLE_CLASSIC
         hidePointsPref =
             database.pref(PREF_HIDE_POINTS) == "1"
         0
     }
-    val canNavigateBack = builderCopy != null || shareOpen || detailHabit != null || manageRuns || pageHistory.isNotEmpty()
+    val canNavigateBack = builderCopy != null || detailHabit != null || manageRuns || pageHistory.isNotEmpty()
     PlatformBackHandler(
         enabled = canNavigateBack && !showFirstStart && !showSignIn && pendingSwitch == null,
         onProgress = { backProgress = it },
         onBack = {
             when {
                 builderCopy != null -> builderCopy = null
-                shareOpen -> shareOpen = false
                 detailHabit != null -> detailHabit = null
                 manageRuns -> manageRuns = false
                 pageHistory.isNotEmpty() -> page = pageHistory.removeAt(pageHistory.lastIndex)
@@ -304,82 +342,90 @@ fun HabitLabApp(
     if (detailHabit != null) lastDetail = detailHabit
     var lastBuilderCopy by remember { mutableStateOf(true) }
     if (builderCopy != null) lastBuilderCopy = builderCopy!!
+    val streak = remember(database, runsRevision, today) { currentRunStreak(database, today) }
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     if (systemDarkState != systemDark) systemDarkState = systemDark
-    MaterialTheme(colorScheme = palette.toColorScheme()) {
+    MaterialTheme(colorScheme = palette.toColorScheme(), typography = appTypography()) {
         Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = {
-            if (builderCopy == null && detailHabit == null && !manageRuns && !shareOpen) {
-                NavigationBar(containerColor = surface) {
-                    visibleDestinations.forEach { dest ->
-                        NavigationBarItem(selected = page == dest, onClick = {
-                            if (page != dest) {
-                                pageHistory.add(page)
-                                page = dest
-                            }
-                        }, icon = { DockGlyph(dest) }, label = { Text(dest.title) }, alwaysShowLabel = true)
+            if (builderCopy == null && detailHabit == null && !manageRuns) {
+                Column {
+                    HorizontalDivider(color = palette.divider)
+                    NavigationBar(containerColor = surface, tonalElevation = 0.dp) {
+                        visibleDestinations.forEach { dest ->
+                            NavigationBarItem(
+                                selected = page == dest,
+                                onClick = {
+                                    if (page != dest) {
+                                        pageHistory.add(page)
+                                        page = dest
+                                    }
+                                },
+                                icon = { DockGlyph(dest) },
+                                label = { Text(dest.title, style = MaterialTheme.typography.labelSmall) },
+                                alwaysShowLabel = true,
+                                colors =
+                                    NavigationBarItemDefaults.colors(
+                                        selectedIconColor = ink,
+                                        selectedTextColor = ink,
+                                        indicatorColor = palette.accentSoft,
+                                        unselectedIconColor = muted,
+                                        unselectedTextColor = muted,
+                                    ),
+                            )
+                        }
                     }
                 }
             }
         }) { padding ->
             Column(Modifier.fillMaxSize().padding(padding)) {
-                Row(Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (page ==
-                        Destination.Runs
-                    ) {
-                        Spacer(Modifier.weight(1f))
-                    } else {
-                        Text(page.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                    }
-                    if (page == Destination.Runs && syncMode == SYNC_MODE_SERVER) {
-                        IconButton(
-                            onClick = { doSync() },
-                            enabled = !syncing,
-                            modifier =
-                                Modifier
-                                    .size(42.dp)
-                                    .clip(RoundedCornerShape(50))
-                                    .background(surface)
-                                    .semantics { contentDescription = "Sync now" },
-                        ) { Text(if (syncing) "…" else "⟳", color = green, style = MaterialTheme.typography.headlineMedium) }
-                    }
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 58.dp).padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     if (page == Destination.Runs) {
-                        IconButton(
-                            onClick = { shareOpen = true },
-                            modifier =
-                                Modifier.semantics {
-                                    contentDescription =
-                                        "Share today's habits"
-                                },
-                        ) {
-                            Text("Share", color = green, style = MaterialTheme.typography.labelLarge)
-                        }
-                    }
-                    if (page == Destination.Runs) Spacer(Modifier.width(12.dp))
-                    if (page ==
-                        Destination.Runs
-                    ) {
-                        IconButton(onClick = {
-                            if (database.activeRuns().isNotEmpty()) {
-                                manageRuns = true
-                            } else {
-                                editRunUid = null
-                                builderCopy = true
-                            }
-                        }, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(50)).background(surface)) {
-                            Text("＋", color = green, style = MaterialTheme.typography.headlineMedium)
-                        }
-                    }
-                    if (page == Destination.QuickLog) Text("~5 min", style = MaterialTheme.typography.labelMedium, color = muted)
-                }
-                if (page == Destination.Runs && syncMode == SYNC_MODE_SERVER) {
-                    syncStatus?.let { status ->
                         Text(
-                            if (syncing) "Syncing…" else status,
-                            color = muted,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                            "Today",
+                            style = MaterialTheme.typography.displaySmall,
+                            modifier = Modifier.weight(1f).semantics { heading() },
+                        )
+                        if (streak > 0) StreakPill(streak)
+                        if (syncMode == SYNC_MODE_SERVER) {
+                            RoundIconButton(
+                                LinePaths.SYNC,
+                                if (syncing) "Syncing" else "Sync now",
+                                onClick = { doSync() },
+                                enabled = !syncing,
+                                tint = palette.accent,
+                            )
+                        }
+                        RoundIconButton(
+                            LinePaths.PLUS,
+                            "New run",
+                            onClick = {
+                                editRunUid = null
+                                builderSource = null
+                                builderCopy = true
+                            },
+                            background = palette.surfaceAlt,
+                            tint = palette.accent,
+                        )
+                    } else {
+                        Text(
+                            page.title,
+                            style = MaterialTheme.typography.displaySmall,
+                            modifier = Modifier.weight(1f).semantics { heading() },
                         )
                     }
+                    if (page == Destination.QuickLog) {
+                        Text(
+                            "~5 min",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = muted,
+                            modifier = Modifier.padding(end = 10.dp),
+                        )
+                    }
+                }
+                if (page == Destination.Runs && syncMode == SYNC_MODE_SERVER) {
                     val progress = syncProgress
                     if (syncing && progress != null && progress.second != null && progress.second!! > 0) {
                         LinearProgressIndicator(
@@ -395,15 +441,53 @@ fun HabitLabApp(
                 fun DestinationContent(destination: Destination) {
                     when (destination) {
                         Destination.Runs ->
-                            RunsScreen(database, runsRevision, today, dense, groupHabits, historyDays, onManageRuns = {
-                                manageRuns =
-                                    true
-                            }, onOpenHabit = { detailHabit = it }, onLocalChange = {
-                                runsRevision++
-                                noteLocalChange()
-                            })
-                        Destination.QuickLog -> QuickLogScreen(database, today, runsRevision, onLocalChange = { noteLocalChange() })
+                            RunsScreen(
+                                database = database,
+                                revision = runsRevision,
+                                today = today,
+                                dense = dense,
+                                groupHabits = groupHabits,
+                                historyDays = historyDays,
+                                onManageRuns = { manageRuns = true },
+                                onOpenHabit = { detailHabit = it },
+                                onLocalChange = {
+                                    runsRevision++
+                                    noteLocalChange()
+                                },
+                                onStartNextRun = {
+                                    editRunUid = null
+                                    builderSource = null
+                                    builderCopy = true
+                                },
+                                onBuildRun = { source ->
+                                    editRunUid = null
+                                    builderSource = source
+                                    builderCopy = true
+                                },
+                            )
+                        Destination.QuickLog ->
+                            QuickLogScreen(
+                                database = database,
+                                today = today,
+                                runsRevision = runsRevision,
+                                onLocalChange = { noteLocalChange() },
+                                onStartNextRun = {
+                                    editRunUid = null
+                                    builderSource = null
+                                    builderCopy = true
+                                },
+                                onBackToRuns = {
+                                    page = Destination.Runs
+                                },
+                            )
                         Destination.Goals -> GoalsScreen(database, today, onLocalChange = { noteLocalChange() })
+                        Destination.Share ->
+                            ShareHabitsPage(
+                                database,
+                                today,
+                                runsRevision,
+                                onBack = { page = Destination.Runs },
+                            )
                         Destination.Trackers ->
                             ListingScreen(
                                 "Personal measurements",
@@ -418,6 +502,22 @@ fun HabitLabApp(
                                 dense = dense,
                                 syncing = syncing,
                                 syncStatus = syncStatus,
+                                screenOrder = screenOrder,
+                                hiddenScreens = hiddenScreens,
+                                onScreenOrderChange = { order ->
+                                    screenOrder = order
+                                    database.setPref(PREF_SCREEN_ORDER, order.joinToString(",") { it.preferenceKey() })
+                                },
+                                onScreenVisibilityChange = { destination, show ->
+                                    hiddenScreens = if (show) hiddenScreens - destination else hiddenScreens + destination
+                                    database.setPref(PREF_HIDDEN_SCREENS, hiddenScreens.joinToString(",") { it.preferenceKey() })
+                                },
+                                onResetScreens = {
+                                    screenOrder = defaultDestinations
+                                    hiddenScreens = emptySet()
+                                    database.setPref(PREF_SCREEN_ORDER, "")
+                                    database.setPref(PREF_HIDDEN_SCREENS, "")
+                                },
                                 onDense = {
                                     dense = it
                                     database.setPref(PREF_DENSE_LAYOUT, if (it) "1" else "0")
@@ -438,6 +538,8 @@ fun HabitLabApp(
                                     syncClient.setMode(SYNC_MODE_OFFLINE)
                                     syncMode = SYNC_MODE_OFFLINE
                                 },
+                                onExportBackup = onExportBackup,
+                                onImportBackup = onImportBackup,
                             )
                         Destination.Analytics ->
                             ListingScreen(
@@ -453,7 +555,6 @@ fun HabitLabApp(
                         backProgress > 0f &&
                             peekDestination != null &&
                             builderCopy == null &&
-                            !shareOpen &&
                             detailHabit == null &&
                             !manageRuns
                     if (peekingPage) DestinationContent(peekDestination!!)
@@ -486,11 +587,6 @@ fun HabitLabApp(
                     })
                 }
             }
-            AnimatedVisibility(visible = shareOpen, enter = fadeIn(), exit = fadeOut()) {
-                Surface(Modifier.fillMaxSize().padding(padding).then(peekModifier), color = MaterialTheme.colorScheme.background) {
-                    ShareHabitsPage(database, today, runsRevision, onBack = { shareOpen = false })
-                }
-            }
             AnimatedVisibility(visible = detailHabit != null, enter = fadeIn(), exit = fadeOut()) {
                 lastDetail?.let { habit ->
                     Surface(Modifier.fillMaxSize().padding(padding).then(peekModifier), color = MaterialTheme.colorScheme.background) {
@@ -505,7 +601,12 @@ fun HabitLabApp(
                         today,
                         lastBuilderCopy,
                         editRunUid,
+                        initialSource = builderSource,
                         onCreated = {
+                            runsRevision++
+                            noteLocalChange()
+                        },
+                        onRunsChanged = {
                             runsRevision++
                             noteLocalChange()
                         },
@@ -580,12 +681,14 @@ fun HabitLabApp(
     var username by remember { mutableStateOf(initialUsername) }
     var password by remember { mutableStateOf("") }
     var repeat by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     val mismatch = creating && repeat.isNotEmpty() && repeat != password
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (creating) "Create an account" else "Connect to sync server") },
         text = {
+            val passwordVisual = if (showPassword) VisualTransformation.None else PasswordVisualTransformation()
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = url, onValueChange = {
                     url = it
@@ -595,7 +698,11 @@ fun HabitLabApp(
                     password = it
                 }, label = {
                     Text(if (creating) "Password (8+ characters)" else "Password")
-                }, singleLine = true, visualTransformation = PasswordVisualTransformation())
+                }, singleLine = true, visualTransformation = passwordVisual, trailingIcon = {
+                    TextButton(onClick = { showPassword = !showPassword }) {
+                        Text(if (showPassword) "Hide" else "Show")
+                    }
+                })
                 if (creating) {
                     OutlinedTextField(value = repeat, onValueChange = {
                         repeat = it
@@ -603,7 +710,11 @@ fun HabitLabApp(
                         Text("Repeat password")
                     }, singleLine = true, isError = mismatch, supportingText = {
                         if (mismatch) Text("Passwords do not match")
-                    }, visualTransformation = PasswordVisualTransformation())
+                    }, visualTransformation = passwordVisual, trailingIcon = {
+                        TextButton(onClick = { showPassword = !showPassword }) {
+                            Text(if (showPassword) "Hide" else "Show")
+                        }
+                    })
                 }
                 TextButton(onClick = {
                     creating = !creating
@@ -643,6 +754,20 @@ fun HabitLabApp(
 
 @Composable private fun DockGlyph(destination: Destination) {
     val tint = androidx.compose.material3.LocalContentColor.current
+    val line =
+        when (destination) {
+            Destination.Runs -> LinePaths.TODAY
+            Destination.Analytics -> LinePaths.CHART
+            Destination.QuickLog -> LinePaths.BOLT
+            Destination.Goals -> LinePaths.TARGET
+            Destination.Trackers -> LinePaths.TRENDING
+            Destination.Share -> LinePaths.SHARE
+            Destination.Settings -> null
+        }
+    if (line != null) {
+        LineIcon(line, tint, size = 22.dp)
+        return
+    }
     Canvas(Modifier.size(24.dp)) {
         val u = size.minDimension / 24f
         val stroke = Stroke(width = 2f * u)
@@ -774,6 +899,9 @@ fun HabitLabApp(
                 }
                 drawCircle(tint, 7.5f * u, c, style = stroke)
             }
+            Destination.Share -> {
+                // Share uses the line icon above; never reaches the canvas branch.
+            }
             Destination.Trackers -> {
                 val path =
                     Path().apply {
@@ -801,6 +929,34 @@ fun HabitLabApp(
     }
 }
 
+/** ISO yyyy-MM-dd to UTC epoch millis, as the Material date picker expects; null when invalid. */
+internal fun isoDateToUtcMillis(value: String): Long? {
+    if (!isValidRunDate(value)) return null
+    val y0 = value.substring(0, 4).toLong()
+    val m = value.substring(5, 7).toLong()
+    val d = value.substring(8, 10).toLong()
+    val y = if (m <= 2) y0 - 1 else y0
+    val era = (if (y >= 0) y else y - 399) / 400
+    val yoe = y - era * 400
+    val doy = (153 * (if (m > 2) m - 3 else m + 9) + 2) / 5 + d - 1
+    val doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
+    return (era * 146097 + doe - 719468) * 86_400_000L
+}
+
+/** UTC epoch millis from the Material date picker to ISO yyyy-MM-dd. */
+internal fun utcMillisToIsoDate(millis: Long): String {
+    val z = millis.floorDiv(86_400_000L) + 719468
+    val era = (if (z >= 0) z else z - 146096) / 146097
+    val doe = z - era * 146097
+    val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    val mp = (5 * doy + 2) / 153
+    val d = doy - (153 * mp + 2) / 5 + 1
+    val m = if (mp < 10) mp + 3 else mp - 9
+    val y = yoe + era * 400 + if (m <= 2) 1 else 0
+    return "${y.toString().padStart(4, '0')}-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}"
+}
+
 internal fun isValidRunDate(value: String): Boolean {
     if (!Regex("\\d{4}-\\d{2}-\\d{2}").matches(value)) return false
     val year = value.substring(0, 4).toInt()
@@ -814,554 +970,6 @@ internal fun isValidRunDate(value: String): Boolean {
             else -> 31
         }
     return day in 1..maxDay
-}
-
-/** Full-page run builder. The first choice on the page is where the habits come from: previous run, scratch, or YAML. */
-@Composable private fun RunBuilderPage(
-    database: HabitDatabase,
-    today: String,
-    startWithCopy: Boolean,
-    editRunUid: String?,
-    onCreated: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val editing = editRunUid != null
-    val existing = remember(database) { database.schemaQueries.selectHabits().executeAsList() }
-    val latestRun =
-        remember(database, editRunUid) {
-            if (editRunUid != null) database.schemaQueries.selectRunByUid(editRunUid).executeAsOneOrNull() else database.currentRun()
-        }
-    var name by remember { mutableStateOf(if (editing) latestRun?.name.orEmpty() else "") }
-    var startDate by remember { mutableStateOf(if (editing) latestRun?.start_date ?: today else today) }
-    val initialDays = if (startWithCopy) latestRun?.duration_days?.toInt() ?: 21 else 21
-    var duration by remember { mutableIntStateOf(if (initialDays in listOf(7, 14, 21)) initialDays else 21) }
-    var custom by remember { mutableStateOf(initialDays !in listOf(7, 14, 21)) }
-    var customDays by remember { mutableStateOf(if (custom) initialDays.toString() else "28") }
-    val previousHabitIds =
-        remember(database, latestRun) {
-            latestRun
-                ?.let {
-                    database.schemaQueries.selectHabitsForRun(it.uid).executeAsList().map { row ->
-                        row.uid
-                    }
-                }.orEmpty()
-        }
-    val hasPrevious = previousHabitIds.isNotEmpty()
-    // 0 = copy previous run, 1 = start from scratch, 2 = from YAML
-    var source by remember { mutableIntStateOf(if (!editing && startWithCopy && hasPrevious) 0 else 1) }
-    val selected =
-        remember {
-            mutableStateListOf<String>().apply {
-                if (!editing &&
-                    startWithCopy &&
-                    hasPrevious
-                ) {
-                    addAll(previousHabitIds)
-                }
-            }
-        }
-    val addedHabits =
-        remember {
-            mutableStateListOf<Habit>().apply {
-                if (editing &&
-                    latestRun != null
-                ) {
-                    addAll(loadRunHabits(database, latestRun.uid))
-                }
-            }
-        }
-    var newHabitName by remember { mutableStateOf("") }
-    var newHabitPoints by remember { mutableStateOf("1") }
-    var newHabitGroup by remember { mutableStateOf("General") }
-    var newHabitIcon by remember { mutableStateOf("") }
-    var newHabitColor by remember { mutableStateOf("") }
-    var showIconPicker by remember { mutableStateOf(false) }
-    var intervalMode by remember { mutableStateOf(false) }
-    var recurrenceValue by remember { mutableStateOf("3") }
-    var editingSourceId by remember { mutableStateOf<String?>(null) }
-    var editingDraftId by remember { mutableStateOf<String?>(null) }
-    var yamlText by remember { mutableStateOf("") }
-    var yamlErrors by remember { mutableStateOf<List<String>>(emptyList()) }
-    var builderError by remember { mutableStateOf<String?>(null) }
-    var promptCopied by remember { mutableStateOf(false) }
-    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-    val line = palette.divider
-
-    fun chooseSource(next: Int) {
-        if (next == source) return
-        source = next
-        builderError = null
-        selected.clear()
-        addedHabits.clear()
-        editingSourceId = null
-        newHabitName = ""
-        newHabitGroup = "General"
-        newHabitPoints = "1"
-        newHabitIcon = ""
-        newHabitColor = ""
-        intervalMode = false
-        recurrenceValue = "3"
-        if (next == 0) {
-            selected.addAll(previousHabitIds)
-            val previousDays = latestRun?.duration_days?.toInt() ?: 21
-            custom = previousDays !in listOf(7, 14, 21)
-            if (custom) customDays = previousDays.toString() else duration = previousDays
-        }
-    }
-
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = onDismiss,
-                modifier =
-                    Modifier.semantics {
-                        contentDescription = "Back"
-                    },
-            ) { Text("←", style = MaterialTheme.typography.titleLarge) }
-            Text(if (editing) "Edit run" else "New run", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-        }
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (!editing) {
-                Text("Where do the habits come from?", style = MaterialTheme.typography.labelLarge)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = source == 0, enabled = hasPrevious, onClick = {
-                        chooseSource(0)
-                    }, label = { Text("Previous", maxLines = 1) }, modifier = Modifier.weight(1f))
-                    FilterChip(
-                        selected = source == 1,
-                        onClick = { chooseSource(1) },
-                        label = { Text("Scratch", maxLines = 1) },
-                        modifier = Modifier.weight(1f),
-                    )
-                    FilterChip(
-                        selected = source == 2,
-                        onClick = { chooseSource(2) },
-                        label = { Text("YAML", maxLines = 1) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                Text(
-                    when (source) {
-                        0 -> "Reuses ${latestRun?.name ?: "the latest run"}’s habits. Untick any you want to leave out."
-                        1 -> "Start with an empty run and add habits below."
-                        else -> "Ask any AI chat for a run file, paste it here, and load it into the editor."
-                    },
-                    color = muted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text("Changing the source clears the habits being prepared.", color = muted, style = MaterialTheme.typography.labelSmall)
-            } else {
-                Text(
-                    "Changes to shared habits affect every run that uses them. Existing check-ins are kept.",
-                    color = muted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            if (source == 2) {
-                Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("1 · Copy this prompt into an AI chat", style = MaterialTheme.typography.labelLarge)
-                        Text(
-                            YAML_GUIDE_PROMPT.lines().take(3).joinToString("\n") + "\n…",
-                            color = muted,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 4,
-                        )
-                        OutlinedButton(onClick = {
-                            clipboard.setText(
-                                androidx.compose.ui.text
-                                    .AnnotatedString(YAML_GUIDE_PROMPT),
-                            )
-                            promptCopied =
-                                true
-                        }) {
-                            Text(if (promptCopied) "Copied ✓" else "Copy AI prompt")
-                        }
-                        Text(
-                            "2 · Paste the YAML it gives you",
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                        OutlinedTextField(
-                            value = yamlText,
-                            onValueChange = {
-                                yamlText = it
-                                yamlErrors = emptyList()
-                            },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp),
-                            placeholder = { Text("name: Reset week\ndays: 14\nhabits:\n  - name: Morning light\n    every: 1 day") },
-                        )
-                        yamlErrors.forEach { Text(it, color = palette.error, style = MaterialTheme.typography.bodySmall) }
-                        Button(
-                            enabled = yamlText.isNotBlank(),
-                            onClick = {
-                                val parsed = parseRunYaml(yamlText)
-                                if (!parsed.ok) {
-                                    yamlErrors = parsed.errors.take(5)
-                                    return@Button
-                                }
-                                name = parsed.name
-                                if (parsed.start.isNotEmpty()) startDate = parsed.start
-                                if (parsed.days in
-                                    listOf(7, 14, 21)
-                                ) {
-                                    duration = parsed.days
-                                    custom = false
-                                } else {
-                                    custom = true
-                                    customDays =
-                                        parsed.days.toString()
-                                }
-                                selected.clear()
-                                addedHabits.clear()
-                                parsed.habits.forEach { y ->
-                                    val recurrence = if (y.weekly > 0) "${y.weekly} days per week" else "Every ${y.interval} days"
-                                    addedHabits.add(
-                                        Habit(
-                                            y.name,
-                                            y.group,
-                                            y.points,
-                                            recurrence,
-                                            "I",
-                                            "habit-${Random.nextLong().toULong().toString(16)}",
-                                            y.icon,
-                                        ),
-                                    )
-                                }
-                                yamlErrors = emptyList()
-                                source = 1
-                            },
-                        ) { Text("Load into editor") }
-                    }
-                }
-            } else {
-                OutlinedTextField(value = name, onValueChange = {
-                    name = it
-                }, label = { Text("Run name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(
-                    value = startDate,
-                    onValueChange = {
-                        startDate = it
-                        builderError = null
-                    },
-                    label = { Text("Start date (YYYY-MM-DD)") },
-                    singleLine = true,
-                    isError = !isValidRunDate(startDate),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text("Run length", style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf(7, 14, 21).forEach { days ->
-                        FilterChip(selected = !custom && duration == days, onClick = {
-                            duration = days
-                            custom =
-                                false
-                        }, label = { Text("$days d") })
-                    }
-                    FilterChip(selected = custom, onClick = { custom = true }, label = { Text("Custom") })
-                }
-                if (custom) {
-                    OutlinedTextField(value = customDays, onValueChange = {
-                        customDays = it.filter(Char::isDigit).take(3)
-                    }, label = { Text("Days") }, singleLine = true)
-                }
-                Text("Habits", style = MaterialTheme.typography.labelLarge)
-                OutlinedButton(enabled = selected.isNotEmpty() || addedHabits.isNotEmpty(), onClick = {
-                    val draft =
-                        addedHabits +
-                            existing.filter { it.uid in selected }.map { row ->
-                                Habit(
-                                    row.title,
-                                    row.group_name,
-                                    row.impact_points.toInt(),
-                                    if (row.recurrence_type ==
-                                        "interval"
-                                    ) {
-                                        "Every ${row.recurrence_value} days"
-                                    } else {
-                                        "${row.recurrence_value} days per week"
-                                    },
-                                    id = row.uid,
-                                    icon = database.habitIcon(row.uid),
-                                )
-                            }
-                    val values =
-                        draft.map { h ->
-                            val n = Regex("\\d+").find(h.recurrence)?.value?.toIntOrNull() ?: 1
-                            YamlHabit(
-                                h.name,
-                                h.group,
-                                h.points,
-                                if (h.recurrence.startsWith("Every ")) 0 else n,
-                                if (h.recurrence.startsWith("Every ")) n else 0,
-                                h.icon,
-                            )
-                        }
-                    clipboard.setText(
-                        androidx.compose.ui.text.AnnotatedString(
-                            exportRunYaml(
-                                name,
-                                if (custom) {
-                                    customDays.toIntOrNull()
-                                        ?: 21
-                                } else {
-                                    duration
-                                },
-                                startDate,
-                                values,
-                            ),
-                        ),
-                    )
-                    promptCopied = true
-                }) { Text(if (promptCopied) "YAML copied" else "Copy run YAML") }
-                existing.filter { source == 0 && it.uid in previousHabitIds }.forEach { row ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable {
-                            if (row.uid in
-                                selected
-                            ) {
-                                selected.remove(row.uid)
-                            } else {
-                                selected.add(row.uid)
-                            }
-                        },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(checked = row.uid in selected, onCheckedChange = { checked ->
-                            if (checked) selected.add(row.uid) else selected.remove(row.uid)
-                        })
-                        Column(Modifier.weight(1f)) {
-                            Text(row.title, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                "${row.impact_points} impact pts · ${row.recurrence_type} ${row.recurrence_value}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = muted,
-                            )
-                        }
-                        TextButton(onClick = {
-                            editingSourceId = row.uid
-                            newHabitName = row.title
-                            newHabitGroup = row.group_name
-                            newHabitPoints = row.impact_points.toString()
-                            newHabitIcon = database.habitIcon(row.uid)
-                            intervalMode = row.recurrence_type == "interval"
-                            recurrenceValue = row.recurrence_value.toString()
-                        }) { Text("Edit") }
-                    }
-                }
-                addedHabits.forEach { added ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        HabitGlyph(added, Modifier.size(20.dp), surface)
-                        Text(
-                            "${added.name} · ${added.points} pts · ${added.recurrence}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = green,
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(onClick = {
-                            editingDraftId = added.uid()
-                            newHabitName = added.name
-                            newHabitGroup = added.group
-                            newHabitPoints =
-                                added.points.toString()
-                            newHabitIcon = added.icon
-                            newHabitColor = added.color
-                            intervalMode = added.recurrence.startsWith("Every ")
-                            recurrenceValue = Regex("\\d+").find(added.recurrence)?.value ?: "1"
-                        }) { Text("Edit") }
-                        TextButton(
-                            onClick = {
-                                addedHabits.remove(added)
-                            },
-                            contentPadding =
-                                PaddingValues(
-                                    horizontal = 6.dp,
-                                ),
-                        ) { Text("Remove", style = MaterialTheme.typography.labelSmall) }
-                    }
-                }
-                HorizontalDivider(color = line)
-                Text("Add a habit", style = MaterialTheme.typography.labelLarge)
-                OutlinedTextField(value = newHabitName, onValueChange = {
-                    newHabitName = it
-                }, label = { Text("Habit name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = newHabitGroup, onValueChange = {
-                        newHabitGroup = it
-                    }, label = { Text("Group") }, modifier = Modifier.weight(1f), singleLine = true)
-                    OutlinedTextField(value = newHabitPoints, onValueChange = {
-                        newHabitPoints = it.filter(Char::isDigit).take(3)
-                    }, label = { Text("Impact pts") }, modifier = Modifier.weight(1f), singleLine = true)
-                }
-                Text("Icon and color", style = MaterialTheme.typography.labelLarge)
-                val pickTint = habitColorOf(newHabitColor) ?: green
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(
-                        Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(pickTint.copy(alpha = .2f))
-                            .clickable { showIconPicker = true }
-                            .semantics { contentDescription = "Choose icon" },
-                        contentAlignment = Alignment.Center,
-                    ) { IconGlyph(newHabitIcon.ifBlank { "checkmark_circle" }, Modifier.size(30.dp), pickTint) }
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            if (newHabitIcon.isBlank()) "Tap to choose an icon" else newHabitIcon.replace('_', ' '),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text("Search 170+ icons", style = MaterialTheme.typography.labelSmall, color = muted)
-                    }
-                }
-                ColorSwatchRow(newHabitColor) { newHabitColor = it }
-                if (showIconPicker) {
-                    IconPickerSheet(newHabitIcon, pickTint, onPick = {
-                        newHabitIcon = it
-                        showIconPicker = false
-                    }, onDismiss = {
-                        showIconPicker =
-                            false
-                    })
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(selected = !intervalMode, onClick = { intervalMode = false }, label = { Text("Days per week") })
-                    FilterChip(selected = intervalMode, onClick = { intervalMode = true }, label = { Text("Every N days") })
-                }
-                OutlinedTextField(value = recurrenceValue, onValueChange = {
-                    recurrenceValue = it.filter(Char::isDigit).take(3)
-                }, label = { Text(if (intervalMode) "Interval days" else "Target days per week") }, singleLine = true)
-                TextButton(onClick = {
-                    val habitName = newHabitName.trim()
-                    if (habitName.isNotEmpty()) {
-                        editingSourceId?.let { selected.remove(it) }
-                        val id = editingDraftId ?: "habit-${Random.nextLong().toULong().toString(16)}"
-                        val count = recurrenceValue.toIntOrNull()?.coerceIn(1, if (intervalMode) 365 else 7) ?: 3
-                        val draft =
-                            Habit(
-                                habitName,
-                                newHabitGroup.ifBlank { "General" },
-                                newHabitPoints.toIntOrNull()?.coerceAtLeast(0) ?: 1,
-                                if (intervalMode) "Every $count days" else "$count days per week",
-                                "I",
-                                id,
-                                newHabitIcon,
-                                newHabitColor,
-                            )
-                        val index = addedHabits.indexOfFirst { it.uid() == id }
-                        if (index >= 0) addedHabits[index] = draft else addedHabits.add(draft)
-                        newHabitName = ""
-                        newHabitIcon = ""
-                        newHabitColor = ""
-                        editingSourceId = null
-                        editingDraftId = null
-                    }
-                }, enabled = newHabitName.isNotBlank()) {
-                    Text(
-                        if (editingDraftId !=
-                            null
-                        ) {
-                            "Save habit changes"
-                        } else {
-                            "＋ Add habit to this run"
-                        },
-                    )
-                }
-            }
-            builderError?.let { Text(it, color = palette.error, style = MaterialTheme.typography.bodyMedium) }
-            Spacer(Modifier.height(8.dp))
-        }
-        if (source != 2) {
-            HorizontalDivider(color = line)
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text("Cancel") }
-                Button(
-                    modifier = Modifier.weight(2f),
-                    enabled = (selected.isNotEmpty() || addedHabits.isNotEmpty()) && editingDraftId == null && editingSourceId == null,
-                    onClick = {
-                        if (!editing && database.activeRuns().isNotEmpty()) {
-                            builderError = "Stop all active runs before starting a new run."
-                            return@Button
-                        }
-                        val draftTitles = addedHabits.map { it.name } + existing.filter { it.uid in selected }.map { it.title }
-                        val duplicate = duplicateHabitTitle(draftTitles)
-                        if (duplicate != null) {
-                            builderError = "Habit ‘$duplicate’ appears more than once. Remove or rename the duplicate."
-                            return@Button
-                        }
-                        if (!isValidRunDate(startDate)) {
-                            builderError = "Enter a valid start date in YYYY-MM-DD format."
-                            return@Button
-                        }
-                        val days = if (custom) customDays.toLongOrNull()?.coerceIn(1, 365) ?: 21L else duration.toLong()
-                        val runName = name.ifBlank { "$days-day run" }
-                        val runId = if (editing) latestRun!!.uid else "run-$startDate-${Random.nextLong().toULong().toString(16)}"
-                        database.transaction {
-                            if (editing) {
-                                database.schemaQueries.updateRunDetails(
-                                    runName,
-                                    startDate,
-                                    days,
-                                    runId,
-                                )
-                            } else {
-                                database.schemaQueries.insertRun(runId, runName, startDate, days)
-                            }
-                            val oldLinks = if (editing) database.schemaQueries.selectRunLinks(runId).executeAsList() else emptyList()
-                            val keep = (selected + addedHabits.map { it.uid() }).toSet()
-                            oldLinks.filter { it.habit_uid !in keep }.forEach { database.schemaQueries.deleteRunHabitRow(it.uid) }
-                            addedHabits.forEach { habit ->
-                                val count = Regex("\\d+").find(habit.recurrence)?.value?.toLongOrNull() ?: 3L
-                                if (editing &&
-                                    habit.uid() in previousHabitIds
-                                ) {
-                                    database.schemaQueries.updateHabitDetails(
-                                        habit.name,
-                                        habit.group,
-                                        habit.points.toLong(),
-                                        if (habit.recurrence.startsWith("Every ")) "interval" else "weekly",
-                                        count,
-                                        habit.uid(),
-                                    )
-                                } else {
-                                    database.schemaQueries.insertHabit(
-                                        habit.uid(),
-                                        habit.name,
-                                        habit.group,
-                                        1L,
-                                        habit.points.toLong(),
-                                        if (habit.recurrence.startsWith("Every ")) "interval" else "weekly",
-                                        count,
-                                    )
-                                }
-                                database.setHabitIcon(habit.uid(), habit.icon)
-                                database.setHabitColor(habit.uid(), habit.color)
-                            }
-                            selected.forEach { database.schemaQueries.attachHabitToRun("$runId:$it", runId, it) }
-                            addedHabits
-                                .filter { h ->
-                                    oldLinks.none { it.habit_uid == h.uid() }
-                                }.forEach {
-                                    database.schemaQueries.attachHabitToRun(
-                                        "$runId:${it.uid()}:${Random.nextLong().toULong().toString(16)}",
-                                        runId,
-                                        it.uid(),
-                                    )
-                                }
-                            database.setPref(PREF_CURRENT_RUN, runId)
-                        }
-                        onCreated()
-                        onDismiss()
-                    },
-                ) { Text(if (editing) "Save changes" else "Create run") }
-            }
-        }
-    }
 }
 
 private fun loadQuickSwipeAction(
@@ -1578,6 +1186,8 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
     today: String,
     runsRevision: Int,
     onLocalChange: () -> Unit = {},
+    onStartNextRun: () -> Unit = {},
+    onBackToRuns: () -> Unit = {},
 ) {
     var index by remember { mutableIntStateOf(0) }
     var comment by remember { mutableStateOf("") }
@@ -1611,8 +1221,8 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
     LaunchedEffect(pastCommit) { if (pastCommit && !animating) haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
     val hint = "Swipe right for ${swipeRight.key} · left for ${swipeLeft.key}"
     val activeRun =
-        remember(database, runsRevision) {
-            database.currentRun()?.takeIf { it.status == "active" } ?: database.activeRuns().firstOrNull()
+        remember(database, runsRevision, today) {
+            database.activeRuns(today).firstOrNull()
         }
     val runHabits =
         remember(database, runsRevision) {
@@ -1703,11 +1313,42 @@ internal fun swipeActionContent(action: QuickSwipeAction): androidx.compose.ui.g
             animating = false
         }
     }
-    if (activeRun ==
-        null
-    ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No active run. Start a run to use Quick Log.", style = MaterialTheme.typography.titleLarge)
+    if (activeRun == null) {
+        val lastRun = remember(database, runsRevision) { database.currentRun() }
+        val isLastRunEnded = lastRun != null && database.isRunEnded(lastRun, today)
+        Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                if (isLastRunEnded && lastRun != null) {
+                    Text("🏁", style = MaterialTheme.typography.displayMedium)
+                    Text("Run completed!", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Your ${lastRun.name} has finished. There are no habits due today until you start your next run.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = muted,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                    Button(onClick = onStartNextRun, shape = RoundedCornerShape(14.dp)) {
+                        Text("Start next run")
+                    }
+                    TextButton(onClick = onBackToRuns) {
+                        Text("View last run results")
+                    }
+                } else {
+                    Text("No active run", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "Start a run to use Quick Log.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = muted,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                    Button(onClick = onStartNextRun, shape = RoundedCornerShape(14.dp)) {
+                        Text("Build a run")
+                    }
+                }
+            }
         }
         return
     }
@@ -1967,6 +1608,11 @@ private fun CommentSheet(
     dense: Boolean,
     syncing: Boolean,
     syncStatus: String?,
+    screenOrder: List<Destination>,
+    hiddenScreens: Set<Destination>,
+    onScreenOrderChange: (List<Destination>) -> Unit,
+    onScreenVisibilityChange: (Destination, Boolean) -> Unit,
+    onResetScreens: () -> Unit,
     onDense: (Boolean) -> Unit,
     groupHabits: Boolean,
     onGroupHabits: (Boolean) -> Unit,
@@ -1975,13 +1621,31 @@ private fun CommentSheet(
     onConnect: () -> Unit,
     onSyncNow: () -> Unit,
     onOffline: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
 ) {
     val connected = syncMode == SYNC_MODE_SERVER
     val url = syncClient.serverUrl()
+    var confirmImport by remember { mutableStateOf(false) }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("LOCAL BACKUP", style = MaterialTheme.typography.labelMedium, color = green)
+                Text("Export or restore this phone's complete SQLite database.", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "The backup includes the sync session token. Store the file somewhere private. Restoring replaces this phone's data; it does not change server data or reset the account password.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = muted,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onExportBackup) { Text("Export backup") }
+                    Button(onClick = { confirmImport = true }) { Text("Import backup") }
+                }
+            }
+        }
         Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("SYNC SERVER", style = MaterialTheme.typography.labelMedium, color = green)
@@ -2023,31 +1687,120 @@ private fun CommentSheet(
                         }, label = { Text(label, maxLines = 1) }, modifier = Modifier.weight(1f))
                     }
                 }
+                Text("Style", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp))
+                SegmentedChoice(
+                    options = listOf(STYLE_CLASSIC to "Classic", STYLE_WA to "Japanese"),
+                    selected = stylePref,
+                    onSelect = { key ->
+                        if (key != stylePref) {
+                            stylePref = key
+                            database.setPref(PREF_STYLE, key)
+                            if (key == STYLE_WA) {
+                                accentPref = "blue"
+                                database.setPref(PREF_ACCENT, "blue")
+                            }
+                        }
+                    },
+                )
+                val styleNote =
+                    if (stylePref == STYLE_WA) {
+                        "Washi paper, sumi ink and traditional Japanese colours."
+                    } else {
+                        "Warm paper and bright, friendly colours."
+                    }
+                Text(
+                    styleNote,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = muted,
+                )
                 Text("Accent color", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 4.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     ACCENTS.forEach { option ->
                         val on = accentPref == option.key
+                        val swatch = option.value(palette.wa, palette.dark)
+                        val label = if (palette.wa) "${option.label} (${option.waName})" else option.label
                         Box(
                             Modifier
-                                .size(34.dp)
+                                .size(40.dp)
                                 .clip(CircleShape)
-                                .background(option.seed)
-                                .border(if (on) 3.dp else 0.dp, ink, CircleShape)
                                 .clickable {
                                     accentPref = option.key
                                     database.setPref(PREF_ACCENT, option.key)
-                                }.semantics { contentDescription = "Accent ${option.label}" },
+                                }.semantics {
+                                    contentDescription = "Accent $label"
+                                    stateDescription = if (on) "Selected" else "Not selected"
+                                },
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (on) {
+                            Box(
+                                Modifier
+                                    .size(34.dp)
+                                    .then(if (on) Modifier.border(2.5.dp, swatch, CircleShape).padding(4.dp) else Modifier.padding(2.dp))
+                                    .clip(CircleShape)
+                                    .background(swatch),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (on) Text("✓", color = palette.onAccent, style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("APP SCREENS", style = MaterialTheme.typography.labelMedium, color = green)
+                        Text("Choose tabs and their order", style = MaterialTheme.typography.titleSmall)
+                    }
+                    TextButton(onClick = onResetScreens) { Text("Reset") }
+                }
+                Text(
+                    "Today and Settings always stay available. Changes are saved on this device.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = muted,
+                )
+                screenOrder.forEachIndexed { index, destination ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${index + 1}. ${destination.title}", style = MaterialTheme.typography.titleSmall)
+                            if (destination in requiredDestinations) {
+                                Text("Always shown", style = MaterialTheme.typography.labelSmall, color = muted)
+                            } else {
                                 Text(
-                                    "✓",
-                                    color =
-                                        androidx.compose.ui.graphics
-                                            .Color(0xFF111111),
-                                    style = MaterialTheme.typography.labelLarge,
+                                    if (destination in hiddenScreens) "Hidden from tabs" else "Shown in tabs",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = muted,
                                 )
                             }
+                        }
+                        IconButton(
+                            enabled = index > 0,
+                            onClick = {
+                                val reordered = screenOrder.toMutableList()
+                                val moved = reordered.removeAt(index)
+                                reordered.add(index - 1, moved)
+                                onScreenOrderChange(reordered)
+                            },
+                            modifier = Modifier.semantics { contentDescription = "Move ${destination.title} up" },
+                        ) { Text("↑", color = if (index > 0) green else muted) }
+                        IconButton(
+                            enabled = index < screenOrder.lastIndex,
+                            onClick = {
+                                val reordered = screenOrder.toMutableList()
+                                val moved = reordered.removeAt(index)
+                                reordered.add(index + 1, moved)
+                                onScreenOrderChange(reordered)
+                            },
+                            modifier = Modifier.semantics { contentDescription = "Move ${destination.title} down" },
+                        ) { Text("↓", color = if (index < screenOrder.lastIndex) green else muted) }
+                        if (destination !in requiredDestinations) {
+                            Switch(
+                                checked = destination !in hiddenScreens,
+                                onCheckedChange = { onScreenVisibilityChange(destination, it) },
+                                modifier = Modifier.semantics { contentDescription = "Show ${destination.title} tab" },
+                            )
                         }
                     }
                 }
@@ -2117,5 +1870,46 @@ private fun CommentSheet(
                 }
             }
         }
+    }
+    if (confirmImport) {
+        AlertDialog(
+            onDismissRequest = { confirmImport = false },
+            title = { Text("Replace local data?") },
+            text = {
+                Text(
+                    "Choose a Habit Lab SQLite backup. The app will validate it before replacing this phone's database. Data on the sync server will not be changed.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmImport = false
+                    onImportBackup()
+                }) { Text("Choose backup") }
+            },
+            dismissButton = { TextButton(onClick = { confirmImport = false }) { Text("Cancel") } },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun StartDatePickerDialog(
+    initial: String,
+    fallback: String,
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val state = rememberDatePickerState(initialSelectedDateMillis = isoDateToUtcMillis(initial) ?: isoDateToUtcMillis(fallback))
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                enabled = state.selectedDateMillis != null,
+                onClick = { state.selectedDateMillis?.let { onPick(utcMillisToIsoDate(it)) } },
+            ) { Text("OK") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    ) {
+        DatePicker(state = state, title = { Text("Run start date", modifier = Modifier.padding(start = 24.dp, top = 16.dp)) })
     }
 }

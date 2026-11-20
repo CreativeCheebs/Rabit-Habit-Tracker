@@ -7,7 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 
 /** Keys saved before the Fluent catalog existed, and the names a habit used to imply. */
@@ -189,24 +191,41 @@ internal fun IconPickerSheet(
     }
 }
 
-/** Row of color swatches; the first (blank) means "use the accent". */
-@Composable internal fun ColorSwatchRow(
+/** Colour swatches (accent default + every habit colour of the current style); the selected one gets a ring. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun ColorSwatchRow(
     selected: String,
     onPick: (String) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        HABIT_COLORS.forEach { (key, color) ->
+    val defs = habitColorDefs(palette.wa)
+    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        (listOf("" to "Accent") + defs.map { it.key to it.name }).forEach { (key, name) ->
             val on = selected == key
+            val solid = if (key.isEmpty()) palette.accent else defs.first { it.key == key }.solid
             Box(
                 Modifier
-                    .size(28.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
-                    .background(if (key.isEmpty()) green else color)
-                    .border(if (on) 3.dp else 0.dp, ink, CircleShape)
-                    .clickable { onPick(key) }
-                    .semantics { contentDescription = if (key.isEmpty()) "Color accent" else "Color $key" },
+                    .clickable(onClickLabel = "Choose $name") { onPick(key) }
+                    .semantics {
+                        contentDescription = "Colour $name"
+                        stateDescription = if (on) "Selected" else "Not selected"
+                    },
                 contentAlignment = Alignment.Center,
-            ) { if (key.isEmpty()) Text("A", color = palette.onAccent, style = MaterialTheme.typography.labelSmall) }
+            ) {
+                Box(
+                    Modifier
+                        .size(if (on) 34.dp else 28.dp)
+                        .then(if (on) Modifier.border(2.5.dp, solid, CircleShape) else Modifier)
+                        .padding(if (on) 4.dp else 0.dp)
+                        .clip(CircleShape)
+                        .background(solid),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (key.isEmpty()) Text("A", color = palette.onAccent, style = MaterialTheme.typography.labelSmall)
+                }
+            }
         }
     }
 }

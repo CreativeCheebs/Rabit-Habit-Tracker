@@ -46,6 +46,51 @@ internal data class ShareSnapshot(
     val runPercent: Int,
 )
 
+internal data class CompletedRunShare(
+    val name: String,
+    val durationDays: Int,
+    val completionPercent: Int,
+    val impactPoints: Int,
+    val daysLogged: Int,
+)
+
+internal fun completedRunShare(
+    database: HabitDatabase,
+    run: app.habitlab.db.Run,
+): CompletedRunShare {
+    val days = run.duration_days.toInt()
+    val habits = loadRunHabits(database, run.uid)
+    val endDate = addIsoDays(run.start_date, days - 1)
+    var daysLogged = 0
+    for (offset in 0 until days) {
+        val date = addIsoDays(run.start_date, offset)
+        val states =
+            database.schemaQueries
+                .selectCheckInsForDay(date)
+                .executeAsList()
+                .map { it.habit_uid }
+                .toSet()
+        if (habits.any { it.uid() in states }) daysLogged++
+    }
+    val completion = runCompletion(database, habits, run.start_date, endDate)
+    return CompletedRunShare(
+        name = run.name,
+        durationDays = days,
+        completionPercent = completion.percent,
+        impactPoints = completion.earned,
+        daysLogged = daysLogged,
+    )
+}
+
+internal fun formatCompletedRunShare(summary: CompletedRunShare): String =
+    buildString {
+        appendLine("# ${summary.name} · Run completed")
+        appendLine("Duration: ${summary.durationDays} days")
+        appendLine("Completion: ${summary.completionPercent}%")
+        appendLine("Impact points: ${summary.impactPoints}")
+        append("Days logged: ${summary.daysLogged} / ${summary.durationDays}")
+    }
+
 internal fun formatShareText(
     snapshot: ShareSnapshot,
     showHabitCompletion: Boolean,
@@ -80,7 +125,8 @@ internal fun buildShareSnapshot(
     run ?: return null
     val days = run.duration_days.toInt()
     val offset = (0 until days).firstOrNull { addIsoDays(run.start_date, it) == today } ?: return null
-    val habits = loadRunHabits(database, run.uid).filter { database.isHabitShareable(it.uid()) }
+    val runHabits = loadRunHabits(database, run.uid)
+    val habits = runHabits.filter { database.isHabitShareable(it.uid()) }
     val doneDays =
         habits.associate { habit ->
             habit.uid() to
@@ -91,49 +137,21 @@ internal fun buildShareSnapshot(
                     .map { it.day }
                     .toSet()
         }
-
-    fun eligible(
-        habit: Habit,
-        date: String,
-    ): Boolean = !isIntervalRestDay(habit.recurrence, date, doneDays[habit.uid()].orEmpty())
-
-    var eligibleTotal = 0
-    var completedTotal = 0
-    var eligibleToday = 0
-    var completedToday = 0
-    var todayStates = emptyMap<String, String>()
-    (0..offset).forEach { index ->
-        val date = addIsoDays(run.start_date, index)
-        val states =
-            database.schemaQueries
-                .selectCheckInsForDay(date)
-                .executeAsList()
-                .associate { it.habit_uid to it.state }
-        if (index == offset) todayStates = states
-        habits.forEach { habit ->
-            if (eligible(habit, date) || states.containsKey(habit.uid())) {
-                eligibleTotal++
-                if (states[habit.uid()] == "done") completedTotal++
-                if (index == offset) {
-                    eligibleToday++
-                    if (states[habit.uid()] == "done") completedToday++
-                }
-            }
-        }
-    }
-
-    fun percent(
-        completed: Int,
-        eligible: Int,
-    ) = if (eligible == 0) 0 else completed * 100 / eligible
+    val todayStates =
+        database.schemaQueries
+            .selectCheckInsForDay(today)
+            .executeAsList()
+            .associate { it.habit_uid to it.state }
     return ShareSnapshot(
         offset + 1,
         today,
         habits
-            .filter { eligible(it, today) || todayStates.containsKey(it.uid()) }
+            .filter { !isIntervalRestDay(it.recurrence, today, doneDays[it.uid()].orEmpty()) || todayStates.containsKey(it.uid()) }
             .map { ShareHabit(it.name, todayStates[it.uid()]) },
-        percent(completedToday, eligibleToday),
-        percent(completedTotal, eligibleTotal),
+        // Day: the shared habits listed above, weighted by impact points.
+        runCompletion(database, habits, today, today).percent,
+        // Whole run: every habit in the run, the same number the Runs screen and browser app show.
+        runCompletion(database, runHabits, run.start_date, today).percent,
     )
 }
 
@@ -147,6 +165,10 @@ internal fun ShareHabitsPage(
     val runs = remember(database, revision) { database.schemaQueries.selectRuns().executeAsList() }
     var selectedRunUid by remember(database, revision) { mutableStateOf(database.currentRun()?.uid) }
     val run = runs.firstOrNull { it.uid == selectedRunUid }
+    val completedRun =
+        remember(database, run, today, revision) {
+            run?.takeIf { database.isRunEnded(it, today) }?.let { completedRunShare(database, it) }
+        }
     val lastShareOffset =
         remember(run, today) {
             if (run == null || today < run.start_date) {
@@ -197,12 +219,12 @@ internal fun ShareHabitsPage(
                     showToday = it
                     database.setPref(PREF_SHARE_TODAY, if (it) "1" else "0")
                 }
-                ShareOption("Whole-run completion", "Show completion through the selected day.", showRun) {
+                ShareOption("Whole-run completion", "Show the run's impact completion through the selected day.", showRun) {
                     showRun = it
                     database.setPref(PREF_SHARE_RUN, if (it) "1" else "0")
                 }
                 Text(
-                    "Percentages include shareable habits on their eligible days.",
+                    "Day % counts the shared habits listed. Whole run % counts every habit in the run, by impact points, and matches the Runs screen.",
                     color = muted,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -217,7 +239,20 @@ internal fun ShareHabitsPage(
                         }
                     }
                 }
-                if (lastShareOffset >= 0) {
+                if (completedRun != null) {
+                    Text("Run completed", style = MaterialTheme.typography.headlineSmall)
+                    Text(completedRun.name, style = MaterialTheme.typography.titleMedium)
+                    Text("${completedRun.durationDays} days · ${completedRun.completionPercent}% complete", color = muted)
+                    Text("${completedRun.impactPoints} impact points", color = green, style = MaterialTheme.typography.titleMedium)
+                    Text("${completedRun.daysLogged} / ${completedRun.durationDays} days logged", color = muted)
+                    Card(colors = CardDefaults.cardColors(containerColor = surface)) {
+                        Text(formatCompletedRunShare(completedRun), Modifier.fillMaxWidth().padding(16.dp))
+                    }
+                    Button(onClick = {
+                        clipboard.setText(AnnotatedString(formatCompletedRunShare(completedRun)))
+                        copied = true
+                    }, modifier = Modifier.fillMaxWidth()) { Text(if (copied) "Copied ✓" else "Copy run summary") }
+                } else if (lastShareOffset >= 0) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         TextButton(enabled = selectedOffset > 0, onClick = {
                             selectedOffset--

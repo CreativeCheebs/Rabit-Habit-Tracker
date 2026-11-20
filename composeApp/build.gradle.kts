@@ -27,6 +27,7 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
+            implementation(compose.components.resources)
             implementation(libs.kotlinx.coroutines)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.ktor.client.core)
@@ -60,8 +61,8 @@ android {
         applicationId = "app.habitlab"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.3.1"
+        versionCode = 13
+        versionName = "1.4.0"
     }
     buildTypes {
         create("qa") {
@@ -70,5 +71,9 @@ android {
             matchingFallbacks += "debug"
         }
     }
+}
+compose.resources {
+    packageOfResClass = "app.habitlab.resources"
+    publicResClass = false
 }
 sqldelight { databases { create("HabitDatabase") { packageName.set("app.habitlab.db") } } }

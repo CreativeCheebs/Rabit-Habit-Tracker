@@ -25,17 +25,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,9 +49,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
@@ -66,13 +66,18 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.habitlab.db.HabitDatabase
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
@@ -125,33 +130,117 @@ internal fun isIntervalRestDay(
     return (1 until interval).any { addIsoDays(date, -it) in completedDays }
 }
 
+/** Impact points earned and possible over a date range; resting interval days are not possible points. */
+internal data class RunCompletion(
+    val earned: Int,
+    val possible: Int,
+) {
+    /** Rounded to the nearest whole percent, matching the browser app's run card. */
+    val percent: Int get() = if (possible <= 0) 0 else ((earned * 200L + possible) / (2L * possible)).toInt()
+}
+
+/**
+ * The single "whole run" formula shared by the Runs card and the Share page:
+ * for every day from [fromDate] through [toDate], each habit that is due (or was logged that day)
+ * adds its impact points to the possible total, and adds them to the earned total when done.
+ */
+internal fun runCompletion(
+    database: HabitDatabase,
+    habits: List<Habit>,
+    fromDate: String,
+    toDate: String,
+): RunCompletion {
+    if (habits.isEmpty() || toDate < fromDate) return RunCompletion(0, 0)
+    val doneDays =
+        habits.associate { habit ->
+            habit.uid() to
+                database.schemaQueries
+                    .selectCheckInsForHabit(habit.uid())
+                    .executeAsList()
+                    .filter { it.state == "done" }
+                    .map { it.day }
+                    .toSet()
+        }
+    var earned = 0
+    var possible = 0
+    var date = fromDate
+    while (date <= toDate) {
+        val states =
+            database.schemaQueries
+                .selectCheckInsForDay(date)
+                .executeAsList()
+                .associate { it.habit_uid to it.state }
+        habits.forEach { habit ->
+            val logged = states.containsKey(habit.uid())
+            if (logged || !isIntervalRestDay(habit.recurrence, date, doneDays[habit.uid()].orEmpty())) {
+                possible += habit.points
+                if (states[habit.uid()] == "done") earned += habit.points
+            }
+        }
+        date = addIsoDays(date, 1)
+    }
+    return RunCompletion(earned, possible)
+}
+
+internal fun app.habitlab.db.Habit.toUiHabit(database: HabitDatabase): Habit =
+    Habit(
+        title,
+        group_name,
+        impact_points.toInt(),
+        if (recurrence_type == "interval") "Every $recurrence_value days" else "$recurrence_value days per week",
+        romanNumeral(iteration.toInt()),
+        uid,
+        database.habitIcon(uid),
+        database.habitColor(uid),
+    )
+
 /** Habits of the latest run, in run order; falls back to the sample habits before any run exists. */
 internal fun loadRunHabits(
     database: HabitDatabase,
     runUid: String?,
 ): List<Habit> =
     runUid?.let { uid ->
-        database.schemaQueries.selectHabitsForRun(uid).executeAsList().map { row ->
-            val recur =
-                if (row.recurrence_type ==
-                    "interval"
-                ) {
-                    "Every ${row.recurrence_value} days"
-                } else {
-                    "${row.recurrence_value} days per week"
-                }
-            Habit(
-                row.title,
-                row.group_name,
-                row.impact_points.toInt(),
-                recur,
-                romanNumeral(row.iteration.toInt()),
-                row.uid,
-                database.habitIcon(row.uid),
-                database.habitColor(row.uid),
-            )
-        }
+        database.schemaQueries
+            .selectHabitsForRun(uid)
+            .executeAsList()
+            .map { it.toUiHabit(database) }
     } ?: emptyList()
+
+/** Active habits not attached to any run ("standalone"); they are always due, with or without a run. */
+internal fun loadStandaloneHabits(database: HabitDatabase): List<Habit> {
+    val linked =
+        database.schemaQueries
+            .selectRuns()
+            .executeAsList()
+            .flatMap { run ->
+                database.schemaQueries
+                    .selectRunLinks(run.uid)
+                    .executeAsList()
+                    .map { it.habit_uid }
+            }.toSet()
+    return database.schemaQueries
+        .selectHabits()
+        .executeAsList()
+        .filter { it.uid !in linked }
+        .map { it.toUiHabit(database) }
+}
+
+/** Apply one tap of the check-in cycle for [habitUid] on [date]; returns the new state (null = cleared). */
+internal fun HabitDatabase.cycleCheckIn(
+    habitUid: String,
+    date: String,
+): String? {
+    val row = schemaQueries.selectCheckInsForDay(date).executeAsList().firstOrNull { it.habit_uid == habitUid }
+    val next = nextCheckInState(row?.state)
+    when {
+        next == null -> if (row != null) schemaQueries.deleteCheckInRow(row.uid)
+        row != null -> schemaQueries.updateCheckIn(next, null, habitUid, date)
+        else -> schemaQueries.insertCheckIn("$habitUid:$date", habitUid, date, next, null)
+    }
+    return next
+}
+
+private val SCREEN_PADDING = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 28.dp)
 
 @Composable internal fun RunsScreen(
     database: HabitDatabase,
@@ -163,20 +252,45 @@ internal fun loadRunHabits(
     onManageRuns: () -> Unit,
     onOpenHabit: (Habit) -> Unit,
     onLocalChange: () -> Unit,
+    onStartNextRun: (() -> Unit)? = null,
+    onBuildRun: (Int) -> Unit = {},
 ) {
     val latestRun = remember(database, revision) { database.currentRun() }
+    val standalone = remember(database, revision) { loadStandaloneHabits(database) }
+    val runScope = rememberCoroutineScope()
+    var openRow by remember { mutableStateOf<String?>(null) }
     if (latestRun == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No runs yet. Tap + to create one.", color = muted)
+        LazyColumn(contentPadding = SCREEN_PADDING, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            item(key = "empty") { EmptyRunsCard(onBuildRun) }
+            item(key = "tip") {
+                Banner(palette.surfaceAlt, muted, icon = LinePaths.SPARKLE) {
+                    Text(
+                        "Tip: start with 3–5 habits. You can add more any time from Edit run.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+            if (standalone.isNotEmpty()) {
+                item(key = "standalone") { StandaloneSection(database, standalone, today, dense, onOpenHabit, onLocalChange) }
+            }
         }
         return
     }
-    val habits = remember(database, revision, latestRun) { loadRunHabits(database, latestRun?.uid) }
-    val runName = latestRun?.name ?: "21-day habit run"
-    val runDays = latestRun?.duration_days?.toInt() ?: 21
-    val runStart = latestRun?.start_date ?: today
-    val elapsed = (0 until runDays).count { addIsoDays(runStart, it) <= today }.coerceIn(1, runDays)
-    val todayOffset = (0 until runDays).firstOrNull { addIsoDays(runStart, it) == today } ?: if (today < runStart) 0 else runDays - 1
+    val runDays = latestRun.duration_days.toInt()
+    val runStart = latestRun.start_date
+    val isEnded = remember(latestRun, today) { database.isRunEnded(latestRun, today) }
+    val habits = remember(database, revision, latestRun) { loadRunHabits(database, latestRun.uid) }
+    val runName = latestRun.name
+    val elapsed = if (isEnded) runDays else (0 until runDays).count { addIsoDays(runStart, it) <= today }.coerceIn(1, runDays)
+    val todayOffset =
+        if (isEnded) {
+            runDays - 1
+        } else {
+            (
+                (0 until runDays).firstOrNull { addIsoDays(runStart, it) == today }
+                    ?: if (today < runStart) 0 else runDays - 1
+            )
+        }
 
     // date -> (habit uid -> recorded state), one query per run day.
     val records =
@@ -191,6 +305,11 @@ internal fun loadRunHabits(
             }
         }
     val pointsById = remember(habits) { habits.associate { it.uid() to it.points } }
+    val habitIds = remember(habits) { habits.map { it.uid() }.toSet() }
+    val daysLogged =
+        (0 until runDays).count { offset ->
+            records[addIsoDays(runStart, offset)].orEmpty().keys.any { it in habitIds }
+        }
     val pointsPerRunDay =
         remember(records, pointsById) {
             (0 until runDays).map { offset ->
@@ -200,14 +319,11 @@ internal fun loadRunHabits(
                 }
             }
         }
-    val earnedPoints = pointsPerRunDay.sum()
 
     var selectedOffset by remember(latestRun?.uid, runStart, runDays) { mutableIntStateOf(todayOffset) }
     val historyStart = historyWindowStart(selectedOffset, if (dense) 7 else historyDays)
     val selectedDay = selectedOffset - historyStart
-    var openRow by remember { mutableStateOf<String?>(null) }
     var restDaysExpanded by remember(latestRun?.uid) { mutableStateOf(false) }
-    val runScope = rememberCoroutineScope()
 
     val completedDays =
         remember(database, revision, habits) {
@@ -216,25 +332,32 @@ internal fun loadRunHabits(
                     database.schemaQueries
                         .selectCheckInsForHabit(habit.uid())
                         .executeAsList()
-                        .filter { it.state == "done" }
+                        .filter { it.state == "done" && it.day >= runStart && it.day <= addIsoDays(runStart, runDays - 1) }
                         .map { it.day }
                         .toSet()
             }
         }
+    val runEnd = addIsoDays(runStart, runDays - 1)
+    val isUpcoming = today < runStart
+    val completionPercent =
+        remember(database, revision, habits, today) {
+            runCompletion(database, habits, runStart, if (today < runEnd) today else runEnd).percent
+        }
+    val habitPairs = remember(habits) { habits.map { it.uid() to it.recurrence } }
+    val daySummaries =
+        remember(records, completedDays, habitPairs) {
+            (0 until runDays).map { daySummary(habitPairs, addIsoDays(runStart, it), records, completedDays) }
+        }
+    val todayInRun = today >= runStart && today <= runEnd
+    val todaySummary = if (todayInRun) daySummaries[todayOffset] else DaySummary(0, 0, 0)
     val selectedDate = addIsoDays(runStart, selectedOffset)
     val (notDue, due) =
         habits.partition { habit ->
             records[selectedDate]?.containsKey(habit.uid()) != true &&
                 isIntervalRestDay(habit.recurrence, selectedDate, completedDays[habit.uid()].orEmpty())
         }
-
-    val selectedEligible =
-        habits.filter { habit ->
-            !isIntervalRestDay(habit.recurrence, today, completedDays[habit.uid()].orEmpty())
-        }
-    val selectedTotalPoints = selectedEligible.sumOf { it.points }
-    val selectedEarnedPoints = selectedEligible.filter { records[today]?.get(it.uid()) == "done" }.sumOf { it.points }
-    val selectedImpactPercent = if (selectedTotalPoints == 0) 0 else (selectedEarnedPoints * 100 / selectedTotalPoints).coerceIn(0, 100)
+    val pointsToday = habits.filter { records[today]?.get(it.uid()) == "done" }.sumOf { it.points }
+    val canLog = latestRun.status == "active" && !isEnded
 
     fun stateFor(
         habit: Habit,
@@ -254,7 +377,7 @@ internal fun loadRunHabits(
         habit: Habit,
         state: Int,
     ) {
-        if (latestRun.status != "active") return
+        if (!canLog) return
         val offset = selectedOffset
         if (offset >= runDays) return
         val date = addIsoDays(runStart, offset)
@@ -272,110 +395,588 @@ internal fun loadRunHabits(
         onLocalChange()
     }
 
-    LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item {
-            RunSummaryCard(
-                runName,
-                runDays,
-                habits.size,
-                earnedPoints,
-                earnedPoints.toFloat() / elapsed,
-                elapsed,
-                latestRun.status,
-                onManageRuns,
+    fun cycle(habit: Habit) {
+        if (!canLog || selectedOffset >= runDays) return
+        database.cycleCheckIn(habit.uid(), addIsoDays(runStart, selectedOffset))
+        onLocalChange()
+    }
+
+    @Composable
+    fun HabitRowItem(
+        habit: Habit,
+        first: Boolean,
+        resting: Boolean = false,
+    ) {
+        val state = records[selectedDate]?.get(habit.uid())
+        // A resting interval habit is not missed on past days.
+        val visual = checkVisualOf(state, !resting && selectedDate < today)
+        val dots = (0 until if (dense) 7 else historyDays).map { stateFor(habit, historyStart + it) }
+        if (!first) RowDivider()
+        SwipeHabitRow(
+            habit = habit,
+            dots = dots,
+            selectedDay = selectedDay,
+            dense = dense,
+            openRow = openRow,
+            onOpenRow = { openRow = it },
+            onCommit = { commit(habit, it) },
+            onOpen = { onOpenHabit(habit) },
+            scope = runScope,
+            enabled = canLog,
+            openEnabled = !isEnded,
+            visual = visual,
+            meta = habitMeta(habit, visual, selectedDate == today),
+            earned = if (state == "done" && !hidePointsPref) habit.points else null,
+            onCycle = { cycle(habit) },
+        )
+    }
+
+    LazyColumn(contentPadding = SCREEN_PADDING, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item(key = "run-card") {
+            RunHeroCard(
+                runName = runName,
+                days = runDays,
+                habitCount = habits.size,
+                today = todaySummary,
+                pointsToday = pointsToday,
+                completionPercent = completionPercent,
+                daysLogged = daysLogged,
+                elapsed = elapsed,
+                daySummaries = daySummaries,
+                pastDays =
+                    if (isEnded) {
+                        runDays
+                    } else if (isUpcoming) {
+                        0
+                    } else {
+                        todayOffset
+                    },
+                todayIndex = if (todayInRun) todayOffset else -1,
+                status = latestRun.status,
+                isEnded = isEnded,
+                isUpcoming = isUpcoming,
+                startDate = runStart,
+                onOpenRuns = onManageRuns,
+                onStartNextRun = onStartNextRun,
             )
         }
-        item {
-            DateStrip(
-                runStart = runStart,
-                runDays = runDays,
-                todayOffset = todayOffset,
-                selectedOffset = selectedOffset,
-                impactPercent = selectedImpactPercent,
-                completedOffsets = pointsPerRunDay.mapIndexed { i, p -> i to (p > 0) }.toMap(),
-                onToday = {
-                    selectedOffset = todayOffset
-                    openRow = null
-                },
-                onDate = {
-                    selectedOffset = it
-                    openRow = null
-                },
-            )
+        if (isEnded) {
+            item(key = "ended-note") {
+                Text(
+                    "Run completed · History is read-only",
+                    color = muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
+        } else {
+            item(key = "week") {
+                WeekStrip(
+                    runStart = runStart,
+                    runDays = runDays,
+                    today = today,
+                    todayOffset = todayOffset,
+                    selectedOffset = selectedOffset,
+                    daySummaries = daySummaries,
+                    onSelect = {
+                        selectedOffset = it
+                        openRow = null
+                    },
+                )
+            }
         }
-        if (latestRun.status !=
-            "active"
-        ) {
-            item {
+        if (latestRun.status != "active" && !isEnded) {
+            item(key = "stopped-note") {
                 Text(
                     "This run is stopped. Its existing history remains available.",
                     color = muted,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(top = 2.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
         }
         if (habits.isEmpty()) {
-            item { Text("This run has no habits.", color = muted, style = MaterialTheme.typography.bodyMedium) }
+            item(key = "no-habits") { Text("This run has no habits.", color = muted, style = MaterialTheme.typography.bodyMedium) }
         }
-        if (habits.isNotEmpty()) {
-            item(key = "habits-card") {
-                Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(8.dp)) {
-                        due.groupBy { if (groupHabits) it.group else "" }.forEach { (group, inGroup) ->
-                            if (groupHabits) {
-                                Text(
-                                    "${group.uppercase()} · ${inGroup.size}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = green,
-                                    modifier = Modifier.padding(top = 8.dp, start = 8.dp),
-                                )
-                            }
-                            inGroup.forEach { habit ->
-                                val dots = (0 until if (dense) 7 else historyDays).map { stateFor(habit, historyStart + it) }
-                                SwipeHabitRow(
-                                    habit = habit,
-                                    dots = dots,
-                                    selectedDay = selectedDay,
-                                    dense = dense,
-                                    openRow = openRow,
-                                    onOpenRow = { openRow = it },
-                                    onCommit = { commit(habit, it) },
-                                    onOpen = { onOpenHabit(habit) },
-                                    scope = runScope,
-                                )
-                            }
-                        }
-                        if (notDue.isNotEmpty()) {
-                            TextButton(onClick = { restDaysExpanded = !restDaysExpanded }, modifier = Modifier.fillMaxWidth()) {
-                                Text("${if (restDaysExpanded) "▾" else "▸"} Not due on this day · ${notDue.size}")
-                            }
-                            if (restDaysExpanded) {
-                                notDue.forEach { habit ->
-                                    val dots = (0 until if (dense) 7 else historyDays).map { stateFor(habit, historyStart + it) }
-                                    SwipeHabitRow(
-                                        habit = habit,
-                                        dots = dots,
-                                        selectedDay = selectedDay,
-                                        dense = dense,
-                                        openRow = openRow,
-                                        onOpenRow = { openRow = it },
-                                        onCommit = { commit(habit, it) },
-                                        onOpen = { onOpenHabit(habit) },
-                                        scope = runScope,
-                                    )
-                                }
-                            }
-                        }
+        val groups = due.groupBy { if (groupHabits) it.group else "Habits" }
+        groups.forEach { (group, inGroup) ->
+            item(key = "group-$group") {
+                val doneCount = inGroup.count { records[selectedDate]?.get(it.uid()) == "done" }
+                GroupSection(group, "$doneCount of ${inGroup.size} done") {
+                    inGroup.forEachIndexed { index, habit -> HabitRowItem(habit, index == 0) }
+                }
+            }
+        }
+        if (notDue.isNotEmpty()) {
+            item(key = "resting") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RestingRow(
+                        text = restingLabel(notDue, selectedDate, selectedDate == today, completedDays),
+                        expanded = restDaysExpanded,
+                        onToggle = { restDaysExpanded = !restDaysExpanded },
+                    )
+                    if (restDaysExpanded) {
+                        GroupCard { notDue.forEachIndexed { index, habit -> HabitRowItem(habit, index == 0, resting = true) } }
                     }
                 }
             }
         }
-        if (!hidePointsPref) item { PointsPerDayCard(pointsPerRunDay, habits.sumOf { it.points }) }
+        if (habits.isNotEmpty() && canLog) {
+            item(key = "hint") {
+                Text(
+                    "Tap a circle: done → partial → skipped. Swipe still works.",
+                    color = muted,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        if (standalone.isNotEmpty()) {
+            item(key = "standalone-card") { StandaloneSection(database, standalone, today, dense, onOpenHabit, onLocalChange) }
+        }
+        if (!hidePointsPref) item(key = "points-chart") { PointsPerDayCard(pointsPerRunDay, habits.sumOf { it.points }) }
         if (!hidePointsPref) {
             val chartElapsed = (0 until runDays).count { addIsoDays(runStart, it) <= today }
-            item { PointsBurnupCard(pointsPerRunDay, chartElapsed, habits.sumOf { it.points }) }
+            item(key = "burnup-chart") { PointsBurnupCard(pointsPerRunDay, chartElapsed, habits.sumOf { it.points }) }
         }
+    }
+}
+
+/** "3× a week · 2 pts", or "Skipped today" for a skipped row; points text follows the hide-points preference. */
+private fun habitMeta(
+    habit: Habit,
+    visual: CheckVisual,
+    isToday: Boolean,
+): String =
+    if (visual == CheckVisual.Skipped) {
+        if (isToday) "Skipped today" else "Skipped"
+    } else {
+        scheduleLabel(habit.recurrence) + if (hidePointsPref) "" else " · ${habit.points} pts"
+    }
+
+/** First day after [date] on which an interval habit is due again, as a weekday name. */
+private fun nextDueLabel(
+    habit: Habit,
+    date: String,
+    doneDays: Set<String>,
+): String? {
+    for (k in 1..30) {
+        val next = addIsoDays(date, k)
+        if (!isIntervalRestDay(habit.recurrence, next, doneDays)) {
+            return if (k ==
+                1
+            ) {
+                "tomorrow"
+            } else {
+                WEEKDAY_NAMES[isoDayOfWeek(next)].take(3)
+            }
+        }
+    }
+    return null
+}
+
+private fun restingLabel(
+    resting: List<Habit>,
+    date: String,
+    isToday: Boolean,
+    completedDays: Map<String, Set<String>>,
+): String {
+    val prefix = if (isToday) "Resting today" else "Resting on ${shortDate(date)}"
+    if (resting.size > 1) return "$prefix · ${resting.size} habits"
+    val habit = resting.first()
+    val back = nextDueLabel(habit, date, completedDays[habit.uid()].orEmpty())
+    return if (back == null) "$prefix · ${habit.name}" else "$prefix · ${habit.name} is back $back"
+}
+
+private val WEEKDAY_NAMES = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+
+/** "Thursday, 20 Nov" for the Today header. */
+internal fun longDateLabel(date: String): String =
+    if (date.length <
+        10
+    ) {
+        date
+    } else {
+        "${WEEKDAY_NAMES[isoDayOfWeek(date)]}, ${date.substring(8).toInt()} ${MONTHS[date.substring(5, 7).toInt() - 1]}"
+    }
+
+@Composable private fun RowDivider() {
+    Box(Modifier.fillMaxWidth().height(1.dp).background(palette.divider))
+}
+
+@Composable private fun GroupCard(content: @Composable () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(surface)
+            .padding(vertical = 4.dp),
+    ) { content() }
+}
+
+@Composable private fun GroupSection(
+    title: String,
+    summary: String,
+    content: @Composable () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 4.dp).semantics(mergeDescendants = true) {
+                heading()
+            },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+            Text(summary, style = MaterialTheme.typography.bodySmall, color = muted)
+        }
+        GroupCard(content)
+    }
+}
+
+@Composable private fun RestingRow(
+    text: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .dashedBorder(palette.field, 16.dp)
+            .clickable(onClickLabel = if (expanded) "Hide resting habits" else "Show resting habits", onClick = onToggle)
+            .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        LineIcon(LinePaths.LEAF, muted, size = 16.dp)
+        Text(text, color = muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        LineIcon(if (expanded) LinePaths.CHEVRON_DOWN else LinePaths.CHEVRON_RIGHT, muted, size = 16.dp)
+    }
+}
+
+/** Hero card: today's ring, run headline and per-day bars. Tapping it opens run management. */
+@Composable private fun RunHeroCard(
+    runName: String,
+    days: Int,
+    habitCount: Int,
+    today: DaySummary,
+    pointsToday: Int,
+    completionPercent: Int,
+    daysLogged: Int,
+    elapsed: Int,
+    daySummaries: List<DaySummary>,
+    pastDays: Int,
+    todayIndex: Int,
+    status: String,
+    isEnded: Boolean,
+    isUpcoming: Boolean,
+    startDate: String,
+    onOpenRuns: () -> Unit,
+    onStartNextRun: (() -> Unit)?,
+) {
+    val progress =
+        if (isEnded) {
+            completionPercent / 100f
+        } else if (today.due == 0) {
+            0f
+        } else {
+            (today.done + today.partial * .5f) / today.due
+        }
+    val name = runName.uppercase()
+    val eyebrow =
+        when {
+            isEnded -> "$name · COMPLETED"
+            isUpcoming -> "$name · STARTS ${shortDate(startDate).uppercase()}"
+            status != "active" -> "$name · STOPPED"
+            else -> "$name · DAY $elapsed OF $days"
+        }
+    val headline =
+        when {
+            isEnded -> "Run complete"
+            isUpcoming -> "Starts ${shortDate(startDate)}"
+            today.due == 0 -> "Rest day — nothing due"
+            today.allDone -> "Perfect day!"
+            today.done == 0 -> "Fresh day — let’s go"
+            else -> "Nice pace — ${today.due - today.done} to go"
+        }
+    val meta =
+        when {
+            isEnded -> "$completionPercent% complete · $daysLogged days logged · $habitCount habits"
+            isUpcoming -> "$days days · $habitCount habits"
+            else -> (if (hidePointsPref) "" else "+$pointsToday pts today · ") + "$completionPercent% of run so far"
+        }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(palette.hero)
+            .clickable(role = Role.Button, onClickLabel = "Manage runs", onClick = onOpenRuns)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            ProgressRing(
+                progress = progress,
+                track = lerp(palette.hero, palette.accent, .2f),
+                color = palette.accent,
+                modifier =
+                    Modifier.semantics(mergeDescendants = true) {
+                        contentDescription =
+                            if (isEnded) {
+                                "$completionPercent percent of the run complete"
+                            } else {
+                                "${(progress * 100).roundToInt()} percent of today done"
+                            }
+                    },
+            ) {
+                Text(
+                    if (isEnded) "$completionPercent%" else "${today.done}/${today.due}",
+                    style = MaterialTheme.typography.titleMedium.copy(lineHeight = 18.sp),
+                )
+                Text(if (isEnded) "run" else "done", style = MaterialTheme.typography.labelSmall, color = muted)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(eyebrow, style = EyebrowStyle, color = palette.accent, maxLines = 2)
+                Text(headline, style = MaterialTheme.typography.titleMedium)
+                Text(meta, style = MaterialTheme.typography.bodySmall, color = muted)
+            }
+        }
+        RunDayBars(daySummaries, pastDays, todayIndex)
+        if (isEnded && onStartNextRun != null) {
+            PrimaryButton("Start next run", onClick = onStartNextRun, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/** One bar per run day: done = accent, partial progress = partial colour, today ringed, future = track. */
+@Composable private fun RunDayBars(
+    summaries: List<DaySummary>,
+    pastDays: Int,
+    todayIndex: Int,
+) {
+    val accent = palette.accent
+    val partial = palette.partial
+    val track = palette.track
+    val kept = summaries.take(pastDays + if (todayIndex >= 0) 1 else 0).count { it.kept }
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(12.dp)
+            .semantics { contentDescription = "Run days: $kept of ${summaries.size} kept" },
+    ) {
+        val n = summaries.size.coerceAtLeast(1)
+        val gap = if (n > 40) 1.dp.toPx() else 3.dp.toPx()
+        val w = ((size.width - gap * (n - 1)) / n).coerceAtLeast(1f)
+        val h = 8.dp.toPx()
+        val top = (size.height - h) / 2
+        summaries.forEachIndexed { i, s ->
+            val counted = i < pastDays || i == todayIndex
+            val color =
+                when {
+                    counted && s.allDone -> accent
+                    counted && s.anyProgress -> partial
+                    else -> track
+                }
+            val x = i * (w + gap)
+            drawRoundRect(color, Offset(x, top), Size(w, h), CornerRadius(h / 2, h / 2))
+            if (i == todayIndex) {
+                val r = 1.5.dp.toPx()
+                drawRoundRect(
+                    accent,
+                    Offset(x - r, top - r),
+                    Size(w + 2 * r, h + 2 * r),
+                    CornerRadius(h / 2 + r, h / 2 + r),
+                    style = Stroke(r),
+                )
+            }
+        }
+    }
+}
+
+/** Seven day buttons for the run week holding the selection, with week navigation and a Today jump. */
+@Composable private fun WeekStrip(
+    runStart: String,
+    runDays: Int,
+    today: String,
+    todayOffset: Int,
+    selectedOffset: Int,
+    daySummaries: List<DaySummary>,
+    onSelect: (Int) -> Unit,
+) {
+    val weekStart = historyWindowStart(selectedOffset, 7)
+    val weeks = (runDays + 6) / 7
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (weeks > 1 || selectedOffset != todayOffset) {
+            Row(Modifier.fillMaxWidth().padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.weight(1f))
+                if (selectedOffset != todayOffset) {
+                    Box(
+                        Modifier
+                            .heightIn(min = 40.dp)
+                            .clip(CircleShape)
+                            .clickable(role = Role.Button, onClickLabel = "Jump to today") { onSelect(todayOffset) }
+                            .padding(horizontal = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("Today", style = MaterialTheme.typography.labelLarge, color = palette.accent) }
+                }
+                if (weeks > 1) {
+                    RoundIconButton(LinePaths.CHEVRON_LEFT, "Previous week", onClick = {
+                        onSelect((selectedOffset - 7).coerceAtLeast(0))
+                    }, enabled = weekStart > 0)
+                    RoundIconButton(LinePaths.CHEVRON_RIGHT, "Next week", onClick = {
+                        onSelect((selectedOffset + 7).coerceAtMost(runDays - 1))
+                    }, enabled = weekStart + 7 < runDays)
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (i in 0 until 7) {
+                val offset = weekStart + i
+                if (offset >= runDays) {
+                    Spacer(Modifier.weight(1f))
+                    continue
+                }
+                val date = addIsoDays(runStart, offset)
+                val selected = offset == selectedOffset
+                val isToday = date == today
+                val future = date > today
+                val summary = daySummaries[offset]
+                val dot =
+                    when {
+                        future -> Color.Transparent
+                        summary.allDone -> palette.accent
+                        summary.anyProgress -> palette.partial
+                        else -> Color.Transparent
+                    }
+                val fg =
+                    if (selected) {
+                        palette.bg
+                    } else if (future) {
+                        muted
+                    } else {
+                        ink
+                    }
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (selected) ink else surface)
+                        .then(if (isToday && !selected) Modifier.border(1.5.dp, palette.accent, RoundedCornerShape(12.dp)) else Modifier)
+                        .clickable(role = Role.Tab) { onSelect(offset) }
+                        .semantics {
+                            contentDescription = "${WEEKDAY_NAMES[isoDayOfWeek(date)]} ${shortDate(date)}${if (isToday) ", today" else ""}"
+                            stateDescription = if (selected) "Selected" else "Not selected"
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically),
+                ) {
+                    Text(
+                        WEEKDAY_LETTERS[isoDayOfWeek(date)].toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = fg.copy(alpha = .8f),
+                    )
+                    Text(
+                        date.substring(8).toInt().toString(),
+                        style = MaterialTheme.typography.titleSmall.copy(fontSize = 16.sp, fontWeight = FontWeight.ExtraBold),
+                        color = fg,
+                    )
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(dot))
+                }
+            }
+        }
+    }
+}
+
+/** Empty state before any run exists: illustration, two start options and "Build a run". */
+@Composable private fun EmptyRunsCard(onBuildRun: (Int) -> Unit) {
+    var choice by remember { mutableIntStateOf(1) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(
+                RoundedCornerShape(28.dp),
+            ).background(surface)
+            .padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        EmptyIllustration()
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Let's build your first run", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+            Text(
+                "A run is a short stretch — 7, 14 or 21 days — of habits you want to try. You'll check them off here each day.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = muted,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            val blue = palette.habitTone("blue")
+            val purple = palette.habitTone("purple")
+            SourceCard("Start blank", "Pick habits yourself", LinePaths.BLANK, blue.tint, blue.ink, choice == 1, onClick = {
+                choice = 1
+            }, modifier = Modifier.weight(1f))
+            SourceCard("Paste YAML", "Plan it with an AI chat", LinePaths.CODE, purple.tint, purple.ink, choice == 2, onClick = {
+                choice = 2
+            }, modifier = Modifier.weight(1f))
+        }
+        PrimaryButton("Build a run", onClick = { onBuildRun(choice) }, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+@Composable private fun EmptyIllustration() {
+    val yellow = palette.habitTone("yellow")
+    val green = palette.habitTone("green")
+    val purple = palette.habitTone("purple")
+    Box(Modifier.size(200.dp, 120.dp).clearAndSetSemantics {}) {
+        Box(
+            Modifier
+                .offset(
+                    14.dp,
+                    26.dp,
+                ).size(64.dp)
+                .graphicsLayer { rotationZ = -10f }
+                .clip(RoundedCornerShape(20.dp))
+                .background(yellow.tint),
+            contentAlignment = Alignment.Center,
+        ) { IconGlyph("weather_sunny", Modifier.size(30.dp), yellow.ink) }
+        Box(
+            Modifier
+                .offset(
+                    124.dp,
+                    34.dp,
+                ).size(64.dp)
+                .graphicsLayer { rotationZ = 9f }
+                .clip(RoundedCornerShape(20.dp))
+                .background(purple.tint),
+            contentAlignment = Alignment.Center,
+        ) { IconGlyph("book", Modifier.size(30.dp), purple.ink) }
+        Box(
+            Modifier
+                .offset(68.dp, 4.dp)
+                .size(72.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(green.solid),
+            contentAlignment = Alignment.Center,
+        ) { LineIcon(LinePaths.CHECK, green.onSolid, size = 36.dp, strokeWidth = 3f) }
+        Box(
+            Modifier
+                .offset(52.dp, 92.dp)
+                .size(14.dp)
+                .clip(CircleShape)
+                .background(palette.habitTone("orange").solid),
+        )
+        Box(
+            Modifier
+                .offset(150.dp, 6.dp)
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(palette.habitTone("indigo").solid),
+        )
     }
 }
 
@@ -394,8 +995,8 @@ internal fun loadRunHabits(
     var pending by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("‹ Back") }
-            Text("Manage runs", style = MaterialTheme.typography.titleLarge)
+            RoundIconButton(LinePaths.BACK, "Back", onClick = onBack)
+            Text("All runs", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 4.dp).semantics { heading() })
         }
         if (runs.size > 1) {
             TextButton(onClick = { showPastRuns = !showPastRuns }) {
@@ -404,8 +1005,8 @@ internal fun loadRunHabits(
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(visibleRuns, key = { it.uid }) { run ->
-                Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                SectionCard(radius = 20.dp, padding = 0.dp) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp)) {
                         Text(run.name, style = MaterialTheme.typography.titleSmall)
                         Text(
                             "${run.start_date} · ${run.status}",
@@ -482,156 +1083,6 @@ internal fun loadRunHabits(
     }
 }
 
-@Composable private fun RunSummaryCard(
-    runName: String,
-    days: Int,
-    habitCount: Int,
-    earned: Int,
-    average: Float,
-    elapsed: Int,
-    status: String,
-    onClick: () -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = palette.accentSoft2),
-        shape = RoundedCornerShape(20.dp),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 11.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        if (status ==
-                            "active"
-                        ) {
-                            "ACTIVE RUN"
-                        } else {
-                            "STOPPED RUN"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = green,
-                    )
-                    Text(runName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 2.dp), maxLines = 1)
-                    Text("Day $elapsed of $days · $habitCount habits", style = MaterialTheme.typography.labelSmall, color = muted)
-                }
-                if (!hidePointsPref) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("$earned pts", style = MaterialTheme.typography.titleMedium, color = green)
-                        Text("${"%.1f".format(average)} avg / day", style = MaterialTheme.typography.labelSmall, color = muted)
-                    }
-                }
-            }
-            LinearProgressIndicator(progress = {
-                (elapsed.toFloat() / days.coerceAtLeast(1)).coerceIn(0f, 1f)
-            }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = green, trackColor = palette.track)
-        }
-    }
-}
-
-/** Compact swipeable date rail with selected-day impact progress. */
-@Composable private fun DateStrip(
-    runStart: String,
-    runDays: Int,
-    todayOffset: Int,
-    selectedOffset: Int,
-    impactPercent: Int,
-    completedOffsets: Map<Int, Boolean>,
-    onToday: () -> Unit,
-    onDate: (Int) -> Unit,
-) {
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = (selectedOffset - 3).coerceAtLeast(0))
-    val scrollScope = rememberCoroutineScope()
-    val selectedDate = addIsoDays(runStart, selectedOffset)
-    val monthYear = "${MONTHS[selectedDate.substring(5, 7).toInt() - 1]} ${selectedDate.substring(0, 4)}"
-    Column(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(monthYear, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge)
-            TextButton(onClick = {
-                onToday()
-                scrollScope.launch { listState.animateScrollToItem((todayOffset - 3).coerceAtLeast(0)) }
-            }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                Text("Today", style = MaterialTheme.typography.labelSmall)
-            }
-        }
-        LazyRow(
-            state = listState,
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
-        ) {
-            items(runDays) { offset ->
-                val date = addIsoDays(runStart, offset)
-                val selected = offset == selectedOffset
-                Column(
-                    Modifier
-                        .width(38.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable { onDate(offset) }
-                        .padding(vertical = 1.dp)
-                        .semantics { contentDescription = "${shortDate(date)}${if (offset == todayOffset) ", today" else ""}" },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(1.dp),
-                ) {
-                    Text(WEEKDAY_LETTERS[isoDayOfWeek(date)].toString(), style = MaterialTheme.typography.labelSmall, color = muted)
-                    Box(
-                        Modifier
-                            .size(26.dp)
-                            .clip(CircleShape)
-                            .then(if (selected) Modifier.background(green) else Modifier)
-                            .then(if (offset == todayOffset && !selected) Modifier.border(1.dp, green, CircleShape) else Modifier),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            date.substring(8).toInt().toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (selected) palette.onAccent else ink,
-                        )
-                    }
-                    Box(
-                        Modifier.padding(top = 1.dp).size(4.dp).clip(CircleShape).background(
-                            if (completedOffsets[offset] ==
-                                true
-                            ) {
-                                green
-                            } else {
-                                Color.Transparent
-                            },
-                        ),
-                    )
-                }
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("TODAY", style = MaterialTheme.typography.labelSmall, color = muted)
-            Spacer(Modifier.width(8.dp))
-            LinearProgressIndicator(
-                progress = { impactPercent / 100f },
-                modifier = Modifier.weight(1f).height(3.dp).clip(CircleShape),
-                color = green,
-                trackColor = palette.track,
-            )
-            Text(" $impactPercent%", style = MaterialTheme.typography.labelSmall, color = green)
-        }
-    }
-}
-
-@Composable private fun StepButton(
-    glyph: String,
-    description: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Box(
-        Modifier
-            .size(
-                48.dp,
-            ).clip(CircleShape)
-            .clickable(enabled = enabled, onClick = onClick)
-            .semantics { contentDescription = description },
-        contentAlignment = Alignment.Center,
-    ) { Text(glyph, style = MaterialTheme.typography.headlineSmall, color = if (enabled) ink else muted.copy(alpha = .35f)) }
-}
-
 /** Seven circular dots, one per day of the visible week. Display only. */
 @Composable internal fun DayDots(
     states: List<Int>,
@@ -672,6 +1123,12 @@ private val ROW_SHAPE = RoundedCornerShape(16.dp)
     onCommit: (Int) -> Unit,
     onOpen: () -> Unit,
     scope: kotlinx.coroutines.CoroutineScope,
+    enabled: Boolean = true,
+    openEnabled: Boolean = true,
+    visual: CheckVisual = CheckVisual.Todo,
+    meta: String = "",
+    earned: Int? = null,
+    onCycle: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val buttonPx = with(density) { 76.dp.toPx() }
@@ -708,125 +1165,166 @@ private val ROW_SHAPE = RoundedCornerShape(16.dp)
         }
 
     Box(Modifier.fillMaxWidth().clipToBounds().onSizeChanged { rowWidthPx = it.width.toFloat() }) {
-        SwipeRevealLayer(offset, rowWidthPx, buttonPx, trayOpen, committing) { action ->
-            commitLatest(stateOf(action))
-            settle(0f, 0f)
+        if (enabled) {
+            SwipeRevealLayer(offset, rowWidthPx, buttonPx, trayOpen, committing) { action ->
+                commitLatest(stateOf(action))
+                settle(0f, 0f)
+            }
         }
-        Row(
+        val rowModifier =
             Modifier
                 .fillMaxWidth()
-                .graphicsLayer {
-                    translationX = offset.value
-                    shape = ROW_SHAPE
-                    clip = true
-                    shadowElevation = (abs(offset.value) / 24f).coerceIn(0f, 1f) * 10.dp.toPx()
-                }.background(surface)
-                .clickable { if (trayOpen) settle(0f, 0f) else onOpen() }
+                .then(
+                    if (enabled) {
+                        Modifier.graphicsLayer {
+                            translationX = offset.value
+                            shape = ROW_SHAPE
+                            clip = true
+                            shadowElevation = (abs(offset.value) / 24f).coerceIn(0f, 1f) * 10.dp.toPx()
+                        }
+                    } else {
+                        Modifier.clip(ROW_SHAPE)
+                    },
+                ).background(surface)
+                .clickable(enabled = enabled || openEnabled) { if (enabled && trayOpen) settle(0f, 0f) else onOpen() }
                 .semantics {
-                    contentDescription = "${habit.name}, open details"
-                    customActions =
-                        listOf(
-                            CustomAccessibilityAction("Mark done") {
-                                commitLatest(DONE)
-                                true
+                    contentDescription = if (openEnabled) "${habit.name}, open details" else "${habit.name}, completed run, read-only"
+                    if (enabled) {
+                        customActions =
+                            listOf(
+                                CustomAccessibilityAction("Mark done") {
+                                    commitLatest(DONE)
+                                    true
+                                },
+                                CustomAccessibilityAction("Mark partial") {
+                                    commitLatest(PARTIAL)
+                                    true
+                                },
+                                CustomAccessibilityAction("Mark skipped") {
+                                    commitLatest(SKIPPED)
+                                    true
+                                },
+                            )
+                    }
+                }.then(
+                    if (enabled) {
+                        Modifier.horizontalSwipe(
+                            key = offset,
+                            onStart = { onOpenRow(habit.uid()) },
+                            onDrag = { dx, _ ->
+                                val limit = if (rowWidthPx > 0f) rowWidthPx else Float.MAX_VALUE
+                                val next = (offset.value + dx).coerceIn(-limit, limit)
+                                scope.launch(start = CoroutineStart.UNDISPATCHED) { offset.snapTo(next) }
                             },
-                            CustomAccessibilityAction("Mark partial") {
-                                commitLatest(PARTIAL)
-                                true
-                            },
-                            CustomAccessibilityAction("Mark skipped") {
-                                commitLatest(SKIPPED)
-                                true
+                            onRelease = { velocity ->
+                                val panel = if (offset.value < 0f) leftPanelPx else rightPanelPx
+                                when (revealSettle(offset.value, velocity, panel, rowWidthPx, flingPx)) {
+                                    RevealSettle.Closed -> settle(0f, velocity)
+                                    RevealSettle.OpenRight -> settle(rightPanelPx, velocity)
+                                    RevealSettle.OpenLeft -> settle(-leftPanelPx, velocity)
+                                    RevealSettle.CommitRight -> {
+                                        commitLatest(DONE)
+                                        settle(0f, velocity)
+                                    }
+                                    RevealSettle.CommitLeft -> {
+                                        commitLatest(SKIPPED)
+                                        settle(0f, velocity)
+                                    }
+                                }
                             },
                         )
-                }.horizontalSwipe(
-                    key = offset,
-                    onStart = { onOpenRow(habit.uid()) },
-                    onDrag = { dx, _ ->
-                        val limit = if (rowWidthPx > 0f) rowWidthPx else Float.MAX_VALUE
-                        val next = (offset.value + dx).coerceIn(-limit, limit)
-                        scope.launch(start = CoroutineStart.UNDISPATCHED) { offset.snapTo(next) }
+                    } else {
+                        Modifier
                     },
-                    onRelease = { velocity ->
-                        val panel = if (offset.value < 0f) leftPanelPx else rightPanelPx
-                        when (revealSettle(offset.value, velocity, panel, rowWidthPx, flingPx)) {
-                            RevealSettle.Closed -> settle(0f, velocity)
-                            RevealSettle.OpenRight -> settle(rightPanelPx, velocity)
-                            RevealSettle.OpenLeft -> settle(-leftPanelPx, velocity)
-                            RevealSettle.CommitRight -> {
-                                commitLatest(DONE)
-                                settle(0f, velocity)
-                            }
-                            RevealSettle.CommitLeft -> {
-                                commitLatest(SKIPPED)
-                                settle(0f, velocity)
-                            }
-                        }
-                    },
-                ).heightIn(min = 56.dp)
-                .padding(horizontal = 12.dp, vertical = if (dense) 8.dp else 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            if (!dense) {
-                val tint = habitColorOf(habit.color) ?: green
-                Box(
-                    Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(alpha = .2f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    HabitGlyph(habit, Modifier.size(22.dp), tint.copy(alpha = .2f), tint)
-                }
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    habit.name,
-                    fontWeight = FontWeight.Medium,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = if (dense) 1 else 2,
                 )
-                if (!dense) {
-                    val sub =
-                        buildString {
-                            if (!hidePointsPref) append("${habit.points} pts · ")
-                            append(habit.recurrence)
+        HabitRowFace(
+            habit = habit,
+            visual = visual,
+            meta = meta,
+            earned = earned,
+            dense = dense,
+            dots = dots,
+            selectedDay = selectedDay,
+            checkEnabled = enabled,
+            onCycle = onCycle,
+            modifier = rowModifier,
+        )
+    }
+}
+
+/** Habit row content: icon tile, name + meta (+ history), earned pill and the check circle. */
+@Composable private fun HabitRowFace(
+    habit: Habit,
+    visual: CheckVisual,
+    meta: String,
+    earned: Int?,
+    dense: Boolean,
+    dots: List<Int>,
+    selectedDay: Int,
+    checkEnabled: Boolean,
+    onCycle: () -> Unit,
+    modifier: Modifier,
+) {
+    val tone = palette.habitTone(habit.color)
+    Row(
+        modifier = modifier.heightIn(min = if (dense) 52.dp else 62.dp).padding(start = 10.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        HabitIconTile(habit, tone, size = if (dense) 34.dp else 42.dp, radius = if (dense) 11.dp else 13.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                habit.name,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = if (dense) 1 else 2,
+                modifier = Modifier.alpha(if (visual == CheckVisual.Skipped) .55f else 1f),
+            )
+            if (dense) {
+                DayDots(dots, selectedDay, 8.dp)
+            } else {
+                Text(meta, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1)
+                if (dots.isNotEmpty()) HistoryMarks(dots, selectedDay, tone)
+            }
+        }
+        if (earned != null) Pill("+$earned", tone.tint, tone.ink)
+        CheckCircle(habit.name, visual, tone, checkEnabled, onCycle)
+    }
+}
+
+/** Small per-day history squares under a habit (7–21 days, set in Settings). Display only. */
+@Composable private fun HistoryMarks(
+    dots: List<Int>,
+    selectedDay: Int,
+    tone: HabitTone,
+) {
+    Column(Modifier.padding(top = 4.dp).clearAndSetSemantics {}, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        dots.chunked(7).forEachIndexed { rowIndex, row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                row.forEachIndexed { columnIndex, state ->
+                    val index = rowIndex * 7 + columnIndex
+                    val fill =
+                        when (state) {
+                            DONE -> tone.solid
+                            PARTIAL -> palette.partial
+                            SKIPPED -> palette.track
+                            else -> Color.Transparent
                         }
-                    Text(sub, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1)
-                    Column(Modifier.padding(top = 5.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        dots.chunked(7).forEachIndexed { rowIndex, row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                row.forEachIndexed { columnIndex, state ->
-                                    val index = rowIndex * 7 + columnIndex
-                                    val fill =
-                                        when (state) {
-                                            DONE -> palette.completed
-                                            PARTIAL -> palette.partial
-                                            SKIPPED, NONE -> palette.incomplete
-                                            else -> Color.Transparent
-                                        }
-                                    Box(
-                                        Modifier
-                                            .size(15.dp)
-                                            .clip(RoundedCornerShape(3.dp))
-                                            .background(fill)
-                                            .border(
-                                                if (index ==
-                                                    selectedDay
-                                                ) {
-                                                    2.dp
-                                                } else {
-                                                    1.dp
-                                                },
-                                                if (index == selectedDay) ink else muted,
-                                                RoundedCornerShape(3.dp),
-                                            ),
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    val shape = RoundedCornerShape(3.dp)
+                    Box(
+                        Modifier
+                            .size(9.dp)
+                            .clip(shape)
+                            .background(fill)
+                            .then(
+                                when {
+                                    index == selectedDay && state != OUTSIDE -> Modifier.border(1.5.dp, ink, shape)
+                                    state == NONE -> Modifier.border(1.dp, palette.field, shape)
+                                    else -> Modifier
+                                },
+                            ),
+                    )
                 }
             }
-            if (dense) DayDots(dots, selectedDay, 10.dp)
         }
     }
 }
@@ -881,7 +1379,7 @@ private val ROW_SHAPE = RoundedCornerShape(16.dp)
     perDay: List<Int>,
     maxDailyPoints: Int,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
+    SectionCard(radius = 22.dp, padding = 0.dp) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text("Points per day", style = MaterialTheme.typography.titleSmall)
             val values = perDay
@@ -934,7 +1432,7 @@ private val ROW_SHAPE = RoundedCornerShape(16.dp)
     elapsed: Int,
     maxDailyPoints: Int,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = surface), shape = RoundedCornerShape(20.dp)) {
+    SectionCard(radius = 22.dp, padding = 0.dp) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text("Points burnup", style = MaterialTheme.typography.titleSmall)
             Text(
@@ -1007,3 +1505,48 @@ internal fun forecastEnd(
     elapsed: Int,
     duration: Int,
 ): Float = if (elapsed <= 0) 0f else earned.toFloat() * duration / elapsed
+
+/** Habits outside every run, mirroring the browser app's "Standalone habits" section; always logged for today. */
+@Composable
+private fun StandaloneSection(
+    database: HabitDatabase,
+    habits: List<Habit>,
+    today: String,
+    dense: Boolean,
+    onOpenHabit: (Habit) -> Unit,
+    onLocalChange: () -> Unit,
+) {
+    if (habits.isEmpty()) return
+    val states =
+        database.schemaQueries
+            .selectCheckInsForDay(today)
+            .executeAsList()
+            .associate { it.habit_uid to it.state }
+    val doneCount = habits.count { states[it.uid()] == "done" }
+    GroupSection("Standalone · always due", "$doneCount of ${habits.size} done") {
+        habits.forEachIndexed { index, habit ->
+            if (index > 0) RowDivider()
+            val state = states[habit.uid()]
+            val visual = checkVisualOf(state, false)
+            HabitRowFace(
+                habit = habit,
+                visual = visual,
+                meta = "${habit.group} · ${habitMeta(habit, visual, true)}",
+                earned = if (state == "done" && !hidePointsPref) habit.points else null,
+                dense = dense,
+                dots = emptyList(),
+                selectedDay = -1,
+                checkEnabled = true,
+                onCycle = {
+                    database.cycleCheckIn(habit.uid(), today)
+                    onLocalChange()
+                },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(onClickLabel = "Open details") { onOpenHabit(habit) }
+                        .semantics { contentDescription = "${habit.name}, open details" },
+            )
+        }
+    }
+}

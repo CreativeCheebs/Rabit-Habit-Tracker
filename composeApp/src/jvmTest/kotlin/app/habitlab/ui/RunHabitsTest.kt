@@ -4,6 +4,7 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import app.habitlab.db.HabitDatabase
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RunHabitsTest {
@@ -139,6 +140,20 @@ class RunHabitsTest {
         driver.close()
     }
 
+    @Test fun endedRunIsRecognizedAndExcludedFromActiveRunsForDate() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        HabitDatabase.Schema.create(driver)
+        val db = HabitDatabase(driver)
+        db.schemaQueries.insertRun("ended-run", "Ended", "2026-10-01", 21)
+        val run = db.schemaQueries.selectRunByUid("ended-run").executeAsOne()
+        assertFalse(db.isRunEnded(run, "2026-10-21"))
+        assertTrue(db.isRunEnded(run, "2026-10-22"))
+        assertTrue(db.isRunEnded(run, "2026-11-18"))
+        assertEquals(emptyList<String>(), db.activeRuns("2026-11-18").map { it.uid })
+        assertEquals("ended-run", db.currentRun()?.uid)
+        driver.close()
+    }
+
     @Test fun emptyRealRunNeverDisplaysExampleOrUnrelatedHabits() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         HabitDatabase.Schema.create(driver)
@@ -148,5 +163,40 @@ class RunHabitsTest {
         assertTrue(loadRunHabits(db, "run-one").isEmpty())
         db.schemaQueries.attachHabitToRun("link", "run-one", "unrelated")
         assertEquals(listOf("Other"), loadRunHabits(db, "run-one").map { it.name })
+    }
+
+    @Test fun standaloneHabitsAreThoseOutsideEveryRun() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        HabitDatabase.Schema.create(driver)
+        val db = HabitDatabase(driver)
+        db.schemaQueries.insertRun("run", "Run", "2026-11-01", 7)
+        db.schemaQueries.insertHabit("linked", "Linked", "General", 1, 1, "weekly", 7)
+        db.schemaQueries.insertHabit("solo", "Solo", "General", 1, 1, "weekly", 7)
+        db.schemaQueries.attachHabitToRun("link", "run", "linked")
+        assertEquals(listOf("Solo"), loadStandaloneHabits(db).map { it.name })
+        db.deleteRunKeepingHabits("run")
+        assertEquals(listOf("Linked", "Solo"), loadStandaloneHabits(db).map { it.name })
+        driver.close()
+    }
+
+    @Test fun runEndsAfterItsLastDay() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        HabitDatabase.Schema.create(driver)
+        val db = HabitDatabase(driver)
+        db.schemaQueries.insertRun("run", "Run", "2026-11-01", 7)
+        val run = db.schemaQueries.selectRunByUid("run").executeAsOne()
+        assertFalse(db.isRunEnded(run, "2026-11-07"))
+        assertTrue(db.isRunEnded(run, "2026-11-08"))
+        assertTrue(db.activeRuns("2026-11-08").isEmpty())
+        driver.close()
+    }
+
+    @Test fun datePickerMillisRoundTripIsoDates() {
+        assertEquals(0L, isoDateToUtcMillis("1970-01-01"))
+        listOf("2026-11-20", "2024-02-29", "2000-03-01", "1999-12-31").forEach {
+            assertEquals(it, utcMillisToIsoDate(isoDateToUtcMillis(it)!!))
+        }
+        assertEquals("2026-11-21", utcMillisToIsoDate(isoDateToUtcMillis("2026-11-20")!! + 86_400_000L))
+        assertEquals(null, isoDateToUtcMillis("2026-02-30"))
     }
 }

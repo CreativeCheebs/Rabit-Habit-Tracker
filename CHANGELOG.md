@@ -10,6 +10,13 @@ All notable changes are documented here. Follow Keep a Changelog and Semantic Ve
 
 ## [Unreleased]
 
+## [1.4.0] - Redesign
+
+- New Plus Jakarta Sans visual system on Android and web, with light, dark, and Japanese-accent themes, dense layout, and hide-points options.
+- Android Today gets a hero progress ring, week strip, streak pill, tap-to-cycle check-in circles, and a unified run editor with habit sheet.
+- Web Today, run editor, habit sheet, empty state, and completed-run views match the new design; expired runs keep their read-only history and next-run action.
+- Increased Android version code to 13.
+
 ## [1.3.0] - Navigation and habit management
 
 - Android shows a full 21-day history, a burnup forecast, and clearer completion colors.
